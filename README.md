@@ -18,14 +18,14 @@ A portable, open-source music creation device built on the Daisy Seed platform.
 
 OpenChord is a modular, portable music creation device that combines the power of the Daisy Seed with a custom hardware design. It features a multi-track recording system, real-time audio processing, and an intuitive interface for music creation on the go.
 
-## ✨ Features
+## 🔥 Use Cases
 
-- **Multi-track Recording**: Record and layer multiple audio tracks
-- **Real-time Effects**: Built-in audio effects and processing
-- **MIDI Support**: Full MIDI input/output capabilities
-- **Modular Design**: Plugin-based architecture for easy extension
-- **Portable**: Compact design for music creation anywhere
-- **Open Source**: Complete open-source firmware and hardware
+* 🎹 **Chord Generator**: Use joystick + chord mapping for fast harmonic inspiration
+* 🎛️ **Synthesizer**: Design, tweak, and perform complex patches
+* 🔁 **Looper**: Capture and layer performance ideas
+* 🥁 **Sampler / Drum Machine**: Trigger from built-in pads or MIDI
+* 🎚️ **DAW Companion**: Send and receive MIDI, control software instruments
+* 🎼 **TRS MIDI Host and Client**: Play with your favorite controller or control your favorite hardware synth
 
 ## 📚 Documentation
 
