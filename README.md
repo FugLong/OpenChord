@@ -2,6 +2,18 @@
 
 A portable, open-source music creation device built on the Daisy Seed platform.
 
+## 🎨 3D Enclosure Design (WIP)
+
+<div align="center">
+  <img src="images/WIP_Enclosure.jpeg" width="600" alt="OpenChord 3D Enclosure Design - Work in Progress">
+  <br><br>
+  <a href="https://cad.onshape.com/documents/ba31b49b2d69ae60e3c7e665/w/702c47d3131326b0bcdb3b01/e/0e96b76ad6aba8c5e2682321?renderMode=0&uiState=688ae55320c7c16e74ffb3b5">
+    <img src="https://img.shields.io/badge/Onshape-View%20Full%203D%20Model-0066CC?style=for-the-badge&logo=onshape&logoColor=white" alt="View Full 3D Model">
+  </a>
+  <br>
+  <em>3D enclosure design in progress - Click the button above to explore the full model</em>
+</div>
+
 ## 🎵 Overview
 
 OpenChord is a modular, portable music creation device that combines the power of the Daisy Seed with a custom hardware design. It features a multi-track recording system, real-time audio processing, and an intuitive interface for music creation on the go.
@@ -15,130 +27,55 @@ OpenChord is a modular, portable music creation device that combines the power o
 - **Portable**: Compact design for music creation anywhere
 - **Open Source**: Complete open-source firmware and hardware
 
-## 🚀 Quick Start
+## 📚 Documentation
 
-### Prerequisites
+The complete documentation is available in the [`docs/`](docs/) directory:
 
-- [Daisy Toolchain](https://daisy.audio/tutorials/cpp-dev-env/)
-- Git
-- Make
+- **[Project Overview](docs/overview/project_overview.md)** - Complete project description and features
+- **[Firmware Architecture](docs/architecture/firmware_architecture.md)** - Detailed system design
+- **[Hardware Documentation](docs/hardware/pinout.md)** - Pin assignments and connections
+- **[Development Setup](docs/development/setup.md)** - Environment setup and building
 
-### Setup
+## 🎯 Project Status
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/your-username/OpenChord.git
-   cd OpenChord
-   ```
+This is an active development project. Current progress:
 
-2. **Initialize submodules**:
-   ```bash
-   git submodule init
-   git submodule update
-   ```
+### Project Structure & Planning
+- 🔄 **Project structure and planning docs** (90% complete)
+- 🔄 **Basic firmware architecture** (85% complete)
+- 🔄 **Hardware pinout planning** (90% complete)
+- 🔄 **Official parts list generation** (90% complete)
 
-3. **Build the project**:
-   ```bash
-   make
-   ```
+### Hardware Design
+- 🔄 **3D printed enclosure design** (50% complete)
+- 🔄 **Hardware layout and PCB planning** (85% complete)
 
-For detailed setup instructions, see [Development Setup Guide](docs/development/setup.md).
+### Firmware Development
+- 🔄 **IO system implementation** (10% complete)
+- ⏳ Audio processing system (0% complete)
+- ⏳ Display and UI system (0% complete)
+- ⏳ Plugin system implementation (0% complete)
 
-## 📁 Project Structure
-
+### Progress Overview
 ```
-OpenChord/
-├── docs/                 # Documentation
-│   ├── overview/        # Project overview and goals
-│   ├── architecture/    # System architecture docs
-│   ├── hardware/        # Hardware documentation
-│   └── development/     # Development guides
-├── include/             # Header files
-├── src/                 # Source code
-│   ├── core/           # Core system files
-│   └── plugins/        # Plugin implementations
-├── lib/                 # External libraries (submodules)
-│   ├── libDaisy/       # Daisy hardware library
-│   └── DaisySP/        # Daisy audio processing library
-├── images/              # Project images and diagrams
-├── build/              # Build artifacts (ignored by git)
-├── Makefile            # Build configuration
-└── .gitmodules         # Submodule configuration
+Project Structure & Planning: █████████░ 85%
+Hardware Design:            ███████░░░ 70%
+Firmware Development:       █░░░░░░░░░ 2%
+Overall Project:            ███░░░░░░░ 25%
 ```
 
-## 🏗️ Architecture
-
-OpenChord uses a modular plugin architecture:
-
-- **Core System**: Handles audio I/O, MIDI, and basic functionality
-- **Plugin System**: Extensible architecture for effects, instruments, and features
-- **Track System**: Multi-track recording and playback
-- **UI System**: User interface and controls
-
-For detailed architecture information, see [Firmware Architecture](docs/architecture/firmware_architecture.md).
-
-## 🛠️ Development
-
-### Building
-
-```bash
-make clean    # Clean build artifacts
-make          # Build the project
-```
-
-### Development Workflow
-
-1. Make changes to source files in `src/`
-2. Build with `make`
-3. Test on hardware
-4. Commit your changes
-
-### Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-## 📖 Documentation
-
-- [Project Overview](docs/overview/project_overview.md) - Complete project description
-- [Development Setup](docs/development/setup.md) - Detailed setup instructions
-- [Firmware Architecture](docs/architecture/firmware_architecture.md) - System design
-- [Hardware Documentation](docs/hardware/pinout.md) - Hardware specifications
-
-## 🎯 Status
-
-### Current Progress
-
-- ✅ **Project Structure**: Complete
-- ✅ **Basic Firmware**: Core system implemented
-- ✅ **IO System**: Hardware interface working
-- 🔄 **Audio Processing**: In development
-- ⏳ **UI System**: Planned
-- ⏳ **Plugin System**: Planned
+See the [Documentation README](docs/README.md) for detailed progress tracking.
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+We welcome contributions! Please see our [Development Setup Guide](docs/development/setup.md) for getting started, and feel free to open issues or submit pull requests.
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## 🔗 Links
 
-- [Electro-Smith](https://electro-smith.com/) for the Daisy Seed platform
-- [libDaisy](https://github.com/electro-smith/libDaisy) for the hardware abstraction layer
-- [DaisySP](https://github.com/electro-smith/DaisySP) for audio processing utilities
-
-## 📞 Support
-
-- **Issues**: Use GitHub Issues for bug reports and feature requests
-- **Discussions**: Use GitHub Discussions for questions and general discussion
-- **Documentation**: Check the [docs/](docs/) directory for detailed guides
-
----
-
-**OpenChord** - Making music creation accessible to everyone. 
+- [Daisy Seed Documentation](https://daisy.audio/)
+- [libDaisy GitHub](https://github.com/electro-smith/libDaisy)
+- [DaisySP GitHub](https://github.com/electro-smith/DaisySP) 
