@@ -36,32 +36,6 @@ Welcome to the OpenChord documentation! This project is a portable, open-source 
 - **High-quality audio** - Professional-grade sound processing
 - **Intuitive interface** - Consistent, responsive UI
 
-## 🔧 Current Status
-
-### Project Structure & Planning
-- 🔄 **Project structure and planning docs** (90% complete)
-- 🔄 **Basic firmware architecture** (85% complete)
-- 🔄 **Hardware pinout planning** (90% complete)
-- 🔄 **Official parts list generation** (90% complete)
-
-### Hardware Design
-- 🔄 **3D printed enclosure design** (50% complete)
-- 🔄 **Hardware layout and PCB planning** (85% complete)
-
-### Firmware Development
-- 🔄 **IO system implementation** (10% complete)
-- ⏳ Audio processing system (0% complete)
-- ⏳ Display and UI system (0% complete)
-- ⏳ Plugin system implementation (0% complete)
-
-### Progress Overview
-```
-Project Structure & Planning: █████████░ 85%
-Hardware Design:            ███████░░░ 70%
-Firmware Development:       █░░░░░░░░░ 2%
-Overall Project:            ███░░░░░░░ 25%
-```
-
 ## 📖 Additional Resources
 
 - [Daisy Seed Documentation](https://daisy.audio/)

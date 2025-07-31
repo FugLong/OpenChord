@@ -64,8 +64,6 @@ Firmware Development:       █░░░░░░░░░ 2%
 Overall Project:            ███░░░░░░░ 25%
 ```
 
-See the [Documentation README](docs/README.md) for detailed progress tracking.
-
 ## 🤝 Contributing
 
 We welcome contributions! Please see our [Development Setup Guide](docs/development/setup.md) for getting started, and feel free to open issues or submit pull requests.
