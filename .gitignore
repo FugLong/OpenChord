@@ -1,0 +1,166 @@
+# Build artifacts
+build/
+*.o
+*.elf
+*.bin
+*.hex
+*.map
+*.d
+*.a
+
+# IDE and editor files
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Dependencies - Submodule content (references tracked, content ignored)
+# Keep .git directories but ignore all content
+lib/libDaisy/
+!lib/libDaisy/.git
+!lib/libDaisy/.gitmodules
+lib/DaisySP/
+!lib/DaisySP/.git
+!lib/DaisySP/.gitmodules
+
+# Hardware design files (optional - uncomment if you want to ignore)
+# *.f3d
+# *.stl
+# *.gcode
+
+# Documentation build artifacts
+docs/_build/
+docs/build/
+
+# Test artifacts
+tests/build/
+*.test
+
+# Backup files
+*.bak
+*.backup
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# Coverage reports
+*.gcov
+*.gcda
+*.gcno
+coverage/
+
+# Profiling data
+*.prof
+*.out
+
+# Package files
+*.tar.gz
+*.zip
+*.rar
+
+# Additional build artifacts
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+*.lib
+
+# CMake build files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Large binary files
+*.wav
+*.mp3
+*.flac
+*.ogg
+*.avi
+*.mp4
+*.mov
+*.mkv
+*.iso
+*.img
+*.dmg
+*.pkg
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Log files
+*.log
+logs/
+
+# Cache directories
+.cache/
+cache/
+
+# Node modules (if any)
+node_modules/
+
+# Python cache (if any)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/ 
