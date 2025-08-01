@@ -1,10 +1,30 @@
-# OpenChord Pinout Documentation
+# OpenChord Pinout Documentation (WIP)
 
 ## Overview
 
 This document tracks the detailed pin assignments for the OpenChord custom hardware setup. The Daisy Seed has limited pins, so every pin must be carefully allocated.
 
-![Daisy Seed Pinout](https://daisy.nyc3.cdn.digitaloceanspaces.com/products/seed/Seed_pinout_dark.png)
+<style>
+.pinout-image {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+  height: auto;
+}
+
+@media (prefers-color-scheme: dark) {
+  .pinout-light { display: none; }
+  .pinout-dark { display: block; }
+}
+
+@media (prefers-color-scheme: light) {
+  .pinout-light { display: block; }
+  .pinout-dark { display: none; }
+}
+</style>
+
+<img class="pinout-image pinout-dark" src="https://daisy.nyc3.cdn.digitaloceanspaces.com/products/seed/Seed_pinout_dark.png" alt="Daisy Seed Pinout (Dark Mode)">
+<img class="pinout-image pinout-light" src="https://daisy.nyc3.cdn.digitaloceanspaces.com/products/seed/Seed_pinout_light.png" alt="Daisy Seed Pinout (Light Mode)">
 
 ## Pin Usage Summary
 
