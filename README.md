@@ -33,7 +33,7 @@ The complete documentation is available in the [`docs/`](docs/) directory:
 
 - **[Project Overview](docs/overview/project_overview.md)** - Complete project description and features
 - **[Firmware Architecture](docs/architecture/firmware_architecture.md)** - Detailed system design
-- **[Hardware Documentation](docs/hardware/pinout.md)** - Pin assignments and connections
+- **[Hardware Documentation](docs/hardware/)** - Pin assignments, connections, and parts list
 - **[Development Setup](docs/development/setup.md)** - Environment setup and building
 
 ## 🎯 Project Status

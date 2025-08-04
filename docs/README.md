@@ -23,7 +23,8 @@ Welcome to the OpenChord documentation! This project is a portable, open-source 
 - **[Firmware Architecture](architecture/firmware_architecture.md)** - Detailed firmware design, track structure, scenes, and plugin system
 
 ### Hardware
-- **[Pinout Documentation (WIP)](hardware/pinout.md)** - Detailed pin assignments and hardware connections
+- **[Pinout Documentation](hardware/pinout.md)** - Detailed pin assignments and hardware connections
+- **[Parts List](hardware/partsList.md)** - Complete component list with pricing and purchase links
 
 ### Development
 - **[Development Setup](development/setup.md)** - How to set up your development environment and build the project
