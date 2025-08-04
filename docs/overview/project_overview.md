@@ -1,5 +1,7 @@
 # OpenChord - Portable Open-Source Music Device
 
+[← Back to Documentation](../README.md)
+
 ## Project Overview
 
 My goal is to design and build a powerful, portable, and open-source music creation device with a workflow that just makes sense. It features hands-on control, beautiful sound, MIDI I/O, looper capabilities, and a sturdy 3D-printable enclosure, making it perfect for spontaneous music-making anywhere. Modular firmware architecture supports community-driven plugin development, creating an expandable ecosystem for artists and developers.

@@ -1,5 +1,7 @@
 # OpenChord Firmware Architecture
 
+[← Back to Documentation](../README.md)
+
 ## Core Concepts
 
 * Portable, open-source music device using the Daisy Seed MCU

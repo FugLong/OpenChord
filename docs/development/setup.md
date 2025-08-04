@@ -1,5 +1,7 @@
 # Development Setup Guide
 
+[← Back to Documentation](../README.md)
+
 ## Prerequisites
 
 - **Daisy Toolchain**: Install the Daisy toolchain from [Daisy Toolchain](https://daisy.audio/tutorials/cpp-dev-env/)

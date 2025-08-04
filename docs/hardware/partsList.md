@@ -1,5 +1,7 @@
 # 🎵 OpenChord Parts List
 
+[← Back to Documentation](../README.md)
+
 ### 📋 Overview
 
 This document contains the complete parts list for building the OpenChord hardware.

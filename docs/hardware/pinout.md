@@ -1,5 +1,7 @@
 # OpenChord Pinout Documentation
 
+[← Back to Documentation](../README.md)
+
 ## Overview
 
 This document tracks the detailed pin assignments for the OpenChord custom hardware setup. The Daisy Seed has limited pins, so every pin must be carefully allocated.
