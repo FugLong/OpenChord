@@ -53,7 +53,7 @@ These components are required around the headphone/line out amplifier.
 
 | Function | Qty | Type | Recommended Value | Notes |
 |----------|-----|------|-------------------|-------|
-| **DC Blocking Caps** | 4 | Low ESR Electrolytic | 460 µF | Prevent DC offset at output (headphone safe) |
+| **DC Blocking Caps** | 4 | Low ESR Electrolytic | 470 µF | Prevent DC offset at output (headphone safe) |
 | **Output Resistors** | 2 | 1% metal film | 100–220Ω | Helps stabilize op-amp, protects against shorts |
 | **Virtual Ground Resistors** | 2 | 1% | 10kΩ | For biasing signal path (if needed) |
 | **Bypass Caps (V+/V-)** | 2 | X7R Ceramic | 100 nF | Place close to op-amp power pins |
@@ -65,7 +65,7 @@ These components are required around the headphone/line out amplifier.
 
 | Component | Purpose |
 |-----------|---------|
-| **2.2–4.7 µF C0G/Film** | DC blocking caps for line/headphone out (non-polar recommended) |
+| **470 µF Low ESR Electrolytic** | DC blocking caps for line/headphone out |
 | **100 nF Ceramic** | Local decoupling near analog ICs (op-amps, MAX9814) |
 | **100–220Ω Resistors** | Output protection (to line/headphones); matches OPA1656 section |
 | **1kΩ Resistors** | Use in simple RC low-pass filters or pad circuits (optional) |
