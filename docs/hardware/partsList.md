@@ -53,7 +53,7 @@ These components are required around the headphone/line out amplifier.
 
 | Function | Qty | Type | Recommended Value | Notes |
 |----------|-----|------|-------------------|-------|
-| **DC Blocking Caps** | 2 | C0G / Film | 2.2–4.7 µF | Prevent DC offset at output (headphone safe) |
+| **DC Blocking Caps** | 4 | Low ESR Electrolytic | 460 µF | Prevent DC offset at output (headphone safe) |
 | **Output Resistors** | 2 | 1% metal film | 100–220Ω | Helps stabilize op-amp, protects against shorts |
 | **Virtual Ground Resistors** | 2 | 1% | 10kΩ | For biasing signal path (if needed) |
 | **Bypass Caps (V+/V-)** | 2 | X7R Ceramic | 100 nF | Place close to op-amp power pins |
@@ -131,7 +131,7 @@ These components are required around the headphone/line out amplifier.
 
 | Component | Purpose |
 |-----------|---------|
-| **6N138 Opto-Isolator** | MIDI In isolation |
+| **6N138/LTV-817S-TA1/PC817 Opto-Isolator** | MIDI In isolation |
 | **220Ω Resistor** | Limits current to opto input |
 | **10kΩ Resistor** | Pull-up from opto collector to 3.3V |
 | **100 nF Ceramic** | Decoupling for opto IC |

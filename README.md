@@ -47,8 +47,8 @@ This is an active development project. Current progress:
 - 🔄 **Official parts list generation** (90% complete)
 
 ### Hardware Design
-- 🔄 **3D printed enclosure design** (50% complete)
-- 🔄 **Hardware layout and PCB planning** (85% complete)
+- 🔄 **3D printed enclosure design** (75% complete)
+- 🔄 **Hardware layout and circuit planning** (99% complete)
 
 ### Firmware Development
 - 🔄 **IO system implementation** (10% complete)
@@ -58,10 +58,10 @@ This is an active development project. Current progress:
 
 ### Progress Overview
 ```
-Project Structure & Planning: █████████░ 85%
-Hardware Design:            ███████░░░ 70%
+Project Structure & Planning: █████████░ 90%
+Hardware Design:            ████████░░ 87%
 Firmware Development:       █░░░░░░░░░ 2%
-Overall Project:            ███░░░░░░░ 25%
+Overall Project:            ███░░░░░░░ 30%
 ```
 
 ## 🤝 Contributing
