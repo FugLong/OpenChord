@@ -6,6 +6,7 @@
 class IO {
 public:
     static constexpr int NUM_BUTTONS = 8;  // Adjust based on actual hardware
+    static constexpr int NUM_ADC_CHANNELS = 4;  // Support multiple ADC inputs
     
     IO();
     ~IO();
@@ -13,6 +14,10 @@ public:
     // Initialization
     void Init(daisy::DaisySeed* hw);
     void Update();
+    
+    // ADC handling (for volume pot, etc.)
+    float GetADCValue(int channel) const;
+    void ConfigureADC(int channel, daisy::Pin pin);
     
     // Encoder handling
     float GetEncoderDelta() const;
@@ -36,6 +41,10 @@ public:
     
 private:
     daisy::DaisySeed* hw_;
+    
+    // ADC configuration
+    daisy::AdcChannelConfig adc_configs_[NUM_ADC_CHANNELS];
+    bool adc_configured_[NUM_ADC_CHANNELS];
     
     // Encoder
     daisy::Encoder encoder_;

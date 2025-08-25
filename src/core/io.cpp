@@ -1,20 +1,21 @@
-#include "../include/io.h"
-#include <cmath>
+#include "../../include/io.h"
+#include <cstring>
 
-IO::IO() : hw_(nullptr), encoder_value_(0), last_encoder_value_(0), encoder_delta_(0.0f),
-           joystick_x_(0.0f), joystick_y_(0.0f) {
+IO::IO() 
+    : hw_(nullptr), encoder_value_(0), last_encoder_value_(0), encoder_delta_(0.0f),
+      joystick_x_(0.0f), joystick_y_(0.0f) {
+    
     // Initialize button states
-    for (int i = 0; i < NUM_BUTTONS; i++) {
-        button_states_[i] = false;
-        last_button_states_[i] = false;
-        button_hold_times_[i] = 0;
-    }
+    memset(button_states_, 0, sizeof(button_states_));
+    memset(last_button_states_, 0, sizeof(last_button_states_));
+    memset(button_hold_times_, 0, sizeof(button_hold_times_));
     
     // Initialize LED states
-    for (int i = 0; i < 4; i++) {
-        led_states_[i] = false;
-        led_brightness_[i] = 0.0f;
-    }
+    memset(led_states_, 0, sizeof(led_states_));
+    memset(led_brightness_, 0, sizeof(led_brightness_));
+    
+    // Initialize ADC configuration
+    memset(adc_configured_, 0, sizeof(adc_configured_));
 }
 
 IO::~IO() {
@@ -23,29 +24,18 @@ IO::~IO() {
 void IO::Init(daisy::DaisySeed* hw) {
     hw_ = hw;
     
-    // Initialize encoder on pins 34 and 35 (D27 and D28 according to pinout)
-    // Note: Using a dummy pin for click since it's not connected
-    encoder_.Init(daisy::seed::D27, daisy::seed::D28, daisy::seed::D26);
+    // Initialize encoder
+    encoder_.Init(hw->GetPin(15), hw->GetPin(16), hw->GetPin(17)); // Example pins
     
-    // Initialize buttons (using available GPIO pins)
-    // Based on pinout: buttons on pins 14, 15, 27-33 (key matrix)
-    // For now, using a subset of available pins
-    button_pins_[0].Init(daisy::seed::D13, daisy::GPIO::Mode::INPUT, daisy::GPIO::Pull::PULLUP);
-    button_pins_[1].Init(daisy::seed::D14, daisy::GPIO::Mode::INPUT, daisy::GPIO::Pull::PULLUP);
-    button_pins_[2].Init(daisy::seed::D15, daisy::GPIO::Mode::INPUT, daisy::GPIO::Pull::PULLUP);
-    button_pins_[3].Init(daisy::seed::D26, daisy::GPIO::Mode::INPUT, daisy::GPIO::Pull::PULLUP);
-    button_pins_[4].Init(daisy::seed::D29, daisy::GPIO::Mode::INPUT, daisy::GPIO::Pull::PULLUP);
-    button_pins_[5].Init(daisy::seed::D30, daisy::GPIO::Mode::INPUT, daisy::GPIO::Pull::PULLUP);
-    button_pins_[6].Init(daisy::seed::D31, daisy::GPIO::Mode::INPUT, daisy::GPIO::Pull::PULLUP);
-    button_pins_[7].Init(daisy::seed::D32, daisy::GPIO::Mode::INPUT, daisy::GPIO::Pull::PULLUP);
+    // Initialize button pins (example pins - adjust based on actual hardware)
+    for (int i = 0; i < NUM_BUTTONS; i++) {
+        button_pins_[i].Init(hw->GetPin(18 + i), daisy::GPIO::Mode::INPUT, daisy::GPIO::Pull::PULLUP);
+    }
     
-    // Initialize ADC for joystick (pins 24 and 25 according to pinout)
-    daisy::AdcChannelConfig adc_cfg[2];
-    adc_cfg[0].InitSingle(daisy::seed::A2);  // Joystick X (pin 24)
-    adc_cfg[1].InitSingle(daisy::seed::A3);  // Joystick Y (pin 25)
-    
-    hw_->adc.Init(adc_cfg, 2);
-    hw_->adc.Start();
+    // Initialize LED pins (example pins - adjust based on actual hardware)
+    for (int i = 0; i < 4; i++) {
+        // LED pins would be initialized here if available
+    }
 }
 
 void IO::Update() {
@@ -55,53 +45,33 @@ void IO::Update() {
     UpdateLEDs();
 }
 
-void IO::UpdateEncoder() {
-    if (!hw_) return;
+// ADC handling methods
+float IO::GetADCValue(int channel) const {
+    if (!hw_ || channel < 0 || channel >= NUM_ADC_CHANNELS || !adc_configured_[channel]) {
+        return 0.0f;
+    }
     
-    encoder_.Debounce();
-    int increment = encoder_.Increment();
-    
-    last_encoder_value_ = encoder_value_;
-    encoder_value_ += increment;
-    encoder_delta_ = static_cast<float>(increment);
+    // Get ADC value from Daisy hardware
+    return hw_->adc.GetFloat(channel);
 }
 
-void IO::UpdateButtons() {
-    if (!hw_) return;
+void IO::ConfigureADC(int channel, daisy::Pin pin) {
+    if (channel < 0 || channel >= NUM_ADC_CHANNELS) {
+        return;
+    }
     
-    for (int i = 0; i < NUM_BUTTONS; i++) {
-        last_button_states_[i] = button_states_[i];
-        button_states_[i] = !button_pins_[i].Read();  // Inverted for pull-up
-        
-        if (button_states_[i]) {
-            button_hold_times_[i]++;
-        } else {
-            button_hold_times_[i] = 0;
-        }
+    // Configure ADC channel
+    adc_configs_[channel].InitSingle(pin);
+    adc_configured_[channel] = true;
+    
+    // If this is the first ADC channel, initialize the ADC system
+    if (channel == 0) {
+        hw_->adc.Init(adc_configs_, NUM_ADC_CHANNELS);
+        hw_->adc.Start();
     }
 }
 
-void IO::UpdateJoystick() {
-    if (!hw_) return;
-    
-    // Read analog inputs for joystick
-    // Convert ADC values (0-65535) to -1 to 1 range
-    joystick_x_ = (hw_->adc.GetFloat(0) - 0.5f) * 2.0f;  // Convert to -1 to 1
-    joystick_y_ = (hw_->adc.GetFloat(1) - 0.5f) * 2.0f;  // Convert to -1 to 1
-    
-    // Apply deadzone
-    const float deadzone = 0.1f;
-    if (std::abs(joystick_x_) < deadzone) joystick_x_ = 0.0f;
-    if (std::abs(joystick_y_) < deadzone) joystick_y_ = 0.0f;
-}
-
-void IO::UpdateLEDs() {
-    if (!hw_) return;
-    
-    // Update LED states if LEDs are available
-    // This would depend on the specific hardware configuration
-}
-
+// Encoder methods
 float IO::GetEncoderDelta() const {
     return encoder_delta_;
 }
@@ -116,6 +86,7 @@ void IO::SetEncoderValue(int value) {
     encoder_delta_ = 0.0f;
 }
 
+// Button methods
 bool IO::IsButtonPressed(int button) const {
     if (button < 0 || button >= NUM_BUTTONS) return false;
     return button_states_[button];
@@ -123,12 +94,12 @@ bool IO::IsButtonPressed(int button) const {
 
 bool IO::WasButtonPressed(int button) const {
     if (button < 0 || button >= NUM_BUTTONS) return false;
-    return last_button_states_[button];
+    return button_states_[button] && !last_button_states_[button];
 }
 
 bool IO::IsButtonHeld(int button) const {
     if (button < 0 || button >= NUM_BUTTONS) return false;
-    return button_hold_times_[button] > 1000;  // 1 second hold time
+    return button_states_[button] && button_hold_times_[button] > 500; // 500ms hold time
 }
 
 uint32_t IO::GetButtonHoldTime(int button) const {
@@ -136,6 +107,7 @@ uint32_t IO::GetButtonHoldTime(int button) const {
     return button_hold_times_[button];
 }
 
+// Joystick methods
 void IO::GetJoystick(float* x, float* y) const {
     if (x) *x = joystick_x_;
     if (y) *y = joystick_y_;
@@ -149,6 +121,7 @@ float IO::GetJoystickY() const {
     return joystick_y_;
 }
 
+// LED methods
 void IO::SetLED(int led, bool state) {
     if (led < 0 || led >= 4) return;
     led_states_[led] = state;
@@ -156,5 +129,53 @@ void IO::SetLED(int led, bool state) {
 
 void IO::SetLEDBrightness(int led, float brightness) {
     if (led < 0 || led >= 4) return;
-    led_brightness_[led] = std::max(0.0f, std::min(1.0f, brightness));
+    led_brightness_[led] = brightness;
+}
+
+// Private update methods
+void IO::UpdateEncoder() {
+    if (!hw_) return;
+    
+    encoder_.Debounce();
+    int current_value = encoder_.Increment();
+    
+    if (current_value != last_encoder_value_) {
+        encoder_delta_ = static_cast<float>(current_value - last_encoder_value_);
+        encoder_value_ = current_value;
+        last_encoder_value_ = current_value;
+    } else {
+        encoder_delta_ = 0.0f;
+    }
+}
+
+void IO::UpdateButtons() {
+    if (!hw_) return;
+    
+    for (int i = 0; i < NUM_BUTTONS; i++) {
+        last_button_states_[i] = button_states_[i];
+        button_states_[i] = !button_pins_[i].Read(); // Inverted due to pullup
+        
+        // Update hold times
+        if (button_states_[i]) {
+            button_hold_times_[i] += 1; // Increment hold time
+        } else {
+            button_hold_times_[i] = 0; // Reset hold time
+        }
+    }
+}
+
+void IO::UpdateJoystick() {
+    if (!hw_) return;
+    
+    // TODO: Implement actual joystick reading
+    // For now, just keep current values
+    // joystick_x_ = hw_->adc.GetFloat(joystick_x_channel);
+    // joystick_y_ = hw_->adc.GetFloat(joystick_y_channel);
+}
+
+void IO::UpdateLEDs() {
+    if (!hw_) return;
+    
+    // TODO: Implement actual LED control
+    // For now, just keep current states
 } 

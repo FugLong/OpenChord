@@ -1,4 +1,4 @@
-# OpenChord Firmware Architecture
+ # OpenChord Firmware Architecture
 
 [← Back to Documentation](../README.md)
 

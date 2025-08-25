@@ -2,8 +2,13 @@
 
 #include "track_interface.h"
 #include "plugin_interface.h"
+#include "volume_interface.h"
+#include "audio_engine.h"
 #include <vector>
 #include <memory>
+
+// Forward declarations
+class IO;
 
 namespace OpenChord {
 
@@ -36,6 +41,13 @@ public:
     IPlayModePlugin* GetCurrentPlayMode() const;
     bool IsPlayModeActive() const;
 
+    // Volume management (global access)
+    IVolumeManager* GetVolumeManager() const;
+    const VolumeData& GetVolumeData() const;
+
+    // Audio engine access
+    AudioEngine* GetAudioEngine() const;
+
     // UI and control handling
     void UpdateUI();
     void HandleEncoder(int encoder, float delta);
@@ -64,6 +76,11 @@ public:
     size_t GetBufferSize() const;
 
 private:
+    // Core systems
+    std::unique_ptr<IO> io_;
+    std::unique_ptr<IVolumeManager> volume_manager_;
+    std::unique_ptr<AudioEngine> audio_engine_;
+    
     // Tracks
     std::vector<std::unique_ptr<Track>> tracks_;
     int active_track_;
