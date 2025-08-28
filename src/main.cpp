@@ -3,6 +3,7 @@
 #include "core/io/io_manager.h"
 #include "core/audio/volume_manager.h"
 #include "core/audio/audio_engine.h"
+#include "core/midi/midi_handler.h"
 
 using namespace daisy;
 using namespace OpenChord;
@@ -14,6 +15,7 @@ DaisySeed hw;
 VolumeManager volume_mgr;
 AudioEngine audio_engine;
 IOManager io_manager;
+OpenChordMidiHandler midi_handler;
 
 void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, size_t size) {
     audio_engine.ProcessAudio(in, out, size);
@@ -38,6 +40,10 @@ int main(void) {
     audio_engine.Init(&hw);
     audio_engine.SetVolumeManager(&volume_mgr);
     
+    // Initialize MIDI handler
+    midi_handler.Init(&hw);
+    hw.PrintLine("MIDI handler initialized");
+    
     hw.PrintLine("Managers initialized");
     hw.PrintLine("Audio engine ready");
     
@@ -52,6 +58,9 @@ int main(void) {
     while(1) {
         io_manager.Update();
         volume_mgr.Update();  // Update volume manager to get latest ADC values
+        
+        // Process MIDI events
+        midi_handler.ProcessMidi(&audio_engine);
         
         // Debug: Check volume manager status every second
         static uint32_t debug_counter = 0;

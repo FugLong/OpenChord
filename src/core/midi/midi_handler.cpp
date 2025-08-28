@@ -24,8 +24,8 @@ void OpenChordMidiHandler::Init(daisy::DaisySeed* hw) {
     
     // Initialize TRS MIDI (UART4 on pins D11/D12)
     daisy::MidiUartHandler::Config trs_config;
-    trs_config.transport_config.rx = daisy::seed::D11;  // Pin 12
-    trs_config.transport_config.tx = daisy::seed::D12;  // Pin 13
+    trs_config.transport_config.rx = daisy::seed::D11;  // Daisy D11 = Physical Pin 12 - MIDI RX
+    trs_config.transport_config.tx = daisy::seed::D12;  // Daisy D12 = Physical Pin 13 - MIDI TX
     trs_config.transport_config.periph = daisy::UartHandler::Config::Peripheral::UART_4;
     
     trs_midi_.Init(trs_config);

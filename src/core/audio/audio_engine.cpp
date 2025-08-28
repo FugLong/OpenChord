@@ -27,8 +27,8 @@ void AudioEngine::Init(daisy::DaisySeed* hw) {
     envelope_.SetSustainLevel(0.7f);  // 70% sustain
     envelope_.SetReleaseTime(0.1f);   // 100ms release
     
-    // Set gate to true so envelope is always active (for constant tone)
-    gate_signal_ = true;
+    // Start with gate closed (no sound until MIDI note on)
+    gate_signal_ = false;
     
     initialized_ = true;
 }
