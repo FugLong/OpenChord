@@ -1,4 +1,4 @@
-#include "../../include/track_interface.h"
+#include "track_interface.h"
 #include <cstring>
 
 namespace OpenChord {

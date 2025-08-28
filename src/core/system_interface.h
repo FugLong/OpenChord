@@ -1,9 +1,9 @@
 #pragma once
 
-#include "track_interface.h"
+#include "tracks/track_interface.h"
 #include "plugin_interface.h"
-#include "volume_interface.h"
-#include "audio_engine.h"
+#include "audio/volume_interface.h"
+#include "audio/audio_engine.h"
 #include <vector>
 #include <memory>
 

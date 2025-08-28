@@ -1,4 +1,4 @@
-#include "../../include/midi_handler.h"
+#include "midi_handler.h"
 #include <cmath>
 
 namespace OpenChord {

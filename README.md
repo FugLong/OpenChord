@@ -51,8 +51,8 @@ This is an active development project. Current progress:
 - ✅ **Hardware layout and circuit planning** (100% complete)
 
 ### Firmware Development
-- 🔄 **IO system implementation** (20% complete)
-- 🔄 **Audio processing system** (5% complete)
+- ✅ **IO system implementation** (80% complete)
+- ✅ **Audio processing system** (60% complete)
 - ⏳ Display and UI system (0% complete)
 - ⏳ Plugin system implementation (0% complete)
 
@@ -60,8 +60,8 @@ This is an active development project. Current progress:
 ```
 Project Structure & Planning: █████████░ 95%
 Hardware Design:            ██████████ 100%
-Firmware Development:       ██░░░░░░░░ 15%
-Overall Project:            ████░░░░░░ 32%
+Firmware Development:       ███░░░░░░░ 30%
+Overall Project:            ████░░░░░░ 40%
 ```
 
 ## 🤝 Contributing

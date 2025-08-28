@@ -2,7 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
-#include "midi_types.h"
+#include "midi/midi_types.h"
 
 namespace OpenChord {
 

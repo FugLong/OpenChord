@@ -21,10 +21,15 @@ Welcome to the OpenChord documentation! This project is a portable, open-source 
 
 ### Architecture
 - **[Firmware Architecture](architecture/firmware_architecture.md)** - Detailed firmware design, track structure, scenes, and plugin system
+- **[IO System Architecture](architecture/io_system_architecture.md)** - Comprehensive IO system design and hardware interface management
 
 ### Hardware
 - **[Pinout Documentation](hardware/pinout.md)** - Detailed pin assignments and hardware connections
 - **[Parts List](hardware/partsList.md)** - Complete component list with pricing and purchase links
+
+### Code Organization
+- **Co-located Headers**: All header files are now located alongside their corresponding source files
+- **Modular Structure**: Clean separation of concerns with dedicated folders for each subsystem
 
 ### Development
 - **[Development Setup](development/setup.md)** - How to set up your development environment and build the project

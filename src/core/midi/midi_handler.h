@@ -3,7 +3,7 @@
 #include "daisy_seed.h"
 #include "hid/midi.h"
 #include "midi_interface.h"
-#include "audio_engine.h"
+#include "../audio/audio_engine.h"
 
 namespace OpenChord {
 

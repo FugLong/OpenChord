@@ -23,7 +23,7 @@ public:
     void Init(daisy::DaisySeed* hw);
     
     // Audio processing (called by system)
-    void ProcessAudio(float* in, float* out, size_t size);
+    void ProcessAudio(const float* const* in, float* const* out, size_t size);
     
     // Volume control integration
     void SetVolumeManager(IVolumeManager* volume_manager);

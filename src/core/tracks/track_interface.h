@@ -1,7 +1,7 @@
 #pragma once
 
-#include "plugin_interface.h"
-#include "midi_types.h"
+#include "../plugin_interface.h"
+#include "../midi/midi_types.h"
 #include <vector>
 #include <memory>
 

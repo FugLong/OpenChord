@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../../../include/plugin_interface.h"
-#include "../../../include/midi_types.h"
+#include "../../../core/plugin_interface.h"
+#include "../../../core/midi/midi_types.h"
 #include <vector>
 
 namespace OpenChord {

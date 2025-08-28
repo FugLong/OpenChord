@@ -34,125 +34,56 @@ This document contains the complete parts list for building the OpenChord hardwa
 | **Electret Microphone Amplifier** - MAX9814 with Auto Gain Control | $7.95 | [Adafruit #1713](https://www.adafruit.com/product/1713) | Microphone amplification |
 | **PowerBoost 1000C** (Battery charging + boost) | $19.95 | [Adafruit #2465](https://www.adafruit.com/product/2465) | Battery management |
 | **LiPo Battery** (2000mAh) | $12.50 | [Adafruit #2011](https://www.adafruit.com/product/2011) | Portable power |
-| **OPA1656** (Headphone) Amp (SOIC-8) | $3.00 | [Digikey](https://www.digikey.com/en/products/detail/texas-instruments/OPA1656ID/10434553) | Audio amplification |
-| **SOIC-8 Breakout Board** | $2.95 | [Adafruit](https://www.adafruit.com/product/1212?srsltid=AfmBOoropCMMlkGJ10J4FgTWhxWk_dSRIgU53Iwowsno4qMOiqG6-rZA) or [Digikey](https://www.digikey.com/en/products/detail/adafruit-industries-llc/1212/5022800) | OPA1656 mounting |
+
 | **Replacement Mic** (Primo EM272Z1) *optional* | $13.00 | [Micbooster](https://micbooster.com/product/primo-em272/?v=0b3b97fa6688) | Premium microphone upgrade |
 
 ### 💰 Cost Summary
 
 - **Core Cost**: ~$85
-- **Total Cost**: ~$130 (+$13 for optional premium mic)
+- **Total Cost**: ~$121 (+$13 for optional premium mic)
 
 ---
 
 ## 📚 Component Guides
 
-### 🔊 Audio Output – OPA1656 Component Guide
+### 🔊 Audio Output – Simple Voltage Divider
 
-These components are required around the headphone/line out amplifier.
+The audio output uses a simple voltage divider to reduce the Daisy Seed's output level so it doesn't blow your ears out.
 
 | Function | Qty | Type | Recommended Value | Notes |
 |----------|-----|------|-------------------|-------|
-| **DC Blocking Caps** | 4 | Low ESR Electrolytic | 470 µF | Prevent DC offset at output (headphone safe) |
-| **Output Resistors** | 2 | 1% metal film | 100–220Ω | Helps stabilize op-amp, protects against shorts |
-| **Virtual Ground Resistors** | 2 | 1% | 10kΩ | For biasing signal path (if needed) |
-| **Bypass Caps (V+/V-)** | 2 | X7R Ceramic | 100 nF | Place close to op-amp power pins |
-| **Bulk Cap (Optional)** | 1 | Electrolytic | 10–47 µF | Helps during transient load swings |
+| **Output Resistors** | 2 | 1% metal film | 4.7kΩ | In series with audio output (targets ~3x reduction) |
+| **Ground Resistors** | 2 | 1% metal film | 1kΩ | From audio channels to ground |
 
 ---
 
-### 🎛️ General Audio Path Passives
+### 🎛️ Essential Passives
 
-| Component | Purpose |
-|-----------|---------|
-| **470 µF Low ESR Electrolytic** | DC blocking caps for line/headphone out |
-| **100 nF Ceramic** | Local decoupling near analog ICs (op-amps, MAX9814) |
-| **100–220Ω Resistors** | Output protection (to line/headphones); matches OPA1656 section |
-| **1kΩ Resistors** | Use in simple RC low-pass filters or pad circuits (optional) |
-| **10kΩ Resistors** | Pull-downs, signal biasing, or analog voltage dividers |
-| **1MΩ Resistor** | Needed if using EM272Z1 capsule (input pulldown, matches its datasheet) |
-
----
-
-### ⚡ Power Filtering & Protection
-
-| Component | Purpose |
-|-----------|---------|
-| **10 µF Electrolytic or Tantalum** | Bulk rail cap (one per power domain ideally) |
-| **100 nF Ceramic (X7R/C0G)** | Standard decoupling cap — use near every IC, analog + digital |
-| **TVS or Schottky Diodes** | USB VBUS ESD protection, reverse polarity guard (optional) |
-
-### Interface Passives
-
-| Component | Purpose |
-|-----------|---------|
-| **10kΩ Potentiometer** | Volume knob (log taper preferred) |
-| **10kΩ Pull-downs** | For joystick button, encoder button, and digital inputs |
-| **100 nF Ceramic Caps** | Debounce/filtering for buttons or encoder lines |
+| Component | Qty | Purpose |
+|-----------|-----|---------|
+| **4.7kΩ Resistors** | 2 | Audio output voltage divider |
+| **1kΩ Resistors** | 2 | Audio output to ground |
+| **100kΩ Resistor** | 1 | Battery voltage divider (top) |
+| **47kΩ Resistor** | 1 | Battery voltage divider (bottom) |
+| **220Ω Resistor** | 1 | MIDI Out current limiting (Daisy TX to TRS tip) |
 
 ---
 
-### 🧠 Daisy-Specific Circuitry
+### 🎹 MIDI TRS Components
 
-| Component | Purpose |
-|-----------|---------|
-| **100 nF Ceramic Caps** | On all analog input lines (ADC) for noise suppression |
-| **10–100kΩ Resistors** | For analog input scaling or voltage dividers (e.g. battery) |
-| **Clamping Diodes (Schottky)** | For protecting ADCs from over-voltage (optional) |
-
-### Mic Input (MAX9814 with Electret or EM272Z1 Capsule Replacement)
-
-| Component | Purpose |
-|-----------|---------|
-| **MAX9814 Module** | Amplifies mic signal with AGC (even if EM272Z1 is swapped in) |
-| **100 nF Ceramic** | Decoupling on MAX9814 power line (place near Vcc) |
-| **1MΩ Resistor** | Needed if using EM272Z1 (to match high output impedance) |
+| Component | Qty | Purpose |
+|-----------|-----|---------|
+| **6N138/LTV-817S-TA1/PC817 Opto-Isolator** | 1 | MIDI In isolation |
 
 ---
 
-### 🔋 Battery Monitor
+### ⌨️ Key Matrix Components
 
-| Component | Purpose |
-|-----------|---------|
-| **100kΩ Resistor** | Top of voltage divider (VBAT to ADC4) |
-| **47kΩ Resistor** | Bottom of divider (ADC4 to GND) |
-| **100 nF Ceramic** | Filters noise at ADC4 input (across 47k) |
-
-### MIDI Output (TRS MIDI Out)
-
-| Component | Purpose |
-|-----------|---------|
-| **220Ω Resistor** | In series between Daisy TX and TRS tip |
-| **(Optional) TVS Diode** | On TRS output for ESD protection |
+| Component | Qty | Purpose |
+|-----------|-----|---------|
+| **1N4148 Diodes** | 11 | Key matrix diodes (one per key) |
+| **10kΩ Resistors** | 2-3 | Strategic pull-downs (if needed) |
 
 ---
 
-### 🎹 MIDI Input (TRS MIDI In w/ Opto-Isolator)
 
-| Component | Purpose |
-|-----------|---------|
-| **6N138/LTV-817S-TA1/PC817 Opto-Isolator** | MIDI In isolation |
-| **220Ω Resistor** | Limits current to opto input |
-| **10kΩ Resistor** | Pull-up from opto collector to 3.3V |
-| **100 nF Ceramic** | Decoupling for opto IC |
-| **(Optional) 1N4148 Diode** | Reverse protection across opto input LED |
-
-### Misc – Handy Inventory
-
-| Component | Purpose |
-|-----------|---------|
-| **Trimpots (10kΩ)** | Optional tuning of gain or voltage divider |
-| **Zener Diodes** | Clamping for critical digital/analog rails (optional) |
-| **Extra Header Pins** | For all breakout boards, debug access |
-| **Debug Jumpers** | Testing power, signal lines, ground loops |
-| **Prototyping Wires** | Always useful for quick changes or fixes |
-
----
-
-## 📝 Notes
-
-- **Core components** provide the essential functionality for basic operation
-- **Extended components** add battery power, enhanced audio (headphone drive vs default line out), and premium microphone options
-- **Component guides** provide detailed specifications for proper circuit implementation
-- **Passive components** are essential for proper circuit operation and noise reduction
-- **MIDI components** enable standard MIDI connectivity for external device integration

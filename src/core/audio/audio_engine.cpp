@@ -1,4 +1,4 @@
-#include "../../include/audio_engine.h"
+#include "audio_engine.h"
 #include <cmath>
 
 namespace OpenChord {
@@ -27,20 +27,31 @@ void AudioEngine::Init(daisy::DaisySeed* hw) {
     envelope_.SetSustainLevel(0.7f);  // 70% sustain
     envelope_.SetReleaseTime(0.1f);   // 100ms release
     
+    // Set gate to true so envelope is always active (for constant tone)
+    gate_signal_ = true;
+    
     initialized_ = true;
 }
 
-void AudioEngine::ProcessAudio(float* in, float* out, size_t size) {
-    if (!initialized_ || !volume_manager_) {
+void AudioEngine::ProcessAudio(const float* const* in, float* const* out, size_t size) {
+    if (!initialized_) {
         // Output silence if not ready
         for (size_t i = 0; i < size; i++) {
-            out[i] = 0.0f;
+            out[0][i] = 0.0f;     // Left channel
+            out[1][i] = 0.0f;     // Right channel
         }
         return;
     }
-    
+
     // Get current volume data from volume manager
     const VolumeData& volume_data = volume_manager_->GetVolumeData();
+    
+    // Debug: Check if we're getting reasonable volume values
+    static uint32_t audio_debug_counter = 0;
+    if (++audio_debug_counter % 1000 == 0) {
+        // We can't safely print from audio callback, but we can verify the values are reasonable
+        // If volume_data.amplitude and line_level are both 0, that would explain no audio
+    }
     
     // Process the ADSR envelope
     float env_value = envelope_.Process(gate_signal_);
@@ -57,8 +68,8 @@ void AudioEngine::ProcessAudio(float* in, float* out, size_t size) {
         sample *= volume_data.line_level * env_value;
         
         // Output to both channels (stereo)
-        out[i * 2] = sample;     // Left channel
-        out[i * 2 + 1] = sample; // Right channel
+        out[0][i] = sample;     // Left channel
+        out[1][i] = sample;     // Right channel
     }
 }
 

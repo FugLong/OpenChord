@@ -1,7 +1,7 @@
 #pragma once
 
 #include "volume_interface.h"
-#include "io.h"
+#include "../io/io_manager.h"
 
 namespace OpenChord {
 
@@ -28,10 +28,10 @@ public:
     void SetMinThreshold(float min_threshold) override;
     
     // Set the IO reference (called by system during initialization)
-    void SetIO(IO* io);
+    void SetIO(IOManager* io);
     
 private:
-    IO* io_;  // Reference to IO system for ADC access
+    IOManager* io_;  // Reference to IO system for ADC access
     
     // Volume control parameters
     float amplitude_exponent_;

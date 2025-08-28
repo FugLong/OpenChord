@@ -1,12 +1,11 @@
-#include "../../include/volume_manager.h"
-#include "../../include/io.h"
+#include "volume_manager.h"
 #include <cmath>
 
 namespace OpenChord {
 
 VolumeManager::VolumeManager() 
     : amplitude_exponent_(0.3f), line_level_exponent_(0.4f), 
-      input_scale_factor_(1.0f / 0.968f), dead_zone_(0.005f), 
+      input_scale_factor_(1.0f / 0.968f), dead_zone_(0.002f), 
       min_threshold_(0.000001f), has_changed_(false) {
     // Initialize volume data
     volume_data_.raw_adc = 0.0f;
@@ -20,10 +19,10 @@ VolumeManager::~VolumeManager() = default;
 
 void VolumeManager::Update() {
     // Get current ADC value from IO system
-    float current_raw = io_->GetADCValue(0); // Channel 0 for volume pot
+    float current_raw = io_->GetAnalog()->GetADCValue(0); // Channel 0 for volume pot
     
-    // Check if values have changed significantly
-    if (fabs(current_raw - volume_data_.raw_adc) > 0.01f) {
+    // Check if values have changed significantly (reduced threshold for smoother control)
+    if (fabs(current_raw - volume_data_.raw_adc) > 0.001f) {
         // Store previous values for change detection
         float prev_amplitude = volume_data_.amplitude;
         float prev_line_level = volume_data_.line_level;
@@ -63,6 +62,10 @@ void VolumeManager::Update() {
             fabs(volume_data_.line_level - prev_line_level) > 0.001f) {
             has_changed_ = true;
             volume_data_.has_changed = true;
+            
+            // Debug: Log the smooth volume calculations
+            // Note: We can't use hw.PrintLine here since we don't have access to hw
+            // The main loop will print this info when HasVolumeChanged() returns true
         }
     }
 }
@@ -102,7 +105,7 @@ void VolumeManager::SetMinThreshold(float min_threshold) {
 }
 
 // Set the IO reference (called by system during initialization)
-void VolumeManager::SetIO(IO* io) {
+void VolumeManager::SetIO(IOManager* io) {
     io_ = io;
 }
 
