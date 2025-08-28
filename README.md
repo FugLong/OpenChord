@@ -2,8 +2,6 @@
 
 A portable, open-source music creation device built on the Daisy Seed platform.
 
-## 🎨 3D Enclosure Design
-
 <div align="center">
   <img src="images/Enclosure.jpeg" width="600" alt="OpenChord 3D Enclosure Design">
   <br><br>
