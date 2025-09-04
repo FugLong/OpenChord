@@ -3,6 +3,7 @@
 #include "daisy_seed.h"
 #include "daisysp.h"
 #include "volume_interface.h"
+#include "../midi/midi_interface.h"
 
 namespace OpenChord {
 
@@ -25,6 +26,9 @@ public:
     // Audio processing (called by system)
     void ProcessAudio(const float* const* in, float* const* out, size_t size);
     
+    // MIDI processing (called by system)
+    void ProcessMidi();
+    
     // Volume control integration
     void SetVolumeManager(IVolumeManager* volume_manager);
     
@@ -46,6 +50,8 @@ public:
     void SetReleaseTime(float release_ms);
     
 private:
+    // MIDI note to frequency conversion
+    float mtof(uint8_t note) const;
     daisy::DaisySeed* hw_;
     IVolumeManager* volume_manager_;
     

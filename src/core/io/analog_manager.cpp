@@ -218,12 +218,19 @@ void AnalogManager::SetLowBatteryThreshold(float voltage) {
 void AnalogManager::ConfigureADC() {
     if (!hw_) return;
     
+    // Reset ADC peripheral before configuration (helps with cold boot issues)
+    hw_->DelayMs(10);
+    
     // Configure only the volume pot ADC channel for now
     adc_configs_[0].InitSingle(adc_pins_[0]);
     adc_configured_[0] = true;
     
     // Initialize the ADC system with just one channel
     hw_->adc.Init(&adc_configs_[0], 1);
+    
+    // Add delay for ADC to stabilize
+    hw_->DelayMs(20);
+    
     hw_->adc.Start();
     
     // Mark only the volume pot input as healthy initially

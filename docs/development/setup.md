@@ -103,46 +103,55 @@ This ensures proper command execution for the build tasks.
 ```
 OpenChord/
 ├── docs/                 # Documentation
+│   ├── architecture/    # System architecture
 │   ├── development/     # Development guides
 │   ├── hardware/        # Hardware documentation
-│   ├── overview/        # Project overview
-│   └── architecture/    # System architecture
-├── include/              # Header files
-│   ├── io.h             # Input/Output interface
-│   ├── plugin_interface.h # Plugin system interface
-│   ├── system_interface.h # Core system interface
-│   ├── track_interface.h # Track management interface
-│   └── midi_types.h     # MIDI type definitions
-├── src/                  # Source code
-│   ├── main.cpp         # Application entry point
-│   ├── common/          # Shared utilities
-│   ├── core/            # Core system files
-│   │   ├── audio/       # Audio processing
-│   │   ├── io.cpp       # Input/Output implementation
-│   │   ├── midi/        # MIDI handling
-│   │   ├── storage/     # Data storage
-│   │   ├── system.cpp   # Core system implementation
-│   │   ├── tracks/      # Track management
-│   │   └── ui/          # User interface
-│   └── plugins/         # Plugin implementations
-│       ├── fx/          # Audio effects
-│       ├── input/       # Input plugins
+│   └── overview/        # Project overview
+├── src/                 # Source code
+│   ├── main.cpp        # Application entry point
+│   ├── core/           # Core system files
+│   │   ├── audio/      # Audio processing
+│   │   │   ├── audio_engine.cpp/h
+│   │   │   ├── volume_manager.cpp/h
+│   │   │   └── volume_interface.h
+│   │   ├── io/         # Input/Output management
+│   │   │   ├── io_manager.cpp/h
+│   │   │   ├── analog_manager.cpp/h
+│   │   │   ├── digital_manager.cpp/h
+│   │   │   ├── display_manager.cpp/h
+│   │   │   ├── serial_manager.cpp/h
+│   │   │   ├── storage_manager.cpp/h
+│   │   │   └── pin_config.h
+│   │   ├── midi/       # MIDI handling
+│   │   │   ├── midi_handler.cpp/h
+│   │   │   ├── midi_hub.cpp
+│   │   │   ├── midi_interface.h
+│   │   │   ├── midi_types.h
+│   │   │   └── trs_midi_handler.h
+│   │   ├── tracks/     # Track management
+│   │   │   ├── track.cpp
+│   │   │   └── track_interface.h
+│   │   ├── storage/    # Data storage
+│   │   ├── ui/         # User interface
+│   │   ├── plugin_interface.h
+│   │   └── system_interface.h
+│   └── plugins/        # Plugin implementations
+│       ├── fx/         # Audio effects
+│       ├── input/      # Input plugins
 │       ├── instruments/ # Instrument plugins
-│       └── playmodes/   # Playback modes
-├── lib/                  # External libraries (submodules)
-│   ├── libDaisy/        # Daisy hardware library
-│   └── DaisySP/         # Daisy audio processing library
-├── hardware/             # Hardware design files
-├── images/               # Project images and diagrams
-├── tests/                # Test files
-├── build/               # Build artifacts (ignored by git)
-├── .vscode/             # VS Code configuration
-│   └── tasks.json       # Build and flash tasks
-├── Makefile             # Build configuration
-├── .gitmodules          # Submodule configuration
-├── .gitignore           # Git ignore rules
-├── LICENSE              # Project license
-└── README.md            # Project overview
+│       └── playmodes/  # Playback modes
+├── lib/                # External libraries (submodules)
+│   ├── libDaisy/       # Daisy hardware library
+│   └── DaisySP/        # Daisy audio processing library
+├── hardware/           # Hardware design files
+├── images/             # Project images and diagrams
+├── tests/              # Test files
+├── build/              # Build artifacts (ignored by git)
+├── Makefile            # Build configuration
+├── .gitmodules         # Submodule configuration
+├── .gitignore          # Git ignore rules
+├── LICENSE             # Project license
+└── README.md           # Project overview
 ```
 
 ## Development Workflow

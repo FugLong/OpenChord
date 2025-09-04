@@ -8,6 +8,7 @@
 using namespace daisy;
 using namespace OpenChord;
 
+
 // Global hardware instance
 DaisySeed hw;
 
@@ -54,17 +55,18 @@ int main(void) {
     hw.DelayMs(100);
     hw.PrintLine("System initialized OK");
     
-    // 7) Main loop
+    // 7) Main loop - 1kHz constant timing for predictable behavior
     while(1) {
         io_manager.Update();
         volume_mgr.Update();  // Update volume manager to get latest ADC values
         
-        // Process MIDI events
+        // Process MIDI events at 1kHz for responsive timing
         midi_handler.ProcessMidi(&audio_engine);
+        audio_engine.ProcessMidi();
         
         // Debug: Check volume manager status every second
         static uint32_t debug_counter = 0;
-        if (++debug_counter % 100 == 0) { // Every 100 iterations = ~1 second
+        if (++debug_counter % 1000 == 0) { // Every 1000 iterations = ~1 second
             // Commented out verbose debug logging
             // const VolumeData& volume_data = volume_mgr.GetVolumeData();
             // hw.PrintLine("Volume Debug - Raw: %.4f, Amp: %.4f, Line: %.4f, Changed: %s", 
@@ -86,12 +88,13 @@ int main(void) {
         
         // LED heartbeat
         static uint32_t heartbeat = 0;
-        if (++heartbeat % 100 == 0) { // Every 100 iterations = ~1 second
+        if (++heartbeat % 1000 == 0) { // Every 1000 iterations = ~1 second
             hw.SetLed(true);   // Turn LED on
             hw.DelayMs(50);    // Keep on for 50ms
             hw.SetLed(false);  // Turn LED off
         }
         
-        hw.DelayMs(10);  // 10ms delay = 100Hz loop rate
+        // 1kHz constant timing - 1ms delay for predictable behavior
+        hw.DelayMs(1);
     }
 } 

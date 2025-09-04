@@ -73,24 +73,35 @@ void IOManager::Shutdown() {
     if (!hw_) return;
     
     // Shutdown all sub-managers
-    if (digital_) digital_->Shutdown();
-    if (analog_) analog_->Shutdown();
-    if (serial_) serial_->Shutdown();
-    if (display_) display_->Shutdown();
-    if (storage_) storage_->Shutdown();
+    if (digital_) {
+        digital_->Shutdown();
+        delete digital_;
+        digital_ = nullptr;
+    }
     
-    // Delete sub-managers
-    delete digital_;
-    delete analog_;
-    delete serial_;
-    delete display_;
-    delete storage_;
+    if (analog_) {
+        analog_->Shutdown();
+        delete analog_;
+        analog_ = nullptr;
+    }
     
-    digital_ = nullptr;
-    analog_ = nullptr;
-    serial_ = nullptr;
-    display_ = nullptr;
-    storage_ = nullptr;
+    if (serial_) {
+        serial_->Shutdown();
+        delete serial_;
+        serial_ = nullptr;
+    }
+    
+    if (display_) {
+        display_->Shutdown();
+        delete display_;
+        display_ = nullptr;
+    }
+    
+    if (storage_) {
+        storage_->Shutdown();
+        delete storage_;
+        storage_ = nullptr;
+    }
     
     hw_ = nullptr;
 }

@@ -36,19 +36,21 @@ private:
     bool usb_midi_initialized_;
     
     // TRS MIDI
-    daisy::MidiUartHandler trs_midi_;
+    daisy::UartHandler trs_uart_;
     bool trs_midi_initialized_;
     
     // Hardware reference
     daisy::DaisySeed* hw_;
     
     // MIDI processing methods
-    void ProcessUsbMidi(AudioEngine* audio_engine);
-    void ProcessTrsMidi(AudioEngine* audio_engine);
-    void ProcessMidiEvent(const daisy::MidiEvent& event, AudioEngine* audio_engine);
+    void ProcessUsbMidi();
+    void ProcessTrsMidi();
     
     // Convert MIDI note number to frequency
     float mtof(uint8_t note) const;
+    
+    // Convert OpenChord MidiEvent to raw MIDI bytes
+    void ConvertToMidiBytes(const MidiEvent& event, uint8_t* bytes, size_t* size);
     
     // Add events to MidiHub
     void AddToMidiHub(const daisy::MidiEvent& event, MidiEvent::Source source);

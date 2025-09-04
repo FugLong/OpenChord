@@ -25,7 +25,7 @@ struct MidiEvent {
     
     MidiEvent() : type(daisy::MidiMessageType::NoteOff), channel(0), data{0, 0}, timestamp(0), source(Source::INTERNAL) {}
     MidiEvent(daisy::MidiMessageType t, uint8_t ch, uint8_t d0, uint8_t d1, Source s = Source::INTERNAL, uint32_t ts = 0) 
-        : type(t), channel(ch), data{d0, d1}, source(s), timestamp(ts) {}
+        : type(t), channel(ch), data{d0, d1}, timestamp(ts), source(s) {}
 };
 
 // Centralized MIDI data hub - accessible to all classes

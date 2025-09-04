@@ -24,6 +24,7 @@ This document contains the complete parts list for building the OpenChord hardwa
 | **Wheel Potentiometer** (Volume) | $2.49 | [Digikey](https://www.digikey.com/en/products/detail/alps-alpine/RK10J12E0A0A/21721435) | Volume control |
 | **Rotary Encoder** (EC12E2420301 or EC12E2440301) | $2.81 | [Digikey](https://www.digikey.com/en/products/detail/alps-alpine/EC12E2440301/21721630) | Menu navigation |
 | **GATERON Low-Profile Key Switches** (35 pcs) | $15.99 | [Amazon](https://a.co/d/7Rx4Xij) | Only 11 used in final design |
+| **H11L1 Opto-Isolator** | $1.00 | [Digikey](https://www.digikey.com/en/products/detail/isocom-components-2004-ltd/H11L1/139456) | MIDI In isolation (3.3V compatible) |
 
 ---
 
@@ -65,7 +66,6 @@ The audio output uses a simple voltage divider to reduce the Daisy Seed's output
 | **1kΩ Resistors** | 2 | Audio output to ground |
 | **100kΩ Resistor** | 1 | Battery voltage divider (top) |
 | **47kΩ Resistor** | 1 | Battery voltage divider (bottom) |
-| **220Ω Resistor** | 1 | MIDI Out current limiting (Daisy TX to TRS tip) |
 
 ---
 
@@ -73,7 +73,9 @@ The audio output uses a simple voltage divider to reduce the Daisy Seed's output
 
 | Component | Qty | Purpose |
 |-----------|-----|---------|
-| **6N138/LTV-817S-TA1/PC817 Opto-Isolator** | 1 | MIDI In isolation |
+| **H11L1 Opto-Isolator** | 1 | MIDI In isolation |
+| **4.7K ohm Resistor** | 1 | Pull-up resistor for UART RX |
+| **220Ω Resistor** | 1 | MIDI Out current limiting (Daisy TX to TRS tip) |
 
 ---
 
@@ -81,7 +83,7 @@ The audio output uses a simple voltage divider to reduce the Daisy Seed's output
 
 | Component | Qty | Purpose |
 |-----------|-----|---------|
-| **1N4148 Diodes** | 11 | Key matrix diodes (one per key) |
+| **1N4148 Diodes** | 15 | Key matrix diodes (one per key) + midi circuit + a few extras |
 | **10kΩ Resistors** | 2-3 | Strategic pull-downs (if needed) |
 
 ---

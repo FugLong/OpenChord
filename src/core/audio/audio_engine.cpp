@@ -33,6 +33,63 @@ void AudioEngine::Init(daisy::DaisySeed* hw) {
     initialized_ = true;
 }
 
+void AudioEngine::ProcessMidi() {
+    if (!initialized_) return;
+    
+    // Get all MIDI events from the hub (USB + TRS + generated)
+    const std::vector<MidiEvent>& events = Midi::GetCombinedEvents();
+    
+    // Debug: Print number of events being processed
+    static uint32_t debug_counter = 0;
+    if (++debug_counter % 1000 == 0 && !events.empty()) {  // Every 1000 calls (~1 second)
+        if (hw_) {
+            hw_->PrintLine("Audio Engine: Processing %zu MIDI events", events.size());
+        }
+    }
+    
+    // Process each MIDI event
+    for (const MidiEvent& event : events) {
+        // Debug: Print each event being processed
+        if (hw_) {
+            hw_->PrintLine("Audio Engine: Processing MIDI Type=0x%02X, Ch=%d, Data=[%d,%d], Source=%d", 
+                          static_cast<uint8_t>(event.type), event.channel, 
+                          event.data[0], event.data[1], static_cast<int>(event.source));
+        }
+        
+        switch (event.type) {
+            case daisy::MidiMessageType::NoteOn:
+                if (event.data[1] > 0) {  // Velocity > 0
+                    float freq = mtof(event.data[0]);
+                    SetFrequency(freq);
+                    NoteOn();
+                    if (hw_) hw_->PrintLine("Audio Engine: Note ON - Freq=%.2f", freq);
+                } else {  // Velocity = 0 (Note Off)
+                    NoteOff();
+                    if (hw_) hw_->PrintLine("Audio Engine: Note OFF (vel=0)");
+                }
+                break;
+                
+            case daisy::MidiMessageType::NoteOff:
+                NoteOff();
+                if (hw_) hw_->PrintLine("Audio Engine: Note OFF");
+                break;
+                
+            case daisy::MidiMessageType::ControlChange:
+                if (event.data[0] == 1) {  // Mod wheel
+                    // Could be used for vibrato or other modulation
+                    // SetModulation(event.data[1] / 127.0f);
+                }
+                break;
+                
+            default:
+                break;
+        }
+    }
+    
+    // Clear all events after processing to prevent accumulation
+    Midi::ClearAllEvents();
+}
+
 void AudioEngine::ProcessAudio(const float* const* in, float* const* out, size_t size) {
     if (!initialized_) {
         // Output silence if not ready
@@ -142,6 +199,10 @@ void AudioEngine::SetReleaseTime(float release_ms) {
     if (initialized_) {
         envelope_.SetReleaseTime(release_ms / 1000.0f);
     }
+}
+
+float AudioEngine::mtof(uint8_t note) const {
+    return 440.0f * powf(2.0f, (note - 69) / 12.0f);
 }
 
 } // namespace OpenChord
