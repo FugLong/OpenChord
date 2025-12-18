@@ -1,7 +1,13 @@
 #include "midi_handler.h"
+#include "daisy_seed.h"
 #include <cmath>
 
-// Debug mode flag - set to true to disable USB MIDI for serial debugging
+// Access STM32 registers for UART configuration
+extern "C" {
+    #include "stm32h7xx.h"
+}
+
+// Debug mode - disable USB MIDI to allow serial output for debugging
 #define DEBUG_MODE false
 
 namespace OpenChord {
@@ -28,40 +34,33 @@ void OpenChordMidiHandler::Init(daisy::DaisySeed* hw) {
     usb_midi_.Init(usb_config);
     usb_midi_.StartReceive();
     usb_midi_initialized_ = true;
-    if (hw_) hw_->PrintLine("USB MIDI initialized");
     #else
     usb_midi_initialized_ = false;
-    if (hw_) hw_->PrintLine("Debug mode: USB MIDI disabled for serial debugging");
     #endif
     
-    // Initialize TRS MIDI using UartHandler directly (like the working Daisy example)
-    daisy::UartHandler::Config uart_config;
+    // Initialize TRS MIDI using standard Daisy Seed pattern
+    daisy::MidiHandler<daisy::MidiUartTransport>::Config trs_config;
+    trs_config.transport_config.periph = daisy::UartHandler::Config::Peripheral::UART_4;
+    trs_config.transport_config.rx = daisy::Pin(daisy::PORTB, 8);  // PB8 = Pin 12
+    trs_config.transport_config.tx = daisy::Pin(daisy::PORTB, 9);  // PB9 = Pin 13
     
-    // Configure UART4 properly using Daisy's actual UART configuration method
-    uart_config.baudrate = 31250;  // Standard MIDI baud rate
-    uart_config.periph = daisy::UartHandler::Config::Peripheral::UART_4;
-    uart_config.stopbits = daisy::UartHandler::Config::StopBits::BITS_1;
-    uart_config.parity = daisy::UartHandler::Config::Parity::NONE;
-    uart_config.mode = daisy::UartHandler::Config::Mode::TX_RX;
-    uart_config.wordlength = daisy::UartHandler::Config::WordLength::BITS_8;
+    trs_midi_.Init(trs_config);
     
-    // Use the correct pin configuration method from the working example
-    uart_config.pin_config.rx = daisy::Pin(daisy::PORTB, 8);  // D11 = PB8 = Physical Pin 12
-    uart_config.pin_config.tx = daisy::Pin(daisy::PORTB, 9);  // D12 = PB9 = Physical Pin 13
-    
-    if (hw_) {
-        hw_->PrintLine("UART4 Pin Config: RX=PB8 (D11, Pin 12), TX=PB9 (D12, Pin 13)");
-        hw_->PrintLine("Using external pull-up resistor on RX pin");
+    // Disable internal pull-up on UART RX pin (PB8 = Pin 12)
+    // External 4.7kΩ pull-up is used instead
+    GPIO_TypeDef* portb = GPIOB;
+    if (portb != nullptr) {
+        portb->PUPDR &= ~(0x3 << (8 * 2));  // Clear bits 17:16 for pin 8 (set to NOPULL)
     }
     
-    // Initialize UART4 with proper configuration
-    trs_midi_initialized_ = (trs_uart_.Init(uart_config) == daisy::UartHandler::Result::OK);
-    
-    if (hw_) {
-        hw_->PrintLine("TRS MIDI initialized on UART4 (Pins 12-13)");
-        hw_->PrintLine("UART4 Config: Baud=%d, RX=PB8, TX=PB9, Init=%s", 
-                      uart_config.baudrate, trs_midi_initialized_ ? "OK" : "FAILED");
+    // Direct connection - no inversion needed
+    USART_TypeDef* uart4 = (USART_TypeDef*)0x40004C00;
+    if (uart4 != nullptr) {
+        CLEAR_BIT(uart4->CR2, USART_CR2_RXINV);  // Ensure RX inversion is disabled
     }
+    
+    trs_midi_.StartReceive();
+    trs_midi_initialized_ = true;
 }
 
 void OpenChordMidiHandler::ProcessMidi(AudioEngine* audio_engine) {
@@ -90,69 +89,12 @@ void OpenChordMidiHandler::ProcessUsbMidi() {
 void OpenChordMidiHandler::ProcessTrsMidi() {
     if (!trs_midi_initialized_) return;
     
-    // MIDI parsing state
-    static uint8_t midi_buffer[3];
-    static uint8_t buffer_pos = 0;
-    static uint8_t expected_bytes = 0;
+    // Standard Daisy Seed MIDI processing pattern
+    trs_midi_.Listen();
     
-    
-    // Non-blocking UART receive
-    uint8_t byte;
-    int bytes_received = trs_uart_.PollReceive(&byte, 1, 0);
-    
-    if (bytes_received > 0) {
-        // Process the received MIDI byte
-        if (byte & 0x80) {  // Status byte (start of message)
-            buffer_pos = 0;
-            midi_buffer[buffer_pos++] = byte;
-            
-            // Determine expected data bytes based on message type
-            uint8_t message_type = byte & 0xF0;
-            switch (message_type) {
-                case 0x80: case 0x90: case 0xA0: case 0xB0: case 0xE0:  // Note Off, Note On, Poly Pressure, Control Change, Pitch Bend
-                    expected_bytes = 3;
-                    break;
-                case 0xC0: case 0xD0:  // Program Change, Channel Pressure
-                    expected_bytes = 2;
-                    break;
-                case 0xF0:  // System messages
-                    if (byte == 0xF0) expected_bytes = 0;  // SysEx - variable length
-                    else if (byte == 0xF1 || byte == 0xF3) expected_bytes = 2;
-                    else if (byte == 0xF2) expected_bytes = 3;
-                    else expected_bytes = 1;
-                    break;
-                default:
-                    expected_bytes = 0;
-                    break;
-            }
-        } else if (buffer_pos > 0 && buffer_pos < expected_bytes) {  // Data byte
-            midi_buffer[buffer_pos++] = byte;
-        }
-        
-        // Process complete MIDI message
-        if (buffer_pos >= expected_bytes && expected_bytes > 0) {
-            // Convert to Daisy MidiEvent and add to MidiHub
-            daisy::MidiEvent event;
-            event.type = static_cast<daisy::MidiMessageType>(midi_buffer[0] & 0xF0);
-            event.channel = midi_buffer[0] & 0x0F;
-            event.data[0] = (expected_bytes >= 2) ? midi_buffer[1] : 0;
-            event.data[1] = (expected_bytes >= 3) ? midi_buffer[2] : 0;
-            
-            // Debug: Print TRS MIDI events (only for Note On/Off and CC)
-            if (hw_ && (event.type == daisy::MidiMessageType::NoteOn || 
-                       event.type == daisy::MidiMessageType::NoteOff ||
-                       event.type == daisy::MidiMessageType::ControlChange)) {
-                hw_->PrintLine("TRS MIDI: Type=0x%02X, Ch=%d, Data=[%d,%d]", 
-                              static_cast<uint8_t>(event.type), event.channel, 
-                              event.data[0], event.data[1]);
-            }
-            
-            AddToMidiHub(event, MidiEvent::Source::TRS_IN);
-            
-            // Reset buffer
-            buffer_pos = 0;
-            expected_bytes = 0;
-        }
+    while (trs_midi_.HasEvents()) {
+        daisy::MidiEvent event = trs_midi_.PopEvent();
+        AddToMidiHub(event, MidiEvent::Source::TRS_IN);
     }
 }
 
@@ -174,12 +116,10 @@ void OpenChordMidiHandler::SendMidi(const MidiEvent& event) {
     if (trs_midi_initialized_) {
         uint8_t midi_bytes[3];
         size_t byte_count = 0;
-        
-        // Convert to raw MIDI bytes
         ConvertToMidiBytes(event, midi_bytes, &byte_count);
         
         if (byte_count > 0) {
-            trs_uart_.BlockingTransmit(midi_bytes, byte_count, 1000);
+            trs_midi_.SendMessage(midi_bytes, byte_count);
         }
     }
 }

@@ -4,6 +4,7 @@
 #include "core/audio/volume_manager.h"
 #include "core/audio/audio_engine.h"
 #include "core/midi/midi_handler.h"
+#include "core/midi/midi_interface.h"
 
 using namespace daisy;
 using namespace OpenChord;
@@ -67,6 +68,17 @@ int main(void) {
         // Debug: Check volume manager status every second
         static uint32_t debug_counter = 0;
         if (++debug_counter % 1000 == 0) { // Every 1000 iterations = ~1 second
+            // MIDI status report
+            size_t trs_count = Midi::GetTrsInputEvents().size();
+            size_t usb_count = Midi::GetUsbInputEvents().size();
+            size_t combined_count = Midi::GetCombinedEvents().size();
+            
+            hw.PrintLine("MIDI Status: TRS=%zu, USB=%zu, Combined=%zu", 
+                        trs_count, usb_count, combined_count);
+            hw.PrintLine("MIDI Enabled: TRS=%s, USB=%s", 
+                        midi_handler.IsTrsInitialized() ? "YES" : "NO",
+                        midi_handler.IsUsbInitialized() ? "YES" : "NO");
+            
             // Commented out verbose debug logging
             // const VolumeData& volume_data = volume_mgr.GetVolumeData();
             // hw.PrintLine("Volume Debug - Raw: %.4f, Amp: %.4f, Line: %.4f, Changed: %s", 

@@ -35,8 +35,8 @@ private:
     daisy::MidiUsbHandler usb_midi_;
     bool usb_midi_initialized_;
     
-    // TRS MIDI
-    daisy::UartHandler trs_uart_;
+    // TRS MIDI - using standard Daisy Seed MidiHandler pattern
+    daisy::MidiHandler<daisy::MidiUartTransport> trs_midi_;
     bool trs_midi_initialized_;
     
     // Hardware reference
