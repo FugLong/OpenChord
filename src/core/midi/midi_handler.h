@@ -35,13 +35,9 @@ private:
     daisy::MidiUsbHandler usb_midi_;
     bool usb_midi_initialized_;
     
-    // TRS MIDI - using standard Daisy Seed MidiHandler pattern
-    daisy::MidiHandler<daisy::MidiUartTransport> trs_midi_;
+    // TRS MIDI - using MidiUartHandler as per official Daisy Seed example
+    daisy::MidiUartHandler trs_midi_;
     bool trs_midi_initialized_;
-    
-    // Hot-plug protection: cooldown after detecting invalid events (plug-in noise)
-    uint32_t trs_midi_cooldown_cycles_;
-    static constexpr uint32_t COOLDOWN_CYCLES = 100;  // Skip processing for 100 cycles (~2ms) after invalid events
     
     // Hardware reference
     daisy::DaisySeed* hw_;
@@ -49,9 +45,6 @@ private:
     // MIDI processing methods
     void ProcessUsbMidi();
     void ProcessTrsMidi();
-    
-    // Convert MIDI note number to frequency
-    float mtof(uint8_t note) const;
     
     // Convert OpenChord MidiEvent to raw MIDI bytes
     void ConvertToMidiBytes(const MidiEvent& event, uint8_t* bytes, size_t* size);
