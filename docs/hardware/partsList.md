@@ -73,10 +73,10 @@ The audio output uses a simple voltage divider to reduce the Daisy Seed's output
 | Component | Qty | Purpose |
 |-----------|-----|---------|
 | **220Ω Resistor** | 1 | MIDI In current limiting (TRS Tip to UART RX) |
-| **4.7kΩ Resistor** | 1 | Pull-up resistor for UART RX (REQUIRED - +3.3V to UART RX) |
+| **2kΩ Resistor** | 1 | Pull-up resistor for UART RX (REQUIRED - +3.3V to UART RX, max 2kΩ for reliable operation) |
 | **220Ω Resistor** | 1 | MIDI Out current limiting (Daisy TX to TRS tip) |
 
-**Note:** External 4.7kΩ pull-up resistor is **required** - internal pull-ups don't work reliably with UART pins. Direct connection is used (no optocoupler) - STM32H7 UART pins are 5V tolerant.
+**Note:** External 2kΩ pull-up resistor is **required** - 4.7kΩ is too weak, internal pull-ups don't work reliably with UART pins. Direct connection is used (no optocoupler) - STM32H7 UART pins are 5V tolerant.
 
 ---
 

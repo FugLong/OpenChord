@@ -39,6 +39,10 @@ private:
     daisy::MidiHandler<daisy::MidiUartTransport> trs_midi_;
     bool trs_midi_initialized_;
     
+    // Hot-plug protection: cooldown after detecting invalid events (plug-in noise)
+    uint32_t trs_midi_cooldown_cycles_;
+    static constexpr uint32_t COOLDOWN_CYCLES = 100;  // Skip processing for 100 cycles (~2ms) after invalid events
+    
     // Hardware reference
     daisy::DaisySeed* hw_;
     

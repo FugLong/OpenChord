@@ -42,36 +42,23 @@ void AudioEngine::ProcessMidi() {
     // Debug: Print number of events being processed
     static uint32_t debug_counter = 0;
     if (++debug_counter % 1000 == 0 && !events.empty()) {  // Every 1000 calls (~1 second)
-        if (hw_) {
-            hw_->PrintLine("Audio Engine: Processing %zu MIDI events", events.size());
-        }
     }
     
     // Process each MIDI event
     for (const MidiEvent& event : events) {
-        // Debug: Print each event being processed
-        if (hw_) {
-            hw_->PrintLine("Audio Engine: Processing MIDI Type=0x%02X, Ch=%d, Data=[%d,%d], Source=%d", 
-                          static_cast<uint8_t>(event.type), event.channel, 
-                          event.data[0], event.data[1], static_cast<int>(event.source));
-        }
-        
         switch (event.type) {
             case daisy::MidiMessageType::NoteOn:
                 if (event.data[1] > 0) {  // Velocity > 0
                     float freq = mtof(event.data[0]);
                     SetFrequency(freq);
                     NoteOn();
-                    if (hw_) hw_->PrintLine("Audio Engine: Note ON - Freq=%.2f", freq);
                 } else {  // Velocity = 0 (Note Off)
                     NoteOff();
-                    if (hw_) hw_->PrintLine("Audio Engine: Note OFF (vel=0)");
                 }
                 break;
                 
             case daisy::MidiMessageType::NoteOff:
                 NoteOff();
-                if (hw_) hw_->PrintLine("Audio Engine: Note OFF");
                 break;
                 
             case daisy::MidiMessageType::ControlChange:

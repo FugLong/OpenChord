@@ -146,24 +146,39 @@ void MidiHub::ClearAllEvents() {
 // Midi namespace function implementations
 namespace Midi {
 
+// Shared static empty vector to avoid dangling references
+static const std::vector<MidiEvent> kEmptyMidiEvents;
+
 const std::vector<MidiEvent>& GetUsbInputEvents() {
     MidiHub* hub = MidiHub::GetInstance();
-    return hub ? hub->GetUsbInputEvents() : std::vector<MidiEvent>();
+    if (hub) {
+        return hub->GetUsbInputEvents();
+    }
+    return kEmptyMidiEvents;
 }
 
 const std::vector<MidiEvent>& GetTrsInputEvents() {
     MidiHub* hub = MidiHub::GetInstance();
-    return hub ? hub->GetTrsInputEvents() : std::vector<MidiEvent>();
+    if (hub) {
+        return hub->GetTrsInputEvents();
+    }
+    return kEmptyMidiEvents;
 }
 
 const std::vector<MidiEvent>& GetTrsOutputBuffer() {
     MidiHub* hub = MidiHub::GetInstance();
-    return hub ? hub->GetTrsOutputBuffer() : std::vector<MidiEvent>();
+    if (hub) {
+        return hub->GetTrsOutputBuffer();
+    }
+    return kEmptyMidiEvents;
 }
 
 const std::vector<MidiEvent>& GetGeneratedEvents() {
     MidiHub* hub = MidiHub::GetInstance();
-    return hub ? hub->GetGeneratedEvents() : std::vector<MidiEvent>();
+    if (hub) {
+        return hub->GetGeneratedEvents();
+    }
+    return kEmptyMidiEvents;
 }
 
 const std::vector<MidiEvent>& GetCombinedEvents() {
@@ -172,7 +187,7 @@ const std::vector<MidiEvent>& GetCombinedEvents() {
         hub->UpdateCombinedEvents();
         return hub->GetCombinedEvents();
     }
-    return std::vector<MidiEvent>();
+    return kEmptyMidiEvents;
 }
 
 uint32_t GetMidiClock() {

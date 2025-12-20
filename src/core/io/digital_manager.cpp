@@ -27,31 +27,40 @@ DigitalManager::~DigitalManager() {
 void DigitalManager::Init(daisy::DaisySeed* hw) {
     hw_ = hw;
     
-    // Initialize pin assignments based on pinout.md
-    // Key matrix rows (pins 27-30)
-    key_matrix_row_pins_[0] = hw->GetPin(27); // Row 0
-    key_matrix_row_pins_[1] = hw->GetPin(28); // Row 1
-    key_matrix_row_pins_[2] = hw->GetPin(29); // Row 2
-    key_matrix_row_pins_[3] = hw->GetPin(30); // Row 3
+    // Initialize pin assignments - using Daisy pin constants directly
+    // Key matrix layout: 3 rows x 4 columns (Top: 4 keys, Middle: 3 keys, Bottom: 4 keys)
+    // 
+    // NOTE: We use daisy::seed::DXX constants instead of hw->GetPin() because
+    // GetPin() expects physical pin numbers (1-40), but for pins 27-33, the physical
+    // pin numbers don't match the Daisy pin names. Physical Pin 27 = D20, not D27.
+    // Using GetPin(27) would fail to initialize the GPIO correctly.
+    //
+    // Physical Pin 27 = D20, Pin 28 = D21, Pin 29 = D22
+    // Physical Pin 30 = D23, Pin 31 = D24, Pin 32 = D25, Pin 33 = D26
+    key_matrix_row_pins_[0] = daisy::seed::D20; // Pin 27 - Row 0 (Top row)
+    key_matrix_row_pins_[1] = daisy::seed::D21; // Pin 28 - Row 1 (Middle row)
+    key_matrix_row_pins_[2] = daisy::seed::D22; // Pin 29 - Row 2 (Bottom row)
     
-    // Key matrix columns (pins 31-33)
-    key_matrix_col_pins_[0] = hw->GetPin(31); // Col 0
-    key_matrix_col_pins_[1] = hw->GetPin(32); // Col 1
-    key_matrix_col_pins_[2] = hw->GetPin(33); // Col 2
+    // Key matrix columns
+    key_matrix_col_pins_[0] = daisy::seed::D23; // Pin 30 - Col 0
+    key_matrix_col_pins_[1] = daisy::seed::D24; // Pin 31 - Col 1
+    key_matrix_col_pins_[2] = daisy::seed::D25; // Pin 32 - Col 2
+    key_matrix_col_pins_[3] = daisy::seed::D26; // Pin 33 - Col 3
     
     // Encoder pins (pins 34-35)
-    encoder_a_pin_ = hw->GetPin(34);
-    encoder_b_pin_ = hw->GetPin(35);
+    // Using Daisy pin constants directly (same as matrix pins)
+    encoder_a_pin_ = daisy::seed::D27; // Pin 34 - Encoder A
+    encoder_b_pin_ = daisy::seed::D28; // Pin 35 - Encoder B
     // Note: encoder_button_pin_ not connected in current design
     
     // Other digital inputs
-    joystick_button_pin_ = hw->GetPin(14);
-    audio_switch_pin_ = hw->GetPin(15);
+    joystick_button_pin_ = daisy::seed::D14;  // Pin 14 - Joystick button
+    audio_switch_pin_ = daisy::seed::D15;    // Pin 15 - Audio switch
     
     // Initialize GPIO objects
     for (int i = 0; i < KEY_MATRIX_ROWS; i++) {
-        key_matrix_rows_[i].Init(key_matrix_row_pins_[i], daisy::GPIO::Mode::OUTPUT);
-        key_matrix_rows_[i].Write(false); // Start with all rows low
+        key_matrix_rows_[i].Init(key_matrix_row_pins_[i], daisy::GPIO::Mode::OUTPUT, daisy::GPIO::Pull::NOPULL);
+        key_matrix_rows_[i].Write(true); // Start with all rows HIGH (inactive)
     }
     
     for (int i = 0; i < KEY_MATRIX_COLS; i++) {
@@ -160,18 +169,39 @@ void DigitalManager::SetButtonHoldThreshold(uint32_t ms) {
 void DigitalManager::UpdateKeyMatrix() {
     if (!hw_) return;
     
-    // Scan the key matrix
-    ScanKeyMatrix();
+    // Keyboard matrix scanning with diodes:
+    // - Rows are outputs (driven LOW when active)
+    // - Columns are inputs with pullups (read HIGH when no key, LOW when key pressed)
+    // - Diodes prevent ghosting (allow current flow from column to row)
+    //   Diode orientation: Anode → Column, Cathode → Row
+    // - Scan one row at a time, read all columns
     
-    // Update button states and timing
+    // Set all rows HIGH (inactive) first - ensures clean state before scanning
     for (int row = 0; row < KEY_MATRIX_ROWS; row++) {
+        key_matrix_rows_[row].Write(true); // HIGH = inactive
+    }
+    
+    // Scan each row
+    for (int row = 0; row < KEY_MATRIX_ROWS; row++) {
+        // Activate current row (set LOW)
+        key_matrix_rows_[row].Write(false); // LOW = active
+        
+        // Read all columns for this row
         for (int col = 0; col < KEY_MATRIX_COLS; col++) {
             if (IsValidKeyPosition(row, col)) {
-                // Get current state from GPIO
-                bool current_pressed = !key_matrix_cols_[col].Read(); // Inverted due to pullup
+                // Column has pullup, so:
+                // - HIGH = no key pressed (no connection to LOW row)
+                // - LOW = key pressed (LOW row connects through diode to column)
+                bool raw_read = key_matrix_cols_[col].Read();
+                bool current_pressed = !raw_read; // Inverted due to pullup
+                
+                // Update button state with debouncing
                 UpdateButtonState(key_matrix_.keys[row][col], current_pressed);
             }
         }
+        
+        // Deactivate row (set HIGH) before moving to next row
+        key_matrix_rows_[row].Write(true); // HIGH = inactive
     }
     
     key_matrix_.scan_count++;
@@ -226,26 +256,42 @@ bool DigitalManager::IsValidKeyPosition(int row, int col) const {
         return false;
     }
     
-    // Check if this position is used (11 keys in 4x3 matrix)
-    // The unused position is typically (3,2) - adjust as needed
-    if (row == 3 && col == 2) {
-        return false; // Unused position
-    }
-    
-    return true;
+    // Check if this position is used (11 keys in 3x4 matrix)
+    // Layout: Top row (4 keys), Middle row (3 keys), Bottom row (4 keys)
+    // The unused position is Row 1, Col 3 (middle row, rightmost position)
+    return !(row == 1 && col == 3);
 }
 
 void DigitalManager::UpdateButtonState(ButtonState& button, bool current_pressed) {
-    button.was_pressed = button.pressed;
+    // Time-based debouncing: require debounce_time_ms_ to pass before state change
+    // This prevents false triggers from electrical noise or contact bounce
+    
+    uint32_t now = hw_->system.GetNow();
+    bool previous_pressed = button.pressed;
+    
+    // If state changed, check if enough time has passed since last change
+    if (current_pressed != button.pressed) {
+        uint32_t time_since_change = now - (current_pressed ? button.last_release_time : button.last_press_time);
+        if (time_since_change < debounce_time_ms_) {
+            // Not enough time - keep previous state (debouncing)
+            return;
+        }
+    }
+    
+    // Detect rising edge: was_pressed is true only for ONE scan cycle when transitioning from false to true
+    button.was_pressed = (!previous_pressed && current_pressed);
+    
+    // Update pressed state
     button.pressed = current_pressed;
     
+    // Update timing and hold state
     if (button.pressed) {
         if (button.hold_time == 0) {
-            button.last_press_time = hw_->system.GetNow();
+            button.last_press_time = now;
         }
         button.hold_time++;
     } else {
-        button.last_release_time = hw_->system.GetNow();
+        button.last_release_time = now;
         button.hold_time = 0;
     }
 }

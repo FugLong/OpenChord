@@ -4,9 +4,10 @@
 #include <cstdint>
 
 // Key matrix dimensions
-static constexpr int KEY_MATRIX_ROWS = 4;
-static constexpr int KEY_MATRIX_COLS = 3;
-static constexpr int KEY_MATRIX_KEYS = 11; // 4x3 matrix with one unused position
+// Layout: Top row (4 keys), Middle row (3 keys), Bottom row (4 keys)
+static constexpr int KEY_MATRIX_ROWS = 3;
+static constexpr int KEY_MATRIX_COLS = 4;
+static constexpr int KEY_MATRIX_KEYS = 11; // 3x4 matrix with one unused position (Row 1, Col 3)
 
 // Button states and timing
 struct ButtonState {
@@ -39,7 +40,7 @@ struct EncoderState {
  * Digital Manager - Handles all digital inputs and outputs
  * 
  * Manages:
- * - 4x3 Key Matrix (11 keys using 7 pins)
+ * - 3x4 Key Matrix (11 keys using 7 pins: 3 rows, 4 columns)
  * - Rotary Encoder (quadrature + optional button)
  * - Joystick Button
  * - Audio Input Switch

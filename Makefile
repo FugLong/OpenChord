@@ -1,6 +1,9 @@
 TARGET = OpenChord
 CPP_SOURCES = src/main.cpp src/core/midi/midi_hub.cpp src/core/midi/midi_handler.cpp src/core/audio/volume_manager.cpp src/core/audio/audio_engine.cpp src/core/io/io_manager.cpp src/core/io/digital_manager.cpp src/core/io/analog_manager.cpp src/core/io/serial_manager.cpp src/core/io/display_manager.cpp src/core/io/storage_manager.cpp
 
+# FatFS character conversion functions (required for LFN support)
+C_SOURCES = lib/libDaisy/Middlewares/Third_Party/FatFs/src/option/ccsbcs.c
+
 # Set the libDaisy directory for the core Makefile
 LIBDAISY_DIR = lib/libDaisy
 
@@ -9,6 +12,9 @@ SYSTEM_FILES_DIR = lib/libDaisy/core
 
 # Set the DaisySP directory
 DAISYSP_DIR = lib/DaisySP
+
+# Use QSPI flash for code storage (8MB available vs 128KB internal flash)
+APP_TYPE = BOOT_QSPI
 
 # Add floating point support for printf (required for GetFloat() to work)
 LDFLAGS += -u _printf_float

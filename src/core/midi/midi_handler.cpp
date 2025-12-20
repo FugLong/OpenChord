@@ -16,7 +16,8 @@ namespace OpenChord {
 static constexpr size_t kMidiBufferSize = 256;
 
 OpenChordMidiHandler::OpenChordMidiHandler() 
-    : usb_midi_initialized_(false), trs_midi_initialized_(false), hw_(nullptr) {
+    : usb_midi_initialized_(false), trs_midi_initialized_(false), 
+      trs_midi_cooldown_cycles_(0), hw_(nullptr) {
 }
 
 OpenChordMidiHandler::~OpenChordMidiHandler() {
@@ -28,6 +29,8 @@ void OpenChordMidiHandler::Init(daisy::DaisySeed* hw) {
     // Initialize USB MIDI only when not in debug mode
     #if DEBUG_MODE == false
     daisy::MidiUsbHandler::Config usb_config;
+    // Use INTERNAL for micro USB port (will switch back to EXTERNAL for USB-C later)
+    // INTERNAL = micro USB port, EXTERNAL = external USB pins (D29/D30 = pins 36-37)
     usb_config.transport_config.periph = daisy::MidiUsbTransport::Config::INTERNAL;
     usb_config.transport_config.tx_retry_count = 3;
     
@@ -46,11 +49,14 @@ void OpenChordMidiHandler::Init(daisy::DaisySeed* hw) {
     
     trs_midi_.Init(trs_config);
     
-    // Disable internal pull-up on UART RX pin (PB8 = Pin 12)
-    // External 4.7kΩ pull-up is used instead
+    // Enable internal pull-up on UART RX pin (PB8 = Pin 12) IN ADDITION to external 2kΩ
+    // This provides stronger pull-up strength for reliable MIDI reception
+    // Internal pull-up (~40kΩ) in parallel with external 2kΩ gives effective ~1.9kΩ pull-up
+    // Note: 2kΩ external pull-up is REQUIRED (4.7kΩ is too weak)
     GPIO_TypeDef* portb = GPIOB;
     if (portb != nullptr) {
-        portb->PUPDR &= ~(0x3 << (8 * 2));  // Clear bits 17:16 for pin 8 (set to NOPULL)
+        portb->PUPDR &= ~(0x3 << (8 * 2));  // Clear bits 17:16
+        portb->PUPDR |= (0x1 << (8 * 2));   // Set to PULLUP (01)
     }
     
     // Direct connection - no inversion needed
@@ -87,14 +93,52 @@ void OpenChordMidiHandler::ProcessUsbMidi() {
 }
 
 void OpenChordMidiHandler::ProcessTrsMidi() {
-    if (!trs_midi_initialized_) return;
+    if (!trs_midi_initialized_ || !hw_) return;
     
-    // Standard Daisy Seed MIDI processing pattern
+    // If in cooldown period (after detecting plug-in noise), skip processing
+    if (trs_midi_cooldown_cycles_ > 0) {
+        trs_midi_cooldown_cycles_--;
+        // Still call Listen() to keep Daisy's state up to date, but don't process events
+        trs_midi_.Listen();
+        return;
+    }
+    
+    // Standard Daisy Seed MIDI processing pattern (as per Daisy documentation)
+    // Let Daisy handle UART state - we just validate and discard invalid events
     trs_midi_.Listen();
     
-    while (trs_midi_.HasEvents()) {
+    // Process events with safety limits
+    uint32_t event_count = 0;
+    uint32_t invalid_event_count = 0;
+    const uint32_t max_events_per_call = 100;  // Safety limit to prevent infinite loops
+    const uint32_t max_invalid_events = 10;    // Trigger cooldown if too many invalid events (plug-in noise)
+    
+    while (trs_midi_.HasEvents() && event_count < max_events_per_call) {
         daisy::MidiEvent event = trs_midi_.PopEvent();
-        AddToMidiHub(event, MidiEvent::Source::TRS_IN);
+        
+        // Validate event before adding to hub (prevents crashes from corrupted data during hot-plug)
+        // MIDI data should be valid: type should be reasonable, channel 0-15, data 0-127
+        bool is_valid = (event.type >= daisy::MidiMessageType::NoteOff && 
+                        event.type < daisy::MidiMessageType::MessageLast &&
+                        event.channel < 16 &&
+                        event.data[0] <= 127 && 
+                        event.data[1] <= 127);
+        
+        if (is_valid) {
+            AddToMidiHub(event, MidiEvent::Source::TRS_IN);
+            invalid_event_count = 0;  // Reset counter on valid event
+        } else {
+            // Invalid event (likely from plug-in noise) - discard silently
+            invalid_event_count++;
+            // If we get too many invalid events, enter cooldown period
+            // This prevents crashes when plugging in (mid-stream data causes parser issues)
+            if (invalid_event_count >= max_invalid_events) {
+                trs_midi_cooldown_cycles_ = COOLDOWN_CYCLES;
+                break;  // Exit processing loop, skip remaining events this cycle
+            }
+        }
+        
+        event_count++;
     }
 }
 
@@ -183,7 +227,7 @@ void OpenChordMidiHandler::ConvertToMidiBytes(const MidiEvent& event, uint8_t* b
             break;
             
         default:
-            *size = 0;
+            // Unsupported message type
             break;
     }
 }

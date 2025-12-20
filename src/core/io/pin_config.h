@@ -22,12 +22,15 @@ struct PinConfig {
     static constexpr daisy::Pin BATTERY_MON = daisy::seed::A4;   // Pin 26 - Battery voltage monitor
     
     // Key Matrix Pins - Based on pinout.md
-    static constexpr daisy::Pin KEY_ROW_0 = daisy::seed::D27;    // Pin 27 - Matrix row 0
-    static constexpr daisy::Pin KEY_ROW_1 = daisy::seed::D28;    // Pin 28 - Matrix row 1
-    static constexpr daisy::Pin KEY_ROW_2 = daisy::seed::D29;    // Pin 29 - Matrix row 2
-    static constexpr daisy::Pin KEY_ROW_3 = daisy::seed::D30;    // Pin 30 - Matrix row 3
-    static constexpr daisy::Pin KEY_COL_0 = daisy::seed::D31;    // Pin 31 - Matrix column 0
-    static constexpr daisy::Pin KEY_COL_1 = daisy::seed::D32;    // Pin 32 - Matrix column 1
+    // Note: Physical pin numbers don't match Daisy pin names!
+    // Pin 27 = D20, Pin 28 = D21, Pin 29 = D22, Pin 30 = D23
+    // Pin 31 = D24, Pin 32 = D25, Pin 33 = D26
+    static constexpr daisy::Pin KEY_ROW_0 = daisy::seed::D20;    // Pin 27 - Matrix row 0
+    static constexpr daisy::Pin KEY_ROW_1 = daisy::seed::D21;    // Pin 28 - Matrix row 1
+    static constexpr daisy::Pin KEY_ROW_2 = daisy::seed::D22;    // Pin 29 - Matrix row 2
+    static constexpr daisy::Pin KEY_ROW_3 = daisy::seed::D23;    // Pin 30 - Matrix row 3
+    static constexpr daisy::Pin KEY_COL_0 = daisy::seed::D24;    // Pin 31 - Matrix column 0
+    static constexpr daisy::Pin KEY_COL_1 = daisy::seed::D25;    // Pin 32 - Matrix column 1
     static constexpr daisy::Pin KEY_COL_2 = daisy::seed::D26;    // Pin 33 - Matrix column 2
     
     // Joystick Button - Based on pinout.md
