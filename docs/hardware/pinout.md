@@ -17,7 +17,7 @@ This document tracks the detailed pin assignments for the OpenChord custom hardw
 | Category | Pins Used | Pin Numbers | Notes |
 |----------|-----------|-------------|-------|
 | SDMMC (SD Card) | 6 | 2-7 | SD card interface |
-| SPI (Display) | 4 | 8-11 | Display interface |
+| SPI (Display) | 5 | 1, 8-11 | Display interface (DC on pin 1) |
 | MIDI (UART) | 2 | 12-13 | UART4 for MIDI I/O |
 | User Interface | 8 | 14-15, 22-26, 34-35 | Joystick, volume, mic, encoder, battery |
 | Audio I/O | 5 | 16-20 | Audio in/out + ground |
@@ -31,13 +31,14 @@ This document tracks the detailed pin assignments for the OpenChord custom hardw
 
 | Component | Pin | Daisy Pin | Daisy Pin Name | Notes |
 |-----------|-----|-----------|----------------|-------|
-| **OLED Display** | VCC | 38 | +3V3D | Power |
+| **OLED Display** | Screen Pin | Daisy Pin | Daisy Pin Name | Notes |
+|-----------|-----|-----------|----------------|-------|
+| | VCC | 38 | +3V3D | Power |
 | | GND | 40 | GND | Ground |
-| | SCK | 9 | SPI1_SCK | Clock |
-| | MOSI | 11 | SPI1_MOSI | Data out |
-| | MISO | 10 | SPI1_MISO | Data in |
-| | CS | 8 | SPI1_NSS | Chip select |
-| | DC | - | Software | Controlled via SPI |
+| | CS | 8 | SPI1_CS | Chip select |
+| | A0/DC | 1 | D0 | Data/Command (GPIO) |
+| | CLK | 9 | SPI1_SCK | Clock |
+| | Data | 11 | SPI1_MOSI | Data out |
 | **MicroSD Card** | VCC | 38 | +3V3D | Power |
 | | GND | 40 | GND | Ground |
 | | CLK | 7 | SDMMC1_CK | Clock |

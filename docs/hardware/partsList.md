@@ -35,12 +35,10 @@ This document contains the complete parts list for building the OpenChord hardwa
 | **PowerBoost 1000C** (Battery charging + boost) | $19.95 | [Adafruit #2465](https://www.adafruit.com/product/2465) | Battery management |
 | **LiPo Battery** (2000mAh) | $12.50 | [Adafruit #2011](https://www.adafruit.com/product/2011) | Portable power |
 
-| **Replacement Mic** (Primo EM272Z1) *optional* | $13.00 | [Micbooster](https://micbooster.com/product/primo-em272/?v=0b3b97fa6688) | Premium microphone upgrade |
-
 ### 💰 Cost Summary
 
 - **Core Cost**: ~$83.50
-- **Total Cost**: ~$119.50 (+$13 for optional premium mic)
+- **Total Cost**: ~$119.50
 
 ---
 

@@ -43,11 +43,13 @@ struct PinConfig {
     // Audio Switch - Based on pinout.md
     static constexpr daisy::Pin AUDIO_SWITCH = daisy::seed::D15; // Pin 15 - TRS input select
     
-    // Display Pins - Based on pinout.md
-    static constexpr daisy::Pin DISPLAY_CS = daisy::seed::D8;    // Pin 8 - Display chip select
-    static constexpr daisy::Pin DISPLAY_SCK = daisy::seed::D9;   // Pin 9 - Display SPI clock
-    static constexpr daisy::Pin DISPLAY_MISO = daisy::seed::D10; // Pin 10 - Display SPI MISO
-    static constexpr daisy::Pin DISPLAY_MOSI = daisy::seed::D11; // Pin 11 - Display SPI MOSI
+    // Display Pins - Based on pinout.md (SPI1 interface)
+    // Note: Physical pin numbers don't match Daisy pin names!
+    // Pin 8 = D7 (SPI1_NSS), Pin 9 = D8 (SPI1_SCK), Pin 11 = D10 (SPI1_MOSI)
+    static constexpr daisy::Pin DISPLAY_CS = daisy::seed::D7;    // Pin 8 - SPI1_NSS (chip select, GPIO controlled)
+    static constexpr daisy::Pin DISPLAY_DC = daisy::seed::D0;    // Pin 1 - D0 (data/command GPIO)
+    static constexpr daisy::Pin DISPLAY_SCK = daisy::seed::D8;   // Pin 9 - SPI1_SCK (clock)
+    static constexpr daisy::Pin DISPLAY_MOSI = daisy::seed::D10; // Pin 11 - SPI1_MOSI (data out)
     
     // SD Card Pins - Based on pinout.md
     static constexpr daisy::Pin SD_DAT3 = daisy::seed::D2;       // Pin 2 - SD card DAT3

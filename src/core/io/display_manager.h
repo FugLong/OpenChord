@@ -1,6 +1,7 @@
 #pragma once
 
 #include "daisy_seed.h"
+#include "pin_config.h"
 #include <cstdint>
 
 /**
@@ -33,7 +34,12 @@ public:
     
 private:
     daisy::DaisySeed* hw_;
+    daisy::SpiHandle spi_handle_;
+    daisy::GPIO dc_pin_;   // Data/Command pin (Pin 1, D0)
+    daisy::GPIO cs_pin_;   // Chip select pin (Pin 8, D7) - manually controlled
     bool healthy_;
     
-    // TODO: Add display members
+    void InitSPI();
+    void InitDCPin();
+    void InitCSPin();
 };
