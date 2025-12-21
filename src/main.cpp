@@ -57,6 +57,10 @@ int main(void) {
     audio_engine.Init(&hw);
     audio_engine.SetVolumeManager(&volume_mgr);
     
+    // Enable microphone passthrough for wiring test (temporary)
+    audio_engine.SetMicPassthroughEnabled(false);
+    ExternalLog::PrintLine("Microphone passthrough enabled (temporary test)");
+    
     // Initialize MIDI handler
     midi_handler.Init(&hw);
     ExternalLog::PrintLine("MIDI handler initialized");

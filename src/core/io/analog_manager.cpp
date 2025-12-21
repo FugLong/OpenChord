@@ -31,8 +31,8 @@ void AnalogManager::Init(daisy::DaisySeed* hw) {
     
     // Initialize pin assignments using centralized pin configuration
     adc_pins_[0] = OpenChord::PinConfig::VOLUME_POT;    // ADC0 - Volume pot (Pin 22)
+    adc_pins_[1] = OpenChord::PinConfig::MICROPHONE;    // ADC1 - Microphone (Pin 23)
     // Temporarily disable other ADC channels to get volume working first
-    // adc_pins_[1] = OpenChord::PinConfig::MICROPHONE;    // ADC1 - Microphone (Pin 23)
     // adc_pins_[2] = OpenChord::PinConfig::JOYSTICK_X;    // ADC2 - Joystick X (Pin 24)
     // adc_pins_[3] = OpenChord::PinConfig::JOYSTICK_Y;    // ADC3 - Joystick Y (Pin 25)
     // adc_pins_[4] = OpenChord::PinConfig::BATTERY_MON;   // ADC4 - Battery monitor (Pin 26)
@@ -221,22 +221,29 @@ void AnalogManager::ConfigureADC() {
     // Reset ADC peripheral before configuration (helps with cold boot issues)
     hw_->DelayMs(10);
     
-    // Configure only the volume pot ADC channel for now
-    adc_configs_[0].InitSingle(adc_pins_[0]);
+    // Configure volume pot and microphone ADC channels
+    adc_configs_[0].InitSingle(adc_pins_[0]);  // ADC0 - Volume pot
+    adc_configs_[1].InitSingle(adc_pins_[1]);  // ADC1 - Microphone
     adc_configured_[0] = true;
+    adc_configured_[1] = true;
     
-    // Initialize the ADC system with just one channel
-    hw_->adc.Init(&adc_configs_[0], 1);
+    // Initialize the ADC system with two channels
+    hw_->adc.Init(&adc_configs_[0], 2);
     
     // Add delay for ADC to stabilize
     hw_->DelayMs(20);
     
     hw_->adc.Start();
     
-    // Mark only the volume pot input as healthy initially
+    // Mark volume pot and microphone as healthy
+    // inputs_[0] = VOLUME_POT (ADC0)
+    // inputs_[3] = MICROPHONE (ADC1)
     inputs_[0].healthy = true;
+    inputs_[3].healthy = true;
     for (int i = 1; i < NUM_ADC_CHANNELS; i++) {
-        inputs_[i].healthy = false;
+        if (i != 3) {
+            inputs_[i].healthy = false;
+        }
     }
 }
 
@@ -250,13 +257,21 @@ void AnalogManager::UpdateADC() {
 void AnalogManager::UpdateInputs() {
     if (!hw_) return;
     
-    // Read the volume pot value (ADC channel 0)
+    // Read the volume pot value (ADC channel 0 -> inputs_[0])
     float float_value = hw_->adc.GetFloat(0);
     
     // Store the float value
     inputs_[0].raw_value = float_value;
     inputs_[0].filtered_value = float_value;
     inputs_[0].healthy = (float_value >= 0.0f && float_value <= 1.0f);
+    
+    // Read the microphone value (ADC channel 1 -> inputs_[3])
+    float mic_value = hw_->adc.GetFloat(1);
+    
+    // Store the microphone value (MAX9814 outputs centered around ~0.38, range ~0.1-0.65)
+    inputs_[3].raw_value = mic_value;
+    inputs_[3].filtered_value = mic_value;
+    inputs_[3].healthy = (mic_value >= 0.0f && mic_value <= 1.0f);
     
     // Commented out verbose debug logging
     // static uint32_t debug_counter = 0;
@@ -266,9 +281,11 @@ void AnalogManager::UpdateInputs() {
     
     // Don't read other channels for now
     for (int i = 1; i < NUM_ADC_CHANNELS; i++) {
-        inputs_[i].raw_value = 0.0f;
-        inputs_[i].filtered_value = 0.0f;
-        inputs_[i].healthy = false;
+        if (i != 3) {
+            inputs_[i].raw_value = 0.0f;
+            inputs_[i].filtered_value = 0.0f;
+            inputs_[i].healthy = false;
+        }
     }
 }
 

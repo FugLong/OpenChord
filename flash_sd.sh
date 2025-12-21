@@ -151,6 +151,10 @@ if [ -f "$TARGET_FILE" ]; then
         print_info "  5. LED will indicate flashing progress"
         print_info ""
         print_warn "IMPORTANT: Make sure SD card is formatted as FAT32!"
+        print_info ""
+        print_warn "NOTE: After flashing, remove $TARGET_NAME from SD card"
+        print_info "      (or it will try to flash again on next boot)"
+        print_info "      Run: ./clean_sd_bin.sh to remove it automatically"
     else
         print_error "File size mismatch! Original: $BIN_SIZE, Copied: $COPIED_SIZE"
         exit 1
@@ -159,4 +163,5 @@ else
     print_error "Copy failed!"
     exit 1
 fi
+
 

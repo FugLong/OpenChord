@@ -5,7 +5,7 @@ namespace OpenChord {
 
 AudioEngine::AudioEngine() 
     : hw_(nullptr), volume_manager_(nullptr), initialized_(false),
-      current_freq_(440.0f), gate_signal_(false) {
+      current_freq_(440.0f), gate_signal_(false), mic_passthrough_enabled_(false) {
 }
 
 AudioEngine::~AudioEngine() {
@@ -84,6 +84,59 @@ void AudioEngine::ProcessAudio(const float* const* in, float* const* out, size_t
             out[0][i] = 0.0f;     // Left channel
             out[1][i] = 0.0f;     // Right channel
         }
+        return;
+    }
+
+    // Microphone passthrough mode (for wiring test)
+    // NOTE: Using ADC for audio is not ideal, but we're pin-limited
+    // Reading ADC twice per block to get ~24kHz effective rate (instead of 12kHz)
+    // This improves quality but still has some bitcrushing
+    if (mic_passthrough_enabled_) {
+        // Get current volume data from volume manager
+        const VolumeData& volume_data = volume_manager_->GetVolumeData();
+        
+        // ADC parameters - MAX9814 outputs centered at ~0.38 (1.25V/3.3V)
+        static float mic_bias = 0.38f;  // Center bias for MAX9814
+        static float mic_scale = 3.0f;   // Scale factor for full audio range
+        
+        // Read ADC at start of block
+        float mic_adc_start = hw_->adc.GetFloat(1);
+        float mic_start = (mic_adc_start - mic_bias) * mic_scale;
+        
+        // Process first half of block
+        size_t midpoint = size / 2;
+        for (size_t i = 0; i < midpoint; i++) {
+            float mic_output = mic_start * volume_data.line_level;
+            
+            // Soft clipping
+            if (mic_output > 1.0f) mic_output = 1.0f;
+            if (mic_output < -1.0f) mic_output = -1.0f;
+            
+            out[0][i] = mic_output;
+            out[1][i] = mic_output;
+        }
+        
+        // Read ADC again at midpoint for 24kHz effective rate
+        float mic_adc_mid = hw_->adc.GetFloat(1);
+        float mic_mid = (mic_adc_mid - mic_bias) * mic_scale;
+        
+        // Linear interpolation for second half
+        float mic_step = (mic_mid - mic_start) / static_cast<float>(size - midpoint);
+        float mic_value = mic_start + (mic_step * static_cast<float>(midpoint));
+        
+        // Process second half of block with interpolation
+        for (size_t i = midpoint; i < size; i++) {
+            mic_value += mic_step;
+            float mic_output = mic_value * volume_data.line_level;
+            
+            // Soft clipping
+            if (mic_output > 1.0f) mic_output = 1.0f;
+            if (mic_output < -1.0f) mic_output = -1.0f;
+            
+            out[0][i] = mic_output;
+            out[1][i] = mic_output;
+        }
+        
         return;
     }
 
@@ -190,6 +243,15 @@ void AudioEngine::SetReleaseTime(float release_ms) {
 
 float AudioEngine::mtof(uint8_t note) const {
     return 440.0f * powf(2.0f, (note - 69) / 12.0f);
+}
+
+// Microphone passthrough methods
+void AudioEngine::SetMicPassthroughEnabled(bool enabled) {
+    mic_passthrough_enabled_ = enabled;
+}
+
+bool AudioEngine::IsMicPassthroughEnabled() const {
+    return mic_passthrough_enabled_;
 }
 
 } // namespace OpenChord

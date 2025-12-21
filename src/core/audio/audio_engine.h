@@ -49,6 +49,10 @@ public:
     void SetSustainLevel(float sustain_percent);
     void SetReleaseTime(float release_ms);
     
+    // Microphone passthrough (temporary for wiring test)
+    void SetMicPassthroughEnabled(bool enabled);
+    bool IsMicPassthroughEnabled() const;
+    
 private:
     // MIDI note to frequency conversion
     float mtof(uint8_t note) const;
@@ -63,6 +67,7 @@ private:
     
     // Audio processing state
     bool initialized_;
+    bool mic_passthrough_enabled_;
 };
 
 } // namespace OpenChord
