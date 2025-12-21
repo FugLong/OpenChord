@@ -26,11 +26,9 @@ public:
     // Health monitoring
     bool IsHealthy() const { return healthy_; }
     
-    // TODO: Implement display methods
-    // - Text rendering
-    // - Graphics primitives
-    // - Double buffering
-    // - UI state management
+    // Display operations
+    void Clear();
+    void TestDisplay();  // Display "Hello World" test message
     
 private:
     daisy::DaisySeed* hw_;
@@ -42,4 +40,15 @@ private:
     void InitSPI();
     void InitDCPin();
     void InitCSPin();
+    void InitDisplay();
+    
+    // Low-level SPI communication
+    void SendCommand(uint8_t cmd);
+    void SendData(uint8_t data);
+    void SendDataBuffer(const uint8_t* data, size_t length);
+    
+    // Display dimensions
+    static constexpr uint8_t DISPLAY_WIDTH = 128;
+    static constexpr uint8_t DISPLAY_HEIGHT = 64;
+    static constexpr uint8_t DISPLAY_PAGES = 8;  // 64 pixels / 8 bits per page
 };
