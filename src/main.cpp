@@ -12,7 +12,10 @@ using namespace daisy;
 using namespace OpenChord;
 
 // Debug mode flag (matches midi_handler.cpp DEBUG_MODE)
-#define DEBUG_MODE false
+#define DEBUG_MODE true
+
+// Use external USB logger for serial output (pins 36-37)
+using ExternalLog = Logger<LOGGER_EXTERNAL>;
 
 
 // Global hardware instance
@@ -32,19 +35,20 @@ int main(void) {
     // 1) Initialize hardware
     hw.Init();
     
-    // 2) Start logging for printing over serial
-    hw.StartLog(false); //True to block the program until serial is connected, false to continue immediately
+    // 2) Start logging for printing over serial (using external USB pins)
+    // Using LOGGER_EXTERNAL for external USB pins (D29/D30 = pins 36-37)
+    ExternalLog::StartLog(false); //True to block the program until serial is connected, false to continue immediately
     
     // Debug mode: Give time to connect to serial before starting
     #if DEBUG_MODE
     hw.DelayMs(3000);  // 3 second delay to allow serial connection
     #endif
     
-    hw.PrintLine("OpenChord firmware booting...");
+    ExternalLog::PrintLine("OpenChord firmware booting...");
     
     // 3) Configure audio
     hw.SetAudioBlockSize(4);
-    hw.PrintLine("Audio configured");
+    ExternalLog::PrintLine("Audio configured");
     
     // 4) Initialize managers
     io_manager.Init(&hw);
@@ -55,14 +59,14 @@ int main(void) {
     
     // Initialize MIDI handler
     midi_handler.Init(&hw);
-    hw.PrintLine("MIDI handler initialized");
+    ExternalLog::PrintLine("MIDI handler initialized");
     
-    hw.PrintLine("Managers initialized");
-    hw.PrintLine("Audio engine ready");
+    ExternalLog::PrintLine("Managers initialized");
+    ExternalLog::PrintLine("Audio engine ready");
     
     // 6) Start audio
     hw.StartAudio(AudioCallback);
-    hw.PrintLine("Audio started");
+    ExternalLog::PrintLine("Audio started");
     
     hw.DelayMs(100);
     
@@ -70,13 +74,13 @@ int main(void) {
     StorageManager* storage = io_manager.GetStorage();
     if (storage) {
         if (storage->TestCard()) {
-            hw.PrintLine("SD card: Test PASSED");
+            ExternalLog::PrintLine("SD card: Test PASSED");
         } else {
-            hw.PrintLine("SD card: Test FAILED (not mounted or filesystem error)");
+            ExternalLog::PrintLine("SD card: Test FAILED (not mounted or filesystem error)");
         }
     }
     
-    hw.PrintLine("System initialized OK");
+    ExternalLog::PrintLine("System initialized OK");
     
     // 7) Main loop - 1kHz constant timing for predictable behavior
     while(1) {
@@ -153,7 +157,7 @@ int main(void) {
         
         // Print MIDI enabled status once after initialization
         if (!midi_enabled_printed && debug_counter > 100) {
-            hw.PrintLine("MIDI Enabled: TRS=%s, USB=%s", 
+            ExternalLog::PrintLine("MIDI Enabled: TRS=%s, USB=%s", 
                         midi_handler.IsTrsInitialized() ? "YES" : "NO",
                         midi_handler.IsUsbInitialized() ? "YES" : "NO");
             midi_enabled_printed = true;

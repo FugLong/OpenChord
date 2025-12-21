@@ -2,7 +2,7 @@
 #include "daisy_seed.h"
 
 // Debug mode - disable USB MIDI to allow serial output for debugging
-#define DEBUG_MODE false
+#define DEBUG_MODE true
 
 namespace OpenChord {
 
@@ -19,9 +19,9 @@ void OpenChordMidiHandler::Init(daisy::DaisySeed* hw) {
     // Initialize USB MIDI only when not in debug mode
     #if DEBUG_MODE == false
     daisy::MidiUsbHandler::Config usb_config;
-    // Use INTERNAL for micro USB port (will switch back to EXTERNAL for USB-C later)
+    // Use EXTERNAL for external USB pins (D29/D30 = pins 36-37)
     // INTERNAL = micro USB port, EXTERNAL = external USB pins (D29/D30 = pins 36-37)
-    usb_config.transport_config.periph = daisy::MidiUsbTransport::Config::INTERNAL;
+    usb_config.transport_config.periph = daisy::MidiUsbTransport::Config::EXTERNAL;
     usb_config.transport_config.tx_retry_count = 3;
     
     usb_midi_.Init(usb_config);
