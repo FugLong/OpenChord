@@ -12,7 +12,7 @@ using namespace daisy;
 using namespace OpenChord;
 
 // Debug mode flag (matches midi_handler.cpp DEBUG_MODE)
-#define DEBUG_MODE true
+#define DEBUG_MODE false
 
 // Use external USB logger for serial output (pins 36-37)
 using ExternalLog = Logger<LOGGER_EXTERNAL>;
