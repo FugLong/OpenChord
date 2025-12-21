@@ -63,8 +63,7 @@ The audio output uses a simple voltage divider to reduce the Daisy Seed's output
 |-----------|-----|---------|
 | **4.7kΩ Resistors** | 2 | Audio output voltage divider |
 | **1kΩ Resistors** | 2 | Audio output to ground |
-| **100kΩ Resistor** | 1 | Battery voltage divider (top) |
-| **47kΩ Resistor** | 1 | Battery voltage divider (bottom) |
+| **100kΩ Resistor** | 2 | Battery voltage divider (2:1 divider - equal resistors) |
 
 ---
 

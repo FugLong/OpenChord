@@ -35,7 +35,7 @@ void AnalogManager::Init(daisy::DaisySeed* hw) {
     // Temporarily disable other ADC channels to get volume working first
     // adc_pins_[2] = OpenChord::PinConfig::JOYSTICK_X;    // ADC2 - Joystick X (Pin 24)
     // adc_pins_[3] = OpenChord::PinConfig::JOYSTICK_Y;    // ADC3 - Joystick Y (Pin 25)
-    // adc_pins_[4] = OpenChord::PinConfig::BATTERY_MON;   // ADC4 - Battery monitor (Pin 26)
+    adc_pins_[4] = OpenChord::PinConfig::BATTERY_MON;   // ADC4 - Battery monitor (Pin 26)
     
     // Initialize joystick calibration
     joystick_cal_.center_x = 0.5f;
@@ -221,27 +221,31 @@ void AnalogManager::ConfigureADC() {
     // Reset ADC peripheral before configuration (helps with cold boot issues)
     hw_->DelayMs(10);
     
-    // Configure volume pot and microphone ADC channels
-    adc_configs_[0].InitSingle(adc_pins_[0]);  // ADC0 - Volume pot
-    adc_configs_[1].InitSingle(adc_pins_[1]);  // ADC1 - Microphone
+    // Configure volume pot, microphone, and battery ADC channels
+    adc_configs_[0].InitSingle(adc_pins_[0]);  // ADC channel 0 - Volume pot
+    adc_configs_[1].InitSingle(adc_pins_[1]);  // ADC channel 1 - Microphone
+    adc_configs_[2].InitSingle(adc_pins_[4]);  // ADC channel 2 - Battery monitor (Pin 26, ADC4)
     adc_configured_[0] = true;
     adc_configured_[1] = true;
+    adc_configured_[4] = true;  // Mark battery input as configured (uses inputs_[4])
     
-    // Initialize the ADC system with two channels
-    hw_->adc.Init(&adc_configs_[0], 2);
+    // Initialize the ADC system with three channels
+    hw_->adc.Init(&adc_configs_[0], 3);
     
     // Add delay for ADC to stabilize
     hw_->DelayMs(20);
     
     hw_->adc.Start();
     
-    // Mark volume pot and microphone as healthy
-    // inputs_[0] = VOLUME_POT (ADC0)
-    // inputs_[3] = MICROPHONE (ADC1)
+    // Mark configured inputs as healthy
+    // inputs_[0] = VOLUME_POT (ADC channel 0)
+    // inputs_[3] = MICROPHONE (ADC channel 1)
+    // inputs_[4] = BATTERY_MON (ADC channel 2)
     inputs_[0].healthy = true;
     inputs_[3].healthy = true;
+    inputs_[4].healthy = true;
     for (int i = 1; i < NUM_ADC_CHANNELS; i++) {
-        if (i != 3) {
+        if (i != 3 && i != 4) {
             inputs_[i].healthy = false;
         }
     }
@@ -273,15 +277,21 @@ void AnalogManager::UpdateInputs() {
     inputs_[3].filtered_value = mic_value;
     inputs_[3].healthy = (mic_value >= 0.0f && mic_value <= 1.0f);
     
+    // Read the battery voltage (ADC channel 2 -> inputs_[4])
+    float battery_value = hw_->adc.GetFloat(2);
+    inputs_[4].raw_value = battery_value;
+    inputs_[4].filtered_value = battery_value;
+    inputs_[4].healthy = (battery_value >= 0.0f && battery_value <= 1.0f);
+    
     // Commented out verbose debug logging
     // static uint32_t debug_counter = 0;
     // if (++debug_counter % 100 == 0) { // Every 100 iterations = ~1 second
     //     hw_->PrintLine("UpdateInputs Debug - ADC: %.4f, Stored: %.4f", float_value, inputs_[0].raw_value);
     // }
     
-    // Don't read other channels for now
+    // Mark other unused channels as unhealthy
     for (int i = 1; i < NUM_ADC_CHANNELS; i++) {
-        if (i != 3) {
+        if (i != 3 && i != 4) {
             inputs_[i].raw_value = 0.0f;
             inputs_[i].filtered_value = 0.0f;
             inputs_[i].healthy = false;
@@ -297,9 +307,10 @@ void AnalogManager::UpdateBattery() {
         // Read battery voltage from ADC
         float adc_value = inputs_[4].filtered_value;
         
-        // Convert ADC value to voltage (assuming 3.3V reference and voltage divider)
-        // This calculation depends on your specific voltage divider circuit
-        battery_.voltage = adc_value * 6.6f; // Adjust multiplier based on your circuit
+        // Convert ADC value to voltage (3.3V reference, 2:1 voltage divider)
+        // 2:1 divider (equal resistors) gives division ratio of 0.5
+        // Battery voltage = (adc_value * 3.3V) / 0.5 = adc_value * 6.6V
+        battery_.voltage = adc_value * 6.6f;
         
         // Calculate percentage (assuming 3.0V to 4.2V range)
         battery_.percentage = CalculateBatteryPercentage(battery_.voltage);
