@@ -1,17 +1,14 @@
 #pragma once
 
 #include "daisy_seed.h"
-#include "pin_config.h"
+#include "dev/oled_ssd130x.h"
 #include <cstdint>
 
 /**
- * Display Manager - Handles OLED display operations
+ * Display Manager - Simple wrapper for Daisy's OLED display driver
  * 
- * Manages:
- * - SPI display interface
- * - Double buffering
- * - Text and graphics rendering
- * - UI state management
+ * Uses Daisy's built-in OledDisplay with SSD130x4WireSpi128x64Driver
+ * Follows official Daisy Seed example pattern exactly
  */
 class DisplayManager {
 public:
@@ -20,35 +17,29 @@ public:
     
     // Core lifecycle
     void Init(daisy::DaisySeed* hw);
-    void Update();
+    void Update();  // Called periodically (no-op, updates happen after drawing)
     void Shutdown();
     
-    // Health monitoring
+    // Health check
     bool IsHealthy() const { return healthy_; }
     
-    // Display operations
+    // Basic display operations
     void Clear();
-    void TestDisplay();  // Display "Hello World" test message
+    void TestDisplay();  // Simple test pattern
+    
+    // Text rendering
+    void PrintText(uint8_t x, uint8_t y, const char* text);
+    void SetCursor(uint8_t x, uint8_t y);
+    
+    // Direct access to display for advanced operations
+    daisy::OledDisplay<daisy::SSD130x4WireSpi128x64Driver>* GetDisplay() {
+        return healthy_ ? &display_ : nullptr;
+    }
     
 private:
     daisy::DaisySeed* hw_;
-    daisy::SpiHandle spi_handle_;
-    daisy::GPIO dc_pin_;   // Data/Command pin (Pin 1, D0)
-    daisy::GPIO cs_pin_;   // Chip select pin (Pin 8, D7) - manually controlled
+    daisy::OledDisplay<daisy::SSD130x4WireSpi128x64Driver> display_;
     bool healthy_;
     
-    void InitSPI();
-    void InitDCPin();
-    void InitCSPin();
     void InitDisplay();
-    
-    // Low-level SPI communication
-    void SendCommand(uint8_t cmd);
-    void SendData(uint8_t data);
-    void SendDataBuffer(const uint8_t* data, size_t length);
-    
-    // Display dimensions
-    static constexpr uint8_t DISPLAY_WIDTH = 128;
-    static constexpr uint8_t DISPLAY_HEIGHT = 64;
-    static constexpr uint8_t DISPLAY_PAGES = 8;  // 64 pixels / 8 bits per page
 };

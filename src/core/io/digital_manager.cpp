@@ -28,7 +28,8 @@ void DigitalManager::Init(daisy::DaisySeed* hw) {
     hw_ = hw;
     
     // Initialize pin assignments - using Daisy pin constants directly
-    // Key matrix layout: 3 rows x 4 columns (Top: 4 keys, Middle: 3 keys, Bottom: 4 keys)
+    // Key matrix layout: 3 rows x 4 columns (Bottom: 4 keys, Middle: 3 keys, Top: 4 keys)
+    // Physical layout: Row 0 = bottom, Row 1 = middle, Row 2 = top
     // 
     // NOTE: We use daisy::seed::DXX constants instead of hw->GetPin() because
     // GetPin() expects physical pin numbers (1-40), but for pins 27-33, the physical
@@ -37,9 +38,9 @@ void DigitalManager::Init(daisy::DaisySeed* hw) {
     //
     // Physical Pin 27 = D20, Pin 28 = D21, Pin 29 = D22
     // Physical Pin 30 = D23, Pin 31 = D24, Pin 32 = D25, Pin 33 = D26
-    key_matrix_row_pins_[0] = daisy::seed::D20; // Pin 27 - Row 0 (Top row)
+    key_matrix_row_pins_[0] = daisy::seed::D20; // Pin 27 - Row 0 (Bottom row)
     key_matrix_row_pins_[1] = daisy::seed::D21; // Pin 28 - Row 1 (Middle row)
-    key_matrix_row_pins_[2] = daisy::seed::D22; // Pin 29 - Row 2 (Bottom row)
+    key_matrix_row_pins_[2] = daisy::seed::D22; // Pin 29 - Row 2 (Top row)
     
     // Key matrix columns
     key_matrix_col_pins_[0] = daisy::seed::D23; // Pin 30 - Col 0
@@ -54,8 +55,9 @@ void DigitalManager::Init(daisy::DaisySeed* hw) {
     // Note: encoder_button_pin_ not connected in current design
     
     // Other digital inputs
-    joystick_button_pin_ = daisy::seed::D14;  // Pin 14 - Joystick button
-    audio_switch_pin_ = daisy::seed::D15;    // Pin 15 - Audio switch
+    // NOTE: Joystick button moved to D0 (Pin 1) - D14/D15 now used for display DC/RST
+    joystick_button_pin_ = daisy::seed::D0;  // Pin 1 - Joystick button (was D14, moved for display)
+    // audio_switch_pin_ = daisy::seed::D15;    // Pin 15 - Audio switch (disabled, pin used for display RST)
     
     // Initialize GPIO objects
     for (int i = 0; i < KEY_MATRIX_ROWS; i++) {
@@ -73,7 +75,7 @@ void DigitalManager::Init(daisy::DaisySeed* hw) {
     
     // Initialize other buttons
     joystick_button_gpio_.Init(joystick_button_pin_, daisy::GPIO::Mode::INPUT, daisy::GPIO::Pull::PULLUP);
-    audio_switch_gpio_.Init(audio_switch_pin_, daisy::GPIO::Mode::INPUT, daisy::GPIO::Pull::PULLUP);
+    // audio_switch_gpio_.Init(audio_switch_pin_, daisy::GPIO::Mode::INPUT, daisy::GPIO::Pull::PULLUP); // Disabled - pin used for display
     
     // Initialize LEDs (if implemented)
     for (int i = 0; i < 4; i++) {
@@ -166,6 +168,18 @@ void DigitalManager::SetButtonHoldThreshold(uint32_t ms) {
 }
 
 // Private methods
+// Simple microsecond delay using busy-wait loop
+// Daisy Seed runs at 480MHz, so we need approximately 480 cycles per microsecond
+// This is a simple approximation - adjust multiplier if needed for accuracy
+static inline void delay_us(uint32_t us) {
+    // Each iteration is roughly 3-4 cycles, so ~120 iterations per microsecond at 480MHz
+    // Using volatile to prevent compiler optimization
+    volatile uint32_t count = us * 120;
+    while (count--) {
+        __asm__("nop"); // No operation instruction
+    }
+}
+
 void DigitalManager::UpdateKeyMatrix() {
     if (!hw_) return;
     
@@ -181,17 +195,36 @@ void DigitalManager::UpdateKeyMatrix() {
         key_matrix_rows_[row].Write(true); // HIGH = inactive
     }
     
+    // Small delay to ensure all rows are fully deactivated before scanning
+    // This prevents cross-talk between rows
+    delay_us(10); // 10 microseconds for signal stabilization
+    
     // Scan each row
+    // Matrix layout (physical):
+    // - Row 0 (bottom): 4 columns (0-3) - all valid, (0,0)=bottom-left, (0,3)=bottom-right
+    // - Row 1 (middle): 3 columns (0-2) - column 3 is NOT connected to this row, (1,0)=middle-left, (1,2)=middle-right
+    // - Row 2 (top): 4 columns (0-3) - all valid, (2,0)=top-left, (2,3)=top-right
+    // Column 3 is only connected to switches from R0 and R2, not R1
     for (int row = 0; row < KEY_MATRIX_ROWS; row++) {
         // Activate current row (set LOW)
         key_matrix_rows_[row].Write(false); // LOW = active
         
+        // Critical: Wait for signal to stabilize after activating row
+        // This ensures the column inputs have time to settle to correct state
+        // Without this delay, we may read columns before they've fully responded to the row activation
+        // This is especially important to prevent cross-talk between rows
+        delay_us(5); // 5 microseconds for row activation to stabilize
+        
         // Read all columns for this row
+        // Only process valid key positions to avoid false readings
         for (int col = 0; col < KEY_MATRIX_COLS; col++) {
+            // Only read and update state for valid key positions
+            // This prevents reading invalid positions (like R1C3) which could cause issues
             if (IsValidKeyPosition(row, col)) {
                 // Column has pullup, so:
                 // - HIGH = no key pressed (no connection to LOW row)
                 // - LOW = key pressed (LOW row connects through diode to column)
+                // Diodes prevent ghosting: current can only flow from column to row
                 bool raw_read = key_matrix_cols_[col].Read();
                 bool current_pressed = !raw_read; // Inverted due to pullup
                 
@@ -202,6 +235,11 @@ void DigitalManager::UpdateKeyMatrix() {
         
         // Deactivate row (set HIGH) before moving to next row
         key_matrix_rows_[row].Write(true); // HIGH = inactive
+        
+        // Small delay after deactivating to ensure clean transition
+        // This prevents the next row scan from picking up residual signals from this row
+        // This is critical to prevent cross-talk, especially between R1 and R2
+        delay_us(5); // 5 microseconds for row deactivation to complete
     }
     
     key_matrix_.scan_count++;
@@ -229,13 +267,13 @@ void DigitalManager::UpdateEncoder() {
 void DigitalManager::UpdateButtons() {
     if (!hw_) return;
     
-    // Update joystick button
+    // Update joystick button (now on D0/Pin 1)
     bool joystick_current = !joystick_button_gpio_.Read(); // Inverted due to pullup
     UpdateButtonState(joystick_button_, joystick_current);
     
-    // Update audio switch
-    bool audio_current = !audio_switch_gpio_.Read(); // Inverted due to pullup
-    UpdateButtonState(audio_switch_, audio_current);
+    // Audio switch disabled - pin now used for display RST
+    // bool audio_current = !audio_switch_gpio_.Read(); // Inverted due to pullup
+    // UpdateButtonState(audio_switch_, audio_current);
 }
 
 void DigitalManager::UpdateLEDs() {
@@ -257,8 +295,8 @@ bool DigitalManager::IsValidKeyPosition(int row, int col) const {
     }
     
     // Check if this position is used (11 keys in 3x4 matrix)
-    // Layout: Top row (4 keys), Middle row (3 keys), Bottom row (4 keys)
-    // The unused position is Row 1, Col 3 (middle row, rightmost position)
+    // Physical layout: Bottom row (Row 0, 4 keys), Middle row (Row 1, 3 keys), Top row (Row 2, 4 keys)
+    // The unused position is Row 1, Col 3 (middle row, rightmost position - not physically connected)
     return !(row == 1 && col == 3);
 }
 
@@ -268,6 +306,10 @@ void DigitalManager::UpdateButtonState(ButtonState& button, bool current_pressed
     
     uint32_t now = hw_->system.GetNow();
     bool previous_pressed = button.pressed;
+    
+    // Clear was_pressed at the start of each update cycle
+    // This ensures it's only true for ONE scan cycle after a press is detected
+    button.was_pressed = false;
     
     // If state changed, check if enough time has passed since last change
     if (current_pressed != button.pressed) {
@@ -279,7 +321,10 @@ void DigitalManager::UpdateButtonState(ButtonState& button, bool current_pressed
     }
     
     // Detect rising edge: was_pressed is true only for ONE scan cycle when transitioning from false to true
-    button.was_pressed = (!previous_pressed && current_pressed);
+    // Only set was_pressed if we're transitioning from not pressed to pressed
+    if (!previous_pressed && current_pressed) {
+        button.was_pressed = true;
+    }
     
     // Update pressed state
     button.pressed = current_pressed;

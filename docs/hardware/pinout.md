@@ -17,9 +17,9 @@ This document tracks the detailed pin assignments for the OpenChord custom hardw
 | Category | Pins Used | Pin Numbers | Notes |
 |----------|-----------|-------------|-------|
 | SDMMC (SD Card) | 6 | 2-7 | SD card interface |
-| SPI (Display) | 5 | 1, 8-11 | Display interface (DC on pin 1) |
+| SPI (Display) | 5 | 8-11, 14-15 | Display interface (DC on pin 14, RST on pin 15) |
 | MIDI (UART) | 2 | 12-13 | UART4 for MIDI I/O |
-| User Interface | 8 | 14-15, 22-26, 34-35 | Joystick, volume, mic, encoder, battery |
+| User Interface | 8 | 1, 22-26, 34-35 | Joystick button (pin 1), volume, mic, encoder, battery |
 | Audio I/O | 5 | 16-20 | Audio in/out + ground |
 | Key Matrix | 7 | 27-33 | 11 keys in 4x3 matrix |
 | USB | 2 | 36-37 | USB interface |
@@ -36,9 +36,10 @@ This document tracks the detailed pin assignments for the OpenChord custom hardw
 | | VCC | 38 | +3V3D | Power |
 | | GND | 40 | GND | Ground |
 | | CS | 8 | SPI1_CS | Chip select |
-| | A0/DC | 1 | D0 | Data/Command (GPIO) |
+| | A0/DC | 14 | D13 | Data/Command (GPIO, USART1_TX) |
 | | CLK | 9 | SPI1_SCK | Clock |
 | | Data | 11 | SPI1_MOSI | Data out |
+| | RST | 15 | D14 | Reset (GPIO, USART1_RX) |
 | **MicroSD Card** | VCC | 38 | +3V3D | Power |
 | | GND | 40 | GND | Ground |
 | | CLK | 7 | SDMMC1_CK | Clock |
@@ -47,11 +48,13 @@ This document tracks the detailed pin assignments for the OpenChord custom hardw
 | | DAT1 | 4 | SDMMC1_D1 | Data 1 |
 | | DAT2 | 3 | SDMMC1_D2 | Data 2 |
 | | DAT3 | 2 | SDMMC1_D3 | Data 3 |
-| **Joystick** | VCC | 21 | +3V3A | Power |
-| | GND | 40 | GND | Ground |
-| | VRX | 24 | ADC2 | X axis |
-| | VRY | 25 | ADC3 | Y axis |
-| | SW | 14 | GPIO | Button |
+| **Joystick** (Adafruit #5628) | Joystick Pin | Daisy Pin | Daisy Pin Name | Notes |
+| | Pin 0 (Pot Rail) | 21 | +3V3A | VCC rail for both potentiometers (3.3V) |
+| | Pin 1 (Pot Rail) | 40 | GND | GND rail for both potentiometers |
+| | Pin 2 (Y Wiper) | 25 | ADC3 | Y-axis wiper (up/down axis, analog voltage divider output) |
+| | Pin 5 (X Wiper) | 24 | ADC2 | X-axis wiper (left/right axis, analog voltage divider output) |
+| | Pin 3 (Button) | 1 | D0 | Button contact 1 (with internal pull-up) |
+| | Pin 4 (Button) | 40 | GND | Button contact 2 (connects to Pin 3 when pressed) |
 | **Encoder** | A | 34 | GPIO | Encoder A |
 | | B | 35 | GPIO | Encoder B |
 | | SW | - | - | Not connected |
@@ -72,7 +75,7 @@ This document tracks the detailed pin assignments for the OpenChord custom hardw
 | **Volume** | Pot | 22 | ADC0 | Volume control |
 | **Microphone** | Mic In | 23 | ADC1 | Microphone input |
 | **Battery** | Monitor | 26 | ADC4 | Voltage divider |
-| **Audio Switch** | TRS Switch | 15 | GPIO | Input select |
+| **Audio Switch** | TRS Switch | - | - | Not connected (pin 15 used for display RST) |
 | **USB** | D- | 36 | USB_HS_D- | USB data - |
 | | D+ | 37 | USB_HS_D+ | USB data + |
 

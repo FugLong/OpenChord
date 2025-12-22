@@ -144,17 +144,36 @@ if [ -f "$TARGET_FILE" ]; then
         print_info "✓ Successfully copied to: $TARGET_FILE"
         print_info ""
         print_info "Next steps:"
-        print_info "  1. Safely eject/unmount the SD card"
-        print_info "  2. Insert SD card into device"
-        print_info "  3. Power cycle the device"
-        print_info "  4. Bootloader will detect and flash the firmware automatically"
-        print_info "  5. LED will indicate flashing progress"
+        print_info "  1. Insert SD card into device"
+        print_info "  2. Power cycle the device"
+        print_info "  3. Bootloader will detect and flash the firmware automatically"
+        print_info "  4. LED will indicate flashing progress"
         print_info ""
         print_warn "IMPORTANT: Make sure SD card is formatted as FAT32!"
         print_info ""
         print_warn "NOTE: After flashing, remove $TARGET_NAME from SD card"
         print_info "      (or it will try to flash again on next boot)"
         print_info "      Run: ./clean_sd_bin.sh to remove it automatically"
+        print_info ""
+        
+        # Automatically eject the SD card volume (same one we just copied to)
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            print_info "Ejecting SD card volume: $SD_MOUNT"
+            # diskutil eject can take the mount point directly - this ejects only this specific volume
+            if diskutil eject "$SD_MOUNT" > /dev/null 2>&1; then
+                print_info "✓ Successfully ejected SD card"
+            else
+                print_warn "Failed to eject automatically. Please eject manually."
+            fi
+        else
+            # Linux - unmount instead of eject
+            print_info "Unmounting SD card volume: $SD_MOUNT"
+            if umount "$SD_MOUNT" 2>/dev/null; then
+                print_info "✓ Successfully unmounted SD card"
+            else
+                print_warn "Failed to unmount automatically. Please unmount manually."
+            fi
+        fi
     else
         print_error "File size mismatch! Original: $BIN_SIZE, Copied: $COPIED_SIZE"
         exit 1

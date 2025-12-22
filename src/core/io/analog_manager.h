@@ -86,6 +86,8 @@ public:
     float GetJoystickY() const;
     float GetJoystickDeltaX() const;
     float GetJoystickDeltaY() const;
+    float GetJoystickXRaw() const;  // Raw ADC value (0.0-1.0)
+    float GetJoystickYRaw() const;  // Raw ADC value (0.0-1.0)
     
     // Microphone
     float GetMicrophoneLevel() const;

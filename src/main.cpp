@@ -1,7 +1,8 @@
 #include "daisy_seed.h"
 #include "daisysp.h"
+#include "core/config.h"
 #include "core/io/io_manager.h"
-#include "core/io/digital_manager.h"
+#include "core/io/input_manager.h"
 #include "core/io/storage_manager.h"
 #include "core/audio/volume_manager.h"
 #include "core/audio/audio_engine.h"
@@ -10,9 +11,6 @@
 
 using namespace daisy;
 using namespace OpenChord;
-
-// Debug mode flag (matches midi_handler.cpp DEBUG_MODE)
-#define DEBUG_MODE false
 
 // Use external USB logger for serial output (pins 36-37)
 using ExternalLog = Logger<LOGGER_EXTERNAL>;
@@ -26,6 +24,7 @@ VolumeManager volume_mgr;
 AudioEngine audio_engine;
 IOManager io_manager;
 OpenChordMidiHandler midi_handler;
+InputManager input_manager;
 
 void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, size_t size) {
     audio_engine.ProcessAudio(in, out, size);
@@ -53,6 +52,9 @@ int main(void) {
     // 4) Initialize managers
     io_manager.Init(&hw);
     
+    // Initialize unified input manager (coordinates buttons, joystick, encoder)
+    input_manager.Init(&io_manager);
+    
     volume_mgr.SetIO(&io_manager);
     audio_engine.Init(&hw);
     audio_engine.SetVolumeManager(&volume_mgr);
@@ -66,6 +68,22 @@ int main(void) {
     ExternalLog::PrintLine("MIDI handler initialized");
     
     ExternalLog::PrintLine("Managers initialized");
+    
+    // Check display status and test it
+    DisplayManager* display = io_manager.GetDisplay();
+    if (display) {
+        if (display->IsHealthy()) {
+            ExternalLog::PrintLine("Display: Initialized OK");
+            // Give display extra time to stabilize after init
+            hw.DelayMs(200);
+            // Actually draw something to the display!
+            display->TestDisplay();
+            ExternalLog::PrintLine("Display: Test pattern sent");
+        } else {
+            ExternalLog::PrintLine("Display: Initialization FAILED");
+        }
+    }
+    
     ExternalLog::PrintLine("Audio engine ready");
     
     // 6) Start audio
@@ -89,60 +107,62 @@ int main(void) {
     // 7) Main loop - 1kHz constant timing for predictable behavior
     while(1) {
         io_manager.Update();
-        volume_mgr.Update();  // Update volume manager to get latest ADC values
+        input_manager.Update();       // Update unified input manager (handles all inputs)
+        volume_mgr.Update();          // Update volume manager to get latest ADC values
         
-        // Check button matrix and generate MIDI events
-        DigitalManager* digital = io_manager.GetDigital();
-        if (digital) {
-            // Check each button position for press/release
-            for (int row = 0; row < 3; row++) {
-                for (int col = 0; col < 4; col++) {
-                    // Skip unused position (Row 1, Col 3)
-                    if (row == 1 && col == 3) continue;
-                    
-                    // Calculate MIDI note: sequential from 60 (C4) for all 11 keys
-                    // Layout: bottom-to-top, left-to-right, so bottom-left (2,0) = 60
-                    // Row 2: cols 0,1,2,3 = notes 60,61,62,63
-                    // Row 1: cols 0,1,2 = notes 64,65,66 (skip col 3)
-                    // Row 0: cols 0,1,2,3 = notes 67,68,69,70
-                    uint8_t midi_note = 60;
-                    if (row == 2) {
-                        midi_note = 60 + col; // 60-63
-                    } else if (row == 1) {
-                        midi_note = 64 + col; // 64-66 (col 3 skipped)
-                    } else { // row == 0
-                        midi_note = 67 + col; // 67-70
-                    }
-                    
-                    // Check for button press (just pressed) - WasKeyPressed() detects edge
-                    // This returns true only for ONE scan cycle when button transitions from not pressed to pressed
-                    if (digital->WasKeyPressed(row, col)) {
-                        // Send MIDI Note On
-                        Midi::AddGeneratedEvent(
-                            daisy::MidiMessageType::NoteOn,
-                            0,  // Channel 0
-                            midi_note,
-                            100 // Velocity
-                        );
-                    }
-                    
-                    // Check for button release (just released)
-                    // Track previous state to detect release edge
-                    static bool prev_key_states[3][4] = {false};
-                    bool current_pressed = digital->IsKeyPressed(row, col);
-                    if (prev_key_states[row][col] && !current_pressed) {
-                        // Key was pressed, now released
-                        Midi::AddGeneratedEvent(
-                            daisy::MidiMessageType::NoteOff,
-                            0,  // Channel 0
-                            midi_note,
-                            0   // Velocity (0 for NoteOff)
-                        );
-                    }
-                    prev_key_states[row][col] = current_pressed;
-                }
+        // Handle button inputs using the unified input manager
+        // For now, we'll handle MIDI note generation for musical buttons
+        // System buttons will be handled in future UI/system code
+        
+        ButtonInputHandler& buttons = input_manager.GetButtons();
+        
+        // Process musical buttons (7 keys: 4 white + 3 black)
+        // Map to MIDI notes: White keys = 60-63, Black keys = 64-66
+        static bool prev_musical_states[7] = {false};
+        
+        for (int i = 0; i < static_cast<int>(MusicalButton::COUNT); i++) {
+            MusicalButton button = static_cast<MusicalButton>(i);
+            bool current_pressed = buttons.IsMusicalButtonPressed(button);
+            bool was_pressed = buttons.WasMusicalButtonPressed(button);
+            
+            // Calculate MIDI note based on button
+            // White keys (0-3): notes 60-63
+            // Black keys (4-6): notes 64-66
+            uint8_t midi_note = (i < 4) ? (60 + i) : (64 + (i - 4));
+            
+            // Handle press event
+            if (was_pressed || (!prev_musical_states[i] && current_pressed)) {
+                Midi::AddGeneratedEvent(
+                    daisy::MidiMessageType::NoteOn,
+                    0,  // Channel 0
+                    midi_note,
+                    100 // Velocity
+                );
             }
+            
+            // Handle release event
+            if (prev_musical_states[i] && !current_pressed) {
+                Midi::AddGeneratedEvent(
+                    daisy::MidiMessageType::NoteOff,
+                    0,  // Channel 0
+                    midi_note,
+                    0   // Velocity (0 for NoteOff)
+                );
+            }
+            
+            prev_musical_states[i] = current_pressed;
         }
+        
+        // Process system buttons (4 keys on top row)
+        // These will be used for UI/system control in the future
+        // For now, we just track their state but don't generate MIDI
+        // TODO: Implement system button handlers for:
+        // - INPUT: Input selection (also play/pause loop)
+        // - INSTRUMENT: Instrument selection/options
+        // - FX: FX selection/options
+        // - RECORD: Record start/stop, loop settings
+        
+        // Joystick control code removed - pins and initialization remain for future use
         
         // Process MIDI events at 1kHz for responsive timing
         midi_handler.ProcessMidi(&audio_engine);

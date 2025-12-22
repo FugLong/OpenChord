@@ -4,7 +4,7 @@
 #include <cstdint>
 
 // Key matrix dimensions
-// Layout: Top row (4 keys), Middle row (3 keys), Bottom row (4 keys)
+// Physical layout: Bottom row (Row 0, 4 keys), Middle row (Row 1, 3 keys), Top row (Row 2, 4 keys)
 static constexpr int KEY_MATRIX_ROWS = 3;
 static constexpr int KEY_MATRIX_COLS = 4;
 static constexpr int KEY_MATRIX_KEYS = 11; // 3x4 matrix with one unused position (Row 1, Col 3)

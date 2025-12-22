@@ -29,13 +29,13 @@ AnalogManager::~AnalogManager() {
 void AnalogManager::Init(daisy::DaisySeed* hw) {
     hw_ = hw;
     
-    // Initialize pin assignments using centralized pin configuration
-    adc_pins_[0] = OpenChord::PinConfig::VOLUME_POT;    // ADC0 - Volume pot (Pin 22)
-    adc_pins_[1] = OpenChord::PinConfig::MICROPHONE;    // ADC1 - Microphone (Pin 23)
-    // Temporarily disable other ADC channels to get volume working first
-    // adc_pins_[2] = OpenChord::PinConfig::JOYSTICK_X;    // ADC2 - Joystick X (Pin 24)
-    // adc_pins_[3] = OpenChord::PinConfig::JOYSTICK_Y;    // ADC3 - Joystick Y (Pin 25)
-    adc_pins_[4] = OpenChord::PinConfig::BATTERY_MON;   // ADC4 - Battery monitor (Pin 26)
+    // Initialize pin assignments
+    // Using Daisy pin constants directly to avoid linker issues with static constexpr
+    adc_pins_[0] = daisy::seed::A0;    // ADC0 - Volume pot (Pin 22, A0)
+    adc_pins_[1] = daisy::seed::A1;    // ADC1 - Microphone (Pin 23, A1)
+    adc_pins_[2] = daisy::seed::A2;    // ADC2 - Joystick X (Pin 24, A2, left/right)
+    adc_pins_[3] = daisy::seed::A3;    // ADC3 - Joystick Y (Pin 25, A3, up/down)
+    adc_pins_[4] = daisy::seed::A4;    // ADC4 - Battery monitor (Pin 26, A4)
     
     // Initialize joystick calibration
     joystick_cal_.center_x = 0.5f;
@@ -121,6 +121,14 @@ float AnalogManager::GetJoystickDeltaX() const {
 
 float AnalogManager::GetJoystickDeltaY() const {
     return inputs_[2].delta;
+}
+
+float AnalogManager::GetJoystickXRaw() const {
+    return inputs_[1].filtered_value;  // Raw ADC value (0.0-1.0)
+}
+
+float AnalogManager::GetJoystickYRaw() const {
+    return inputs_[2].filtered_value;  // Raw ADC value (0.0-1.0)
 }
 
 // Microphone
@@ -221,16 +229,21 @@ void AnalogManager::ConfigureADC() {
     // Reset ADC peripheral before configuration (helps with cold boot issues)
     hw_->DelayMs(10);
     
-    // Configure volume pot, microphone, and battery ADC channels
-    adc_configs_[0].InitSingle(adc_pins_[0]);  // ADC channel 0 - Volume pot
-    adc_configs_[1].InitSingle(adc_pins_[1]);  // ADC channel 1 - Microphone
-    adc_configs_[2].InitSingle(adc_pins_[4]);  // ADC channel 2 - Battery monitor (Pin 26, ADC4)
+    // Configure volume pot, battery, joystick, and microphone ADC channels
+    // Note: ADC channel numbers here are logical (array index), physical pins are different
+    adc_configs_[0].InitSingle(adc_pins_[0]);  // ADC channel 0 - Volume pot (Pin 22, ADC0)
+    adc_configs_[1].InitSingle(adc_pins_[4]);  // ADC channel 1 - Battery monitor (Pin 26, ADC4)
+    adc_configs_[2].InitSingle(adc_pins_[2]);  // ADC channel 2 - Joystick X (Pin 24, ADC2, left/right)
+    adc_configs_[3].InitSingle(adc_pins_[3]);  // ADC channel 3 - Joystick Y (Pin 25, ADC3, up/down)
+    adc_configs_[4].InitSingle(adc_pins_[1]);  // ADC channel 4 - Microphone (Pin 23, ADC1)
     adc_configured_[0] = true;
-    adc_configured_[1] = true;
-    adc_configured_[4] = true;  // Mark battery input as configured (uses inputs_[4])
+    adc_configured_[1] = true;  // Battery
+    adc_configured_[2] = true;  // Joystick X
+    adc_configured_[3] = true;  // Joystick Y
+    adc_configured_[4] = true;  // Microphone
     
-    // Initialize the ADC system with three channels
-    hw_->adc.Init(&adc_configs_[0], 3);
+    // Initialize the ADC system with 5 channels
+    hw_->adc.Init(&adc_configs_[0], 5);
     
     // Add delay for ADC to stabilize
     hw_->DelayMs(20);
@@ -239,16 +252,15 @@ void AnalogManager::ConfigureADC() {
     
     // Mark configured inputs as healthy
     // inputs_[0] = VOLUME_POT (ADC channel 0)
-    // inputs_[3] = MICROPHONE (ADC channel 1)
-    // inputs_[4] = BATTERY_MON (ADC channel 2)
+    // inputs_[1] = JOYSTICK_X (ADC channel 2)
+    // inputs_[2] = JOYSTICK_Y (ADC channel 3)
+    // inputs_[3] = MICROPHONE (ADC channel 4)
+    // inputs_[4] = BATTERY_MON (ADC channel 1)
     inputs_[0].healthy = true;
-    inputs_[3].healthy = true;
-    inputs_[4].healthy = true;
-    for (int i = 1; i < NUM_ADC_CHANNELS; i++) {
-        if (i != 3 && i != 4) {
-            inputs_[i].healthy = false;
-        }
-    }
+    inputs_[1].healthy = true;  // Joystick X
+    inputs_[2].healthy = true;  // Joystick Y
+    inputs_[3].healthy = true;  // Microphone
+    inputs_[4].healthy = true;  // Battery
 }
 
 void AnalogManager::UpdateADC() {
@@ -263,40 +275,33 @@ void AnalogManager::UpdateInputs() {
     
     // Read the volume pot value (ADC channel 0 -> inputs_[0])
     float float_value = hw_->adc.GetFloat(0);
-    
-    // Store the float value
     inputs_[0].raw_value = float_value;
     inputs_[0].filtered_value = float_value;
     inputs_[0].healthy = (float_value >= 0.0f && float_value <= 1.0f);
     
-    // Read the microphone value (ADC channel 1 -> inputs_[3])
-    float mic_value = hw_->adc.GetFloat(1);
-    
-    // Store the microphone value (MAX9814 outputs centered around ~0.38, range ~0.1-0.65)
-    inputs_[3].raw_value = mic_value;
-    inputs_[3].filtered_value = mic_value;
-    inputs_[3].healthy = (mic_value >= 0.0f && mic_value <= 1.0f);
-    
-    // Read the battery voltage (ADC channel 2 -> inputs_[4])
-    float battery_value = hw_->adc.GetFloat(2);
+    // Read the battery voltage (ADC channel 1 -> inputs_[4])
+    float battery_value = hw_->adc.GetFloat(1);
     inputs_[4].raw_value = battery_value;
     inputs_[4].filtered_value = battery_value;
     inputs_[4].healthy = (battery_value >= 0.0f && battery_value <= 1.0f);
     
-    // Commented out verbose debug logging
-    // static uint32_t debug_counter = 0;
-    // if (++debug_counter % 100 == 0) { // Every 100 iterations = ~1 second
-    //     hw_->PrintLine("UpdateInputs Debug - ADC: %.4f, Stored: %.4f", float_value, inputs_[0].raw_value);
-    // }
+    // Read the joystick X value (ADC channel 2 -> inputs_[1])
+    float joystick_x = hw_->adc.GetFloat(2);
+    inputs_[1].raw_value = joystick_x;
+    inputs_[1].filtered_value = joystick_x;
+    inputs_[1].healthy = (joystick_x >= 0.0f && joystick_x <= 1.0f);
     
-    // Mark other unused channels as unhealthy
-    for (int i = 1; i < NUM_ADC_CHANNELS; i++) {
-        if (i != 3 && i != 4) {
-            inputs_[i].raw_value = 0.0f;
-            inputs_[i].filtered_value = 0.0f;
-            inputs_[i].healthy = false;
-        }
-    }
+    // Read the joystick Y value (ADC channel 3 -> inputs_[2])
+    float joystick_y = hw_->adc.GetFloat(3);
+    inputs_[2].raw_value = joystick_y;
+    inputs_[2].filtered_value = joystick_y;
+    inputs_[2].healthy = (joystick_y >= 0.0f && joystick_y <= 1.0f);
+    
+    // Read the microphone value (ADC channel 4 -> inputs_[3])
+    float mic_value = hw_->adc.GetFloat(4);
+    inputs_[3].raw_value = mic_value;
+    inputs_[3].filtered_value = mic_value;
+    inputs_[3].healthy = (mic_value >= 0.0f && mic_value <= 1.0f);
 }
 
 void AnalogManager::UpdateBattery() {
@@ -304,7 +309,7 @@ void AnalogManager::UpdateBattery() {
     
     uint32_t current_time = hw_->system.GetNow();
     if (current_time - battery_.last_check_time >= battery_.check_interval_ms) {
-        // Read battery voltage from ADC
+        // Read battery voltage from ADC channel 1
         float adc_value = inputs_[4].filtered_value;
         
         // Convert ADC value to voltage (3.3V reference, 2:1 voltage divider)

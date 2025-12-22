@@ -1,8 +1,6 @@
 #include "midi_handler.h"
 #include "daisy_seed.h"
-
-// Debug mode - disable USB MIDI to allow serial output for debugging
-#define DEBUG_MODE false
+#include "../config.h"
 
 namespace OpenChord {
 
