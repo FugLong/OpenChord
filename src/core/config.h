@@ -12,5 +12,14 @@
 //   - Enables verbose debug output
 // 
 // Set to true for debugging, false for normal operation
-#define DEBUG_MODE true
+#define DEBUG_MODE false
+
+// Debug screen flag - when true:
+//   - Enables debug screen system on the OLED display
+//   - Shows various debug views (system status, inputs, analog, audio, MIDI)
+//   - Allows navigation between views using encoder
+// 
+// Set to true to enable debug screen, false to disable
+// When disabled, the display can be used by production UI
+#define DEBUG_SCREEN_ENABLED true
 

@@ -49,29 +49,27 @@ void JoystickInputHandler::Update() {
 void JoystickInputHandler::ProcessJoystick() {
     if (!analog_manager_) return;
     
-    // Get raw joystick values (0.0 to 1.0 from AnalogManager)
-    float raw_x = analog_manager_->GetJoystickX();
-    float raw_y = analog_manager_->GetJoystickY();
+    // Get normalized joystick values (-1.0 to 1.0 from AnalogManager)
+    // AnalogManager already handles centering, dead zone, and clamping
+    current_x_ = analog_manager_->GetJoystickX();
+    current_y_ = analog_manager_->GetJoystickY();
     
-    // Convert to centered coordinates (-1.0 to 1.0, with 0.0 at center)
-    // AnalogManager returns normalized values, we need to center them
-    // Assuming center is at 0.5 (typical for joysticks)
-    current_x_ = (raw_x - 0.5f) * 2.0f;
-    current_y_ = (raw_y - 0.5f) * 2.0f;
-    
-    // Apply dead zone
+    // Note: Dead zone is already applied by AnalogManager
+    // We can apply additional dead zone here if needed for this handler
     float magnitude = sqrtf(current_x_ * current_x_ + current_y_ * current_y_);
     if (magnitude < dead_zone_) {
         current_x_ = 0.0f;
         current_y_ = 0.0f;
-    } else {
-        // Scale to remove dead zone
+    } else if (dead_zone_ > 0.0f) {
+        // Scale to remove additional dead zone (if handler dead zone > AnalogManager dead zone)
         float scale = (magnitude - dead_zone_) / (1.0f - dead_zone_);
-        current_x_ = (current_x_ / magnitude) * scale;
-        current_y_ = (current_y_ / magnitude) * scale;
+        if (scale > 0.0f && magnitude > 0.0f) {
+            current_x_ = (current_x_ / magnitude) * scale;
+            current_y_ = (current_y_ / magnitude) * scale;
+        }
     }
     
-    // Clamp to -1.0 to 1.0 range
+    // Clamp to -1.0 to 1.0 range (should already be clamped by AnalogManager, but be safe)
     if (current_x_ > 1.0f) current_x_ = 1.0f;
     if (current_x_ < -1.0f) current_x_ = -1.0f;
     if (current_y_ > 1.0f) current_y_ = 1.0f;

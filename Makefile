@@ -1,5 +1,5 @@
 TARGET = OpenChord
-CPP_SOURCES = src/main.cpp src/core/midi/midi_hub.cpp src/core/midi/midi_handler.cpp src/core/audio/volume_manager.cpp src/core/audio/audio_engine.cpp src/core/io/io_manager.cpp src/core/io/digital_manager.cpp src/core/io/button_input_handler.cpp src/core/io/joystick_input_handler.cpp src/core/io/encoder_input_handler.cpp src/core/io/input_manager.cpp src/core/io/analog_manager.cpp src/core/io/serial_manager.cpp src/core/io/display_manager.cpp src/core/io/storage_manager.cpp
+CPP_SOURCES = src/main.cpp src/core/midi/midi_hub.cpp src/core/midi/midi_handler.cpp src/core/audio/volume_manager.cpp src/core/audio/audio_engine.cpp src/core/io/io_manager.cpp src/core/io/digital_manager.cpp src/core/io/button_input_handler.cpp src/core/io/joystick_input_handler.cpp src/core/io/encoder_input_handler.cpp src/core/io/input_manager.cpp src/core/io/analog_manager.cpp src/core/io/serial_manager.cpp src/core/io/display_manager.cpp src/core/io/storage_manager.cpp src/core/ui/debug_screen.cpp src/core/ui/debug_views.cpp
 
 # FatFS character conversion functions (required for LFN support)
 C_SOURCES = lib/libDaisy/Middlewares/Third_Party/FatFs/src/option/ccsbcs.c

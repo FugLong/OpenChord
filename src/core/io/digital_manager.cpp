@@ -250,12 +250,15 @@ void DigitalManager::UpdateEncoder() {
     if (!hw_) return;
     
     encoder_.Debounce();
-    int current_value = encoder_.Increment();
     
-    if (current_value != encoder_state_.last_value) {
-        encoder_state_.delta = static_cast<float>(current_value - encoder_state_.last_value);
-        encoder_state_.value = current_value;
-        encoder_state_.last_value = current_value;
+    // Increment() returns -1, 0, or 1 (delta), not accumulated value
+    // We need to manually accumulate it like the Daisy Seed example
+    int increment = encoder_.Increment();
+    
+    if (increment != 0) {
+        // Accumulate the encoder value
+        encoder_state_.value += increment;
+        encoder_state_.delta = static_cast<float>(increment);
     } else {
         encoder_state_.delta = 0.0f;
     }

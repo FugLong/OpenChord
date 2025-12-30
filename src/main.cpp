@@ -8,6 +8,10 @@
 #include "core/audio/audio_engine.h"
 #include "core/midi/midi_handler.h"
 #include "core/midi/midi_interface.h"
+#if DEBUG_SCREEN_ENABLED
+#include "core/ui/debug_screen.h"
+#include "core/ui/debug_views.h"
+#endif
 
 using namespace daisy;
 using namespace OpenChord;
@@ -25,6 +29,31 @@ AudioEngine audio_engine;
 IOManager io_manager;
 OpenChordMidiHandler midi_handler;
 InputManager input_manager;
+
+#if DEBUG_SCREEN_ENABLED
+DebugScreen debug_screen;
+
+// Wrapper functions to pass global instances to render functions
+void RenderSystemStatusWrapper(DisplayManager* display) {
+    RenderSystemStatus(display, &io_manager);
+}
+
+void RenderInputStatusWrapper(DisplayManager* display) {
+    RenderInputStatus(display, &input_manager, &io_manager);
+}
+
+void RenderAnalogStatusWrapper(DisplayManager* display) {
+    RenderAnalogStatus(display, &io_manager);
+}
+
+void RenderAudioStatusWrapper(DisplayManager* display) {
+    RenderAudioStatus(display, &audio_engine, &volume_mgr);
+}
+
+void RenderMIDIStatusWrapper(DisplayManager* display) {
+    RenderMIDIStatus(display, &midi_handler);
+}
+#endif
 
 void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, size_t size) {
     audio_engine.ProcessAudio(in, out, size);
@@ -69,16 +98,29 @@ int main(void) {
     
     ExternalLog::PrintLine("Managers initialized");
     
-    // Check display status and test it
+    // Check display status and initialize debug screen if enabled
     DisplayManager* display = io_manager.GetDisplay();
     if (display) {
         if (display->IsHealthy()) {
             ExternalLog::PrintLine("Display: Initialized OK");
             // Give display extra time to stabilize after init
             hw.DelayMs(200);
-            // Actually draw something to the display!
+            
+            #if DEBUG_SCREEN_ENABLED
+            // Initialize debug screen system
+            debug_screen.Init(display, &input_manager);
+            debug_screen.AddView("System", RenderSystemStatusWrapper);
+            debug_screen.AddView("Inputs", RenderInputStatusWrapper);
+            debug_screen.AddView("Analog", RenderAnalogStatusWrapper);
+            debug_screen.AddView("Audio", RenderAudioStatusWrapper);
+            debug_screen.AddView("MIDI", RenderMIDIStatusWrapper);
+            debug_screen.SetEnabled(true);
+            ExternalLog::PrintLine("Debug screen initialized");
+            #else
+            // Test display with simple pattern if debug screen disabled
             display->TestDisplay();
             ExternalLog::PrintLine("Display: Test pattern sent");
+            #endif
         } else {
             ExternalLog::PrintLine("Display: Initialization FAILED");
         }
@@ -109,6 +151,10 @@ int main(void) {
         io_manager.Update();
         input_manager.Update();       // Update unified input manager (handles all inputs)
         volume_mgr.Update();          // Update volume manager to get latest ADC values
+        
+        #if DEBUG_SCREEN_ENABLED
+        debug_screen.Update();        // Update debug screen (renders at configured interval)
+        #endif
         
         // Handle button inputs using the unified input manager
         // For now, we'll handle MIDI note generation for musical buttons

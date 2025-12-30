@@ -103,45 +103,45 @@ float AnalogManager::GetADCValue(int channel) const {
 
 // Joystick
 void AnalogManager::GetJoystick(float* x, float* y) const {
-    if (x) *x = inputs_[1].normalized_value;
-    if (y) *y = inputs_[2].normalized_value;
+    if (x) *x = inputs_[2].normalized_value;  // inputs_[2] = Joystick X (ADC channel 2)
+    if (y) *y = inputs_[3].normalized_value;  // inputs_[3] = Joystick Y (ADC channel 3)
 }
 
 float AnalogManager::GetJoystickX() const {
-    return inputs_[1].normalized_value;
+    return inputs_[2].normalized_value;  // inputs_[2] = Joystick X (ADC channel 2)
 }
 
 float AnalogManager::GetJoystickY() const {
-    return inputs_[2].normalized_value;
+    return inputs_[3].normalized_value;  // inputs_[3] = Joystick Y (ADC channel 3)
 }
 
 float AnalogManager::GetJoystickDeltaX() const {
-    return inputs_[1].delta;
+    return inputs_[2].delta;  // inputs_[2] = Joystick X (ADC channel 2)
 }
 
 float AnalogManager::GetJoystickDeltaY() const {
-    return inputs_[2].delta;
+    return inputs_[3].delta;  // inputs_[3] = Joystick Y (ADC channel 3)
 }
 
 float AnalogManager::GetJoystickXRaw() const {
-    return inputs_[1].filtered_value;  // Raw ADC value (0.0-1.0)
+    return inputs_[2].raw_value;  // Raw ADC value (0.0-1.0) - inputs_[2] is ADC channel 2 (Joystick X)
 }
 
 float AnalogManager::GetJoystickYRaw() const {
-    return inputs_[2].filtered_value;  // Raw ADC value (0.0-1.0)
+    return inputs_[3].raw_value;  // Raw ADC value (0.0-1.0) - inputs_[3] is ADC channel 3 (Joystick Y)
 }
 
 // Microphone
 float AnalogManager::GetMicrophoneLevel() const {
-    return inputs_[3].filtered_value;
+    return inputs_[4].filtered_value;  // inputs_[4] = ADC channel 4 (Microphone)
 }
 
 float AnalogManager::GetMicrophoneNormalized() const {
-    return inputs_[3].normalized_value;
+    return inputs_[4].normalized_value;  // inputs_[4] = ADC channel 4 (Microphone)
 }
 
 bool AnalogManager::IsMicrophoneClipping() const {
-    return inputs_[3].clipping;
+    return inputs_[4].clipping;  // inputs_[4] = ADC channel 4 (Microphone)
 }
 
 // Battery
@@ -171,8 +171,8 @@ void AnalogManager::CalibrateJoystick() {
     
     // Sample joystick for a short time to find range
     for (int i = 0; i < 100; i++) {
-        float x = inputs_[1].raw_value;
-        float y = inputs_[2].raw_value;
+        float x = inputs_[2].raw_value;  // Joystick X (ADC channel 2)
+        float y = inputs_[3].raw_value;  // Joystick Y (ADC channel 3)
         
         if (x < min_x) min_x = x;
         if (x > max_x) max_x = x;
@@ -251,16 +251,17 @@ void AnalogManager::ConfigureADC() {
     hw_->adc.Start();
     
     // Mark configured inputs as healthy
+    // Note: Array index matches ADC channel number, not physical input type
     // inputs_[0] = VOLUME_POT (ADC channel 0)
-    // inputs_[1] = JOYSTICK_X (ADC channel 2)
-    // inputs_[2] = JOYSTICK_Y (ADC channel 3)
-    // inputs_[3] = MICROPHONE (ADC channel 4)
-    // inputs_[4] = BATTERY_MON (ADC channel 1)
-    inputs_[0].healthy = true;
-    inputs_[1].healthy = true;  // Joystick X
-    inputs_[2].healthy = true;  // Joystick Y
-    inputs_[3].healthy = true;  // Microphone
-    inputs_[4].healthy = true;  // Battery
+    // inputs_[1] = BATTERY_MON (ADC channel 1)
+    // inputs_[2] = JOYSTICK_X (ADC channel 2)
+    // inputs_[3] = JOYSTICK_Y (ADC channel 3)
+    // inputs_[4] = MICROPHONE (ADC channel 4)
+    inputs_[0].healthy = true;  // Volume
+    inputs_[1].healthy = true;  // Battery
+    inputs_[2].healthy = true;  // Joystick X
+    inputs_[3].healthy = true;  // Joystick Y
+    inputs_[4].healthy = true;  // Microphone
 }
 
 void AnalogManager::UpdateADC() {
@@ -273,35 +274,36 @@ void AnalogManager::UpdateADC() {
 void AnalogManager::UpdateInputs() {
     if (!hw_) return;
     
-    // Read the volume pot value (ADC channel 0 -> inputs_[0])
+    // Read ADC values - array index matches ADC channel number
+    // inputs_[0] = ADC channel 0 (Volume pot)
     float float_value = hw_->adc.GetFloat(0);
     inputs_[0].raw_value = float_value;
     inputs_[0].filtered_value = float_value;
     inputs_[0].healthy = (float_value >= 0.0f && float_value <= 1.0f);
     
-    // Read the battery voltage (ADC channel 1 -> inputs_[4])
+    // inputs_[1] = ADC channel 1 (Battery monitor)
     float battery_value = hw_->adc.GetFloat(1);
-    inputs_[4].raw_value = battery_value;
-    inputs_[4].filtered_value = battery_value;
-    inputs_[4].healthy = (battery_value >= 0.0f && battery_value <= 1.0f);
+    inputs_[1].raw_value = battery_value;
+    inputs_[1].filtered_value = battery_value;
+    inputs_[1].healthy = (battery_value >= 0.0f && battery_value <= 1.0f);
     
-    // Read the joystick X value (ADC channel 2 -> inputs_[1])
+    // inputs_[2] = ADC channel 2 (Joystick X)
     float joystick_x = hw_->adc.GetFloat(2);
-    inputs_[1].raw_value = joystick_x;
-    inputs_[1].filtered_value = joystick_x;
-    inputs_[1].healthy = (joystick_x >= 0.0f && joystick_x <= 1.0f);
+    inputs_[2].raw_value = joystick_x;
+    inputs_[2].filtered_value = joystick_x;
+    inputs_[2].healthy = (joystick_x >= 0.0f && joystick_x <= 1.0f);
     
-    // Read the joystick Y value (ADC channel 3 -> inputs_[2])
+    // inputs_[3] = ADC channel 3 (Joystick Y)
     float joystick_y = hw_->adc.GetFloat(3);
-    inputs_[2].raw_value = joystick_y;
-    inputs_[2].filtered_value = joystick_y;
-    inputs_[2].healthy = (joystick_y >= 0.0f && joystick_y <= 1.0f);
+    inputs_[3].raw_value = joystick_y;
+    inputs_[3].filtered_value = joystick_y;
+    inputs_[3].healthy = (joystick_y >= 0.0f && joystick_y <= 1.0f);
     
-    // Read the microphone value (ADC channel 4 -> inputs_[3])
+    // inputs_[4] = ADC channel 4 (Microphone)
     float mic_value = hw_->adc.GetFloat(4);
-    inputs_[3].raw_value = mic_value;
-    inputs_[3].filtered_value = mic_value;
-    inputs_[3].healthy = (mic_value >= 0.0f && mic_value <= 1.0f);
+    inputs_[4].raw_value = mic_value;
+    inputs_[4].filtered_value = mic_value;
+    inputs_[4].healthy = (mic_value >= 0.0f && mic_value <= 1.0f);
 }
 
 void AnalogManager::UpdateBattery() {
@@ -309,8 +311,8 @@ void AnalogManager::UpdateBattery() {
     
     uint32_t current_time = hw_->system.GetNow();
     if (current_time - battery_.last_check_time >= battery_.check_interval_ms) {
-        // Read battery voltage from ADC channel 1
-        float adc_value = inputs_[4].filtered_value;
+        // Read battery voltage from ADC channel 1 -> inputs_[1]
+        float adc_value = inputs_[1].filtered_value;
         
         // Convert ADC value to voltage (3.3V reference, 2:1 voltage divider)
         // 2:1 divider (equal resistors) gives division ratio of 0.5
@@ -338,38 +340,65 @@ void AnalogManager::ApplyFiltering() {
 }
 
 void AnalogManager::ApplyCalibration() {
-    if (!joystick_cal_.calibrated) return;
+    // Always set normalized values, even without calibration
+    // Convert from 0.0-1.0 range to -1.0 to 1.0 centered range
     
-    // Apply joystick calibration
-    if (inputs_[1].healthy) { // X axis
-        float x = inputs_[1].filtered_value;
-        float normalized_x = (x - joystick_cal_.center_x) / (joystick_cal_.max_x - joystick_cal_.min_x);
+    if (inputs_[2].healthy) { // X axis (ADC channel 2)
+        float x = inputs_[2].filtered_value;
+        float normalized_x;
         
-        // Apply dead zone
-        if (fabs(normalized_x) < joystick_cal_.dead_zone_x) {
-            normalized_x = 0.0f;
+        if (joystick_cal_.calibrated) {
+            // Use calibration
+            normalized_x = (x - joystick_cal_.center_x) / (joystick_cal_.max_x - joystick_cal_.min_x);
+            
+            // Apply dead zone
+            if (fabs(normalized_x) < joystick_cal_.dead_zone_x) {
+                normalized_x = 0.0f;
+            }
+        } else {
+            // Simple conversion: 0.0-1.0 -> -1.0 to 1.0 (center at 0.5)
+            normalized_x = (x - 0.5f) * 2.0f;
+            
+            // Apply dead zone
+            if (fabs(normalized_x) < dead_zone_) {
+                normalized_x = 0.0f;
+            }
         }
         
-        inputs_[1].normalized_value = std::max(-1.0f, std::min(1.0f, normalized_x));
+        inputs_[2].normalized_value = std::max(-1.0f, std::min(1.0f, normalized_x));
     }
     
-    if (inputs_[2].healthy) { // Y axis
-        float y = inputs_[2].filtered_value;
-        float normalized_y = (y - joystick_cal_.center_y) / (joystick_cal_.max_y - joystick_cal_.min_y);
+    if (inputs_[3].healthy) { // Y axis (ADC channel 3)
+        float y = inputs_[3].filtered_value;
+        float normalized_y;
         
-        // Apply dead zone
-        if (fabs(normalized_y) < joystick_cal_.dead_zone_y) {
-            normalized_y = 0.0f;
+        if (joystick_cal_.calibrated) {
+            // Use calibration
+            normalized_y = (y - joystick_cal_.center_y) / (joystick_cal_.max_y - joystick_cal_.min_y);
+            
+            // Apply dead zone
+            if (fabs(normalized_y) < joystick_cal_.dead_zone_y) {
+                normalized_y = 0.0f;
+            }
+        } else {
+            // Simple conversion: 0.0-1.0 -> -1.0 to 1.0 (center at 0.5)
+            // Invert Y axis (typical joystick: up should be positive)
+            normalized_y = (0.5f - y) * 2.0f;
+            
+            // Apply dead zone
+            if (fabs(normalized_y) < dead_zone_) {
+                normalized_y = 0.0f;
+            }
         }
         
-        inputs_[2].normalized_value = std::max(-1.0f, std::min(1.0f, normalized_y));
+        inputs_[3].normalized_value = std::max(-1.0f, std::min(1.0f, normalized_y));
     }
 }
 
 void AnalogManager::DetectClipping() {
     // Check for clipping on microphone input
-    if (inputs_[3].healthy) {
-        inputs_[3].clipping = inputs_[3].filtered_value > 0.95f;
+    if (inputs_[4].healthy) { // Microphone (ADC channel 4)
+        inputs_[4].clipping = inputs_[4].filtered_value > 0.95f;
     }
 }
 
