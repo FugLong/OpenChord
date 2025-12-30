@@ -11,9 +11,6 @@ MainUI::MainUI()
     , input_manager_(nullptr)
     , track_(nullptr)
     , chord_plugin_(nullptr)
-    , render_interval_ms_(100)  // 10 FPS
-    , last_render_time_(0)
-    , needs_refresh_(true)
 {
 }
 
@@ -24,58 +21,34 @@ void MainUI::Init(DisplayManager* display, InputManager* input_manager) {
     display_ = display;
     input_manager_ = input_manager;
     track_ = nullptr;
-    last_render_time_ = 0;
-    needs_refresh_ = true;
 }
 
 void MainUI::SetTrack(Track* track) {
     track_ = track;
-    needs_refresh_ = true;
 }
 
 void MainUI::SetChordPlugin(ChordMappingInput* chord_plugin) {
     chord_plugin_ = chord_plugin;
-    needs_refresh_ = true;
 }
 
 void MainUI::Update() {
-    if (!display_ || !display_->IsHealthy()) return;
-    
-    // Update render timer
-    if (last_render_time_ >= render_interval_ms_ || needs_refresh_) {
-        RenderDefaultView();
-        last_render_time_ = 0;
-        needs_refresh_ = false;
-    } else {
-        last_render_time_++;
-    }
+    // MainUI no longer manages its own rendering
+    // State updates happen here if needed in the future
 }
 
-void MainUI::Refresh() {
-    needs_refresh_ = true;
+void MainUI::Render(DisplayManager* display) {
+    if (!display) return;
+    
+    RenderChordName(display);
 }
 
-void MainUI::RenderDefaultView() {
-    if (!display_ || !display_->IsHealthy()) return;
+void MainUI::RenderChordName(DisplayManager* display) {
+    if (!display || !display->IsHealthy()) return;
     
-    daisy::OledDisplay<daisy::SSD130x4WireSpi128x64Driver>* disp = display_->GetDisplay();
+    daisy::OledDisplay<daisy::SSD130x4WireSpi128x64Driver>* disp = display->GetDisplay();
     if (!disp) return;
     
-    // Clear display
-    disp->Fill(false);
-    
-    // Render chord name (primary information)
-    RenderChordName();
-    
-    // Update display
-    disp->Update();
-}
-
-void MainUI::RenderChordName() {
-    if (!display_ || !display_->IsHealthy()) return;
-    
-    daisy::OledDisplay<daisy::SSD130x4WireSpi128x64Driver>* disp = display_->GetDisplay();
-    if (!disp) return;
+    // Content area starts at y=10 (below system bar with spacing)
     
     const char* chord_text = "No Chord";
     char key_text[16] = "";
@@ -109,12 +82,13 @@ void MainUI::RenderChordName() {
         }
     }
     
-    // Display layout:
-    // Line 0: Track name or key info
-    // Line 24: Chord name (large, centered)
-    // Line 48: Preset info
+    // Content area layout (offset by 10 pixels: 8px system bar + 1px line + 1px spacing):
+    // Content area starts at y=10, screen is 64px tall, so content area is y=10 to y=63
+    // y=10: Key info
+    // y=26: Chord name (large, centered in available space)
+    // y=55: Preset info (6x8 font, so 55+8=63, fits at bottom)
     
-    int y = 0;
+    int y = 10;  // Start below system bar with spacing
     
     // Top line: Key info
     if (key_text[0] != '\0') {
@@ -123,13 +97,14 @@ void MainUI::RenderChordName() {
         y += 10;
     }
     
-    // Center: Chord name (large font)
-    disp->SetCursor(0, 24);
+    // Center: Chord name (large font, centered vertically in content area)
+    // Content area is y=10 to y=63, center is around y=26 (accounting for 18px font height)
+    disp->SetCursor(0, 26);
     disp->WriteString(chord_text, Font_11x18, true);
     
-    // Bottom: Preset info
+    // Bottom: Preset info (positioned to fit within screen bounds)
     if (preset_text[0] != '\0') {
-        disp->SetCursor(0, 54);
+        disp->SetCursor(0, 55);
         disp->WriteString(preset_text, Font_6x8, true);
     }
 }

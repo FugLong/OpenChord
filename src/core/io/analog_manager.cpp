@@ -423,11 +423,21 @@ float AnalogManager::NormalizeValue(float raw_value, AnalogInputType type) {
 }
 
 float AnalogManager::CalculateBatteryPercentage(float voltage) {
-    // Simple linear interpolation from 3.0V (0%) to 4.2V (100%)
-    if (voltage <= 3.0f) return 0.0f;
-    if (voltage >= 4.2f) return 100.0f;
+    // Battery percentage calculation for lithium batteries
+    // Using voltage divider with 0.5 reduction (2:1 ratio)
+    // Full charge range: 4.1V-4.2V should show as 100%
+    // Nominal: ~3.7V ≈ 50%
+    // Empty/cutoff: 3.0V = 0%
     
-    return (voltage - 3.0f) / (4.2f - 3.0f) * 100.0f;
+    if (voltage <= 3.0f) return 0.0f;
+    
+    // Consider 4.1V and above as fully charged (100%)
+    // This accounts for the fact that batteries don't stay at exactly 4.2V
+    if (voltage >= 4.1f) return 100.0f;
+    
+    // Linear interpolation from 3.0V (0%) to 4.1V (100%)
+    // This ensures 4.1V+ shows as 100% and provides accurate readings throughout the range
+    return (voltage - 3.0f) / (4.1f - 3.0f) * 100.0f;
 }
 
 bool AnalogManager::IsValidADCValue(float value) const {

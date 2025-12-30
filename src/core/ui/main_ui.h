@@ -21,8 +21,12 @@ public:
     // Initialization
     void Init(DisplayManager* display, InputManager* input_manager);
     
-    // Update - call from main loop
+    // Update - call periodically to update state (not rendering)
     void Update();
+    
+    // Render - renders content area (does NOT clear display or call Update())
+    // This is called by UIManager, which handles display lifecycle
+    void Render(DisplayManager* display);
     
     // Set track for chord display (optional)
     void SetTrack(Track* track);
@@ -30,26 +34,17 @@ public:
     // Set chord plugin directly (for direct access without RTTI)
     void SetChordPlugin(class ChordMappingInput* chord_plugin);
     
-    // Force refresh
-    void Refresh();
-    
     // Health check
-    bool IsHealthy() const { return display_ != nullptr && display_->IsHealthy(); }
+    bool IsHealthy() const { return display_ != nullptr; }
     
 private:
-    DisplayManager* display_;
+    DisplayManager* display_;  // Kept for compatibility, but UIManager owns display lifecycle
     InputManager* input_manager_;
     Track* track_;
     class ChordMappingInput* chord_plugin_;  // Direct reference to chord plugin
     
-    // Rendering control
-    uint32_t render_interval_ms_;
-    uint32_t last_render_time_;
-    bool needs_refresh_;
-    
     // Render methods
-    void RenderChordName();
-    void RenderDefaultView();
+    void RenderChordName(DisplayManager* display);
 };
 
 } // namespace OpenChord

@@ -65,6 +65,10 @@ public:
     // Configuration
     void SetRenderInterval(uint32_t ms) { render_interval_ms_ = ms; }
     
+    // Render - renders content area (does NOT clear display or call Update())
+    // This is called by UIManager, which handles display lifecycle
+    void Render(DisplayManager* display);
+    
     // Health check
     bool IsHealthy() const { return display_ != nullptr && display_->IsHealthy(); }
     
@@ -88,6 +92,7 @@ private:
     static constexpr uint32_t COMBO_HOLD_THRESHOLD_MS = 500;  // 500ms (0.5 seconds) hold to toggle
     
     void RenderCurrentView();
+    void RenderCurrentViewInternal(DisplayManager* display);  // Internal helper that takes display param
     void HandleNavigation();
     void HandleToggleCombo();
     bool IsNavigationButtonPressed() const;

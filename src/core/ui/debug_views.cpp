@@ -24,7 +24,7 @@ void RenderSystemStatus(DisplayManager* display, IOManager* io_manager) {
     
     SystemStatus status = io_manager->GetStatus();
     char buffer[64];
-    int y = 0;
+    int y = 10;  // Offset by 10 pixels for system bar (content area starts at y=10)
     
     disp->SetCursor(0, y);
     disp->WriteString("System Status", Font_6x8, true);
@@ -59,7 +59,7 @@ void RenderSystemStatus(DisplayManager* display, IOManager* io_manager) {
     disp->SetCursor(0, y);
     disp->WriteString(buffer, Font_6x8, true);
     
-    disp->Update();
+    // Note: Display Update() is handled by UIManager
 }
 
 void RenderInputStatus(DisplayManager* display, InputManager* input_manager, IOManager* io_manager) {
@@ -75,7 +75,7 @@ void RenderInputStatus(DisplayManager* display, InputManager* input_manager, IOM
     JoystickInputHandler& joystick = input_manager->GetJoystick();
     
     char buffer[64];
-    int y = 0;
+    int y = 10;  // Offset by 10 pixels for system bar (content area starts at y=10)
     
     disp->SetCursor(0, y);
     disp->WriteString("Inputs", Font_6x8, true);
@@ -123,7 +123,7 @@ void RenderInputStatus(DisplayManager* display, InputManager* input_manager, IOM
         disp->WriteString(buffer, Font_6x8, true);
     }
     
-    disp->Update();
+    // Note: Display Update() is handled by UIManager
 }
 
 void RenderAnalogStatus(DisplayManager* display, IOManager* io_manager) {
@@ -136,7 +136,7 @@ void RenderAnalogStatus(DisplayManager* display, IOManager* io_manager) {
     if (!disp) return;
     
     char buffer[64];
-    int y = 0;
+    int y = 10;  // Offset by 10 pixels for system bar (content area starts at y=10)
     
     disp->SetCursor(0, y);
     disp->WriteString("Analog", Font_6x8, true);
@@ -171,7 +171,7 @@ void RenderAnalogStatus(DisplayManager* display, IOManager* io_manager) {
     disp->SetCursor(0, y);
     disp->WriteString(buffer, Font_6x8, true);
     
-    disp->Update();
+    // Note: Display Update() is handled by UIManager
 }
 
 void RenderAudioStatus(DisplayManager* display, AudioEngine* audio_engine, VolumeManager* volume_manager) {
@@ -181,7 +181,7 @@ void RenderAudioStatus(DisplayManager* display, AudioEngine* audio_engine, Volum
     if (!disp) return;
     
     char buffer[64];
-    int y = 0;
+    int y = 10;  // Offset by 10 pixels for system bar (content area starts at y=10)
     
     disp->SetCursor(0, y);
     disp->WriteString("Audio", Font_6x8, true);
@@ -216,7 +216,7 @@ void RenderAudioStatus(DisplayManager* display, AudioEngine* audio_engine, Volum
         disp->WriteString(buffer, Font_6x8, true);
     }
     
-    disp->Update();
+    // Note: Display Update() is handled by UIManager
 }
 
 void RenderMIDIStatus(DisplayManager* display, OpenChordMidiHandler* midi_handler) {
@@ -226,7 +226,7 @@ void RenderMIDIStatus(DisplayManager* display, OpenChordMidiHandler* midi_handle
     if (!disp) return;
     
     char buffer[64];
-    int y = 0;
+    int y = 10;  // Offset by 10 pixels for system bar (content area starts at y=10)
     
     disp->SetCursor(0, y);
     disp->WriteString("MIDI", Font_6x8, true);
@@ -243,7 +243,7 @@ void RenderMIDIStatus(DisplayManager* display, OpenChordMidiHandler* midi_handle
         disp->WriteString(buffer, Font_6x8, true);
     }
     
-    disp->Update();
+    // Note: Display Update() is handled by UIManager
 }
 
 } // namespace OpenChord

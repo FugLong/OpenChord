@@ -103,8 +103,26 @@ const char* DebugScreen::GetCurrentViewName() const {
     return nullptr;
 }
 
+void DebugScreen::Render(DisplayManager* display) {
+    if (!display || !display->IsHealthy()) {
+        RenderCurrentView();  // Fallback to internal render if display not provided
+        return;
+    }
+    
+    // Use provided display instead of stored one
+    RenderCurrentViewInternal(display);
+}
+
 void DebugScreen::RenderCurrentView() {
     if (!display_ || !display_->IsHealthy() || views_.empty()) {
+        return;
+    }
+    
+    RenderCurrentViewInternal(display_);
+}
+
+void DebugScreen::RenderCurrentViewInternal(DisplayManager* display) {
+    if (!display || !display->IsHealthy() || views_.empty()) {
         return;
     }
     
@@ -114,14 +132,9 @@ void DebugScreen::RenderCurrentView() {
     
     const DebugView& view = views_[current_view_index_];
     if (view.render) {
-        // Clear display first
-        daisy::OledDisplay<daisy::SSD130x4WireSpi128x64Driver>* disp = display_->GetDisplay();
-        if (disp) {
-            disp->Fill(false);
-        }
-        
-        // Call render function
-        view.render(display_);
+        // Note: Display clearing and Update() are now handled by UIManager
+        // Just call the render function - it should render to content area (offset by 10 pixels)
+        view.render(display);
     }
 }
 

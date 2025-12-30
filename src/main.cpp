@@ -12,6 +12,8 @@
 // We'll use the track system's MidiEvent (from midi_types.h) via the Track interface
 #include "core/tracks/track_interface.h"
 #include "core/ui/main_ui.h"
+#include "core/ui/ui_manager.h"
+#include "core/ui/splash_screen.h"
 #include "core/io/button_input_handler.h"
 #include "core/io/joystick_input_handler.h"
 #include "plugins/input/chord_mapping_input.h"
@@ -42,7 +44,9 @@ Track main_track;
 ChordMappingInput* chord_plugin_ptr = nullptr;  // Keep reference for UI
 
 // UI system
+SplashScreen splash_screen;
 MainUI main_ui;
+UIManager ui_manager;
 
 #if DEBUG_SCREEN_ENABLED
 DebugScreen debug_screen;
@@ -137,10 +141,27 @@ int main(void) {
             // Give display extra time to stabilize after init
             hw.DelayMs(200);
             
+            // Initialize and show splash screen
+            splash_screen.Init(display);
+            splash_screen.Render();
+            ExternalLog::PrintLine("Splash screen displayed");
+            
+            // Initialize UI Manager (centralized UI coordinator)
+            ui_manager.Init(display, &input_manager, &io_manager);
+            ui_manager.SetTrack(&main_track);
+            ui_manager.SetContext(nullptr);  // Normal mode
+            ExternalLog::PrintLine("UI Manager initialized");
+            
             // Initialize main UI (default view)
             main_ui.Init(display, &input_manager);
             main_ui.SetTrack(&main_track);
             main_ui.SetChordPlugin(chord_plugin_ptr);
+            
+            // Register MainUI renderer with UI Manager
+            ui_manager.SetMainUIRenderer([](DisplayManager* disp) {
+                main_ui.Render(disp);
+            });
+            ui_manager.SetContentType(UIManager::ContentType::MAIN_UI);
             ExternalLog::PrintLine("Main UI initialized");
             
             #if DEBUG_SCREEN_ENABLED
@@ -152,6 +173,11 @@ int main(void) {
             debug_screen.AddView("Audio", RenderAudioStatusWrapper);
             debug_screen.AddView("MIDI", RenderMIDIStatusWrapper);
             debug_screen.SetEnabled(false);  // Disabled by default, toggle with button combo
+            
+            // Register DebugScreen renderer with UI Manager
+            ui_manager.SetDebugRenderer([](DisplayManager* disp) {
+                debug_screen.Render(disp);
+            });
             ExternalLog::PrintLine("Debug screen initialized (disabled by default)");
             #endif
         } else {
@@ -194,19 +220,31 @@ int main(void) {
         joystick.GetPosition(&joystick_x, &joystick_y);
         main_track.HandleJoystick(joystick_x, joystick_y);
         
-        #if DEBUG_SCREEN_ENABLED
-        // Check for debug screen toggle combo (INPUT + RECORD held for ~500ms)
-        // This needs to be checked even when debug screen is disabled
-        debug_screen.Update();  // Update() handles toggle combo internally
+        // Update splash screen
+        splash_screen.Update();
         
-        // Show main UI only if debug screen is disabled
-        if (!debug_screen.IsEnabled()) {
-            main_ui.Update();
+        // Show splash screen if it should be displayed
+        if (splash_screen.ShouldShow()) {
+            splash_screen.Render();
+        } else {
+            #if DEBUG_SCREEN_ENABLED
+            // Update debug screen (handles toggle combo internally)
+            debug_screen.Update();
+            
+            // Update UI Manager content type based on debug screen state
+            if (debug_screen.IsEnabled()) {
+                ui_manager.SetContentType(UIManager::ContentType::DEBUG);
+                ui_manager.SetContext("Debug Mode");
+            } else {
+                ui_manager.SetContentType(UIManager::ContentType::MAIN_UI);
+                ui_manager.SetContext(nullptr);  // Normal mode - show track name
+            }
+            #endif
+            
+            // Update UI Manager (coordinates system bar and content area)
+            // This handles rendering MainUI or DebugScreen based on content type
+            ui_manager.Update();
         }
-        #else
-        // Update UI (main UI shows chord name)
-        main_ui.Update();
-        #endif
         
         // Process incoming MIDI events at 1kHz for responsive timing
         midi_handler.ProcessMidi(&audio_engine);
