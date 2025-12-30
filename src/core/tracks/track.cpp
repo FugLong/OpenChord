@@ -35,9 +35,9 @@ void Track::Process(float* in, float* out, size_t size) {
     // Process MIDI through instrument
     if (instrument_) {
         for (size_t i = 0; i < event_count; i++) {
-            if (events[i].type == MidiEvent::NOTE_ON) {
+            if (events[i].type == static_cast<uint8_t>(MidiEvent::Type::NOTE_ON)) {
                 instrument_->NoteOn(events[i].data1, events[i].data2 / 127.0f);
-            } else if (events[i].type == MidiEvent::NOTE_OFF) {
+            } else if (events[i].type == static_cast<uint8_t>(MidiEvent::Type::NOTE_OFF)) {
                 instrument_->NoteOff(events[i].data1);
             }
         }

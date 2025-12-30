@@ -28,26 +28,26 @@ MidiHub* MidiHub::GetInstance() {
 }
 
 void MidiHub::AddUsbInputEvent(daisy::MidiMessageType type, uint8_t channel, uint8_t data0, uint8_t data1) {
-    MidiEvent event(type, channel, data0, data1, MidiEvent::Source::USB);
+    MidiHubEvent event(type, channel, data0, data1, MidiHubEvent::Source::USB);
     AddUsbInputEvent(event);
 }
 
 void MidiHub::AddTrsInputEvent(daisy::MidiMessageType type, uint8_t channel, uint8_t data0, uint8_t data1) {
-    MidiEvent event(type, channel, data0, data1, MidiEvent::Source::TRS_IN);
+    MidiHubEvent event(type, channel, data0, data1, MidiHubEvent::Source::TRS_IN);
     AddTrsInputEvent(event);
 }
 
 void MidiHub::AddTrsOutputEvent(daisy::MidiMessageType type, uint8_t channel, uint8_t data0, uint8_t data1) {
-    MidiEvent event(type, channel, data0, data1, MidiEvent::Source::TRS_OUT);
+    MidiHubEvent event(type, channel, data0, data1, MidiHubEvent::Source::TRS_OUT);
     AddTrsOutputEvent(event);
 }
 
 void MidiHub::AddGeneratedEvent(daisy::MidiMessageType type, uint8_t channel, uint8_t data0, uint8_t data1) {
-    MidiEvent event(type, channel, data0, data1, MidiEvent::Source::GENERATED);
+    MidiHubEvent event(type, channel, data0, data1, MidiHubEvent::Source::GENERATED);
     AddGeneratedEvent(event);
 }
 
-void MidiHub::AddUsbInputEvent(const MidiEvent& event) {
+void MidiHub::AddUsbInputEvent(const MidiHubEvent& event) {
     if (!usb_input_enabled_) return;
     
     usb_input_events_.push_back(event);
@@ -62,7 +62,7 @@ void MidiHub::ClearUsbInputEvents() {
     usb_input_events_.clear();
 }
 
-void MidiHub::AddTrsInputEvent(const MidiEvent& event) {
+void MidiHub::AddTrsInputEvent(const MidiHubEvent& event) {
     if (!trs_input_enabled_) return;
     
     trs_input_events_.push_back(event);
@@ -77,7 +77,7 @@ void MidiHub::ClearTrsInputEvents() {
     trs_input_events_.clear();
 }
 
-void MidiHub::AddTrsOutputEvent(const MidiEvent& event) {
+void MidiHub::AddTrsOutputEvent(const MidiHubEvent& event) {
     if (!trs_output_enabled_) return;
     
     trs_output_buffer_.push_back(event);
@@ -92,7 +92,7 @@ void MidiHub::ClearTrsOutputBuffer() {
     trs_output_buffer_.clear();
 }
 
-void MidiHub::AddGeneratedEvent(const MidiEvent& event) {
+void MidiHub::AddGeneratedEvent(const MidiHubEvent& event) {
     if (!generated_enabled_) return;
     
     generated_events_.push_back(event);
@@ -121,7 +121,7 @@ void MidiHub::UpdateCombinedEvents() {
     
     // Sort by timestamp if needed
     std::sort(combined_events_.begin(), combined_events_.end(), 
-              [](const MidiEvent& a, const MidiEvent& b) {
+              [](const MidiHubEvent& a, const MidiHubEvent& b) {
                   return a.timestamp < b.timestamp;
               });
 }
@@ -147,9 +147,9 @@ void MidiHub::ClearAllEvents() {
 namespace Midi {
 
 // Shared static empty vector to avoid dangling references
-static const std::vector<MidiEvent> kEmptyMidiEvents;
+static const std::vector<MidiHubEvent> kEmptyMidiEvents;
 
-const std::vector<MidiEvent>& GetUsbInputEvents() {
+const std::vector<MidiHubEvent>& GetUsbInputEvents() {
     MidiHub* hub = MidiHub::GetInstance();
     if (hub) {
         return hub->GetUsbInputEvents();
@@ -157,7 +157,7 @@ const std::vector<MidiEvent>& GetUsbInputEvents() {
     return kEmptyMidiEvents;
 }
 
-const std::vector<MidiEvent>& GetTrsInputEvents() {
+const std::vector<MidiHubEvent>& GetTrsInputEvents() {
     MidiHub* hub = MidiHub::GetInstance();
     if (hub) {
         return hub->GetTrsInputEvents();
@@ -165,7 +165,7 @@ const std::vector<MidiEvent>& GetTrsInputEvents() {
     return kEmptyMidiEvents;
 }
 
-const std::vector<MidiEvent>& GetTrsOutputBuffer() {
+const std::vector<MidiHubEvent>& GetTrsOutputBuffer() {
     MidiHub* hub = MidiHub::GetInstance();
     if (hub) {
         return hub->GetTrsOutputBuffer();
@@ -173,7 +173,7 @@ const std::vector<MidiEvent>& GetTrsOutputBuffer() {
     return kEmptyMidiEvents;
 }
 
-const std::vector<MidiEvent>& GetGeneratedEvents() {
+const std::vector<MidiHubEvent>& GetGeneratedEvents() {
     MidiHub* hub = MidiHub::GetInstance();
     if (hub) {
         return hub->GetGeneratedEvents();
@@ -181,7 +181,7 @@ const std::vector<MidiEvent>& GetGeneratedEvents() {
     return kEmptyMidiEvents;
 }
 
-const std::vector<MidiEvent>& GetCombinedEvents() {
+const std::vector<MidiHubEvent>& GetCombinedEvents() {
     MidiHub* hub = MidiHub::GetInstance();
     if (hub) {
         hub->UpdateCombinedEvents();

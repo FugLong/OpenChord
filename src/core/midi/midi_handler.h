@@ -27,7 +27,7 @@ public:
     bool IsTrsInitialized() const { return trs_midi_initialized_; }
     
     // MIDI output
-    void SendMidi(const MidiEvent& event);
+    void SendMidi(const MidiHubEvent& event);
     void SendMidi(daisy::MidiMessageType type, uint8_t channel, uint8_t data0, uint8_t data1);
     
 private:
@@ -46,11 +46,11 @@ private:
     void ProcessUsbMidi();
     void ProcessTrsMidi();
     
-    // Convert OpenChord MidiEvent to raw MIDI bytes
-    void ConvertToMidiBytes(const MidiEvent& event, uint8_t* bytes, size_t* size);
+    // Convert OpenChord MidiHubEvent to raw MIDI bytes
+    void ConvertToMidiBytes(const MidiHubEvent& event, uint8_t* bytes, size_t* size);
     
     // Add events to MidiHub
-    void AddToMidiHub(const daisy::MidiEvent& event, MidiEvent::Source source);
+    void AddToMidiHub(const daisy::MidiEvent& event, MidiHubEvent::Source source);
 };
 
 } // namespace OpenChord

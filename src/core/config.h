@@ -21,5 +21,6 @@
 // 
 // Set to true to enable debug screen, false to disable
 // When disabled, the display can be used by production UI
+// Debug screen can be toggled at runtime with RECORD button (disabled by default)
 #define DEBUG_SCREEN_ENABLED true
 

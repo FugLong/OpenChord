@@ -80,8 +80,16 @@ private:
     uint32_t render_interval_ms_;
     uint32_t last_render_time_;
     
+    // Button combo detection for toggle
+    bool prev_input_pressed_;
+    bool prev_record_pressed_;
+    uint32_t combo_hold_time_;
+    bool already_toggled_this_cycle_;  // Prevent multiple toggles per press cycle
+    static constexpr uint32_t COMBO_HOLD_THRESHOLD_MS = 500;  // 500ms (0.5 seconds) hold to toggle
+    
     void RenderCurrentView();
     void HandleNavigation();
+    void HandleToggleCombo();
     bool IsNavigationButtonPressed() const;
 };
 

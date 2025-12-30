@@ -8,7 +8,9 @@
 namespace OpenChord {
 
 // MIDI event structure using Daisy's types directly
-struct MidiEvent {
+// Note: This is separate from the plugin system's MidiEvent in midi_types.h
+// This one is used by MidiHub and MIDI handlers
+struct MidiHubEvent {
     enum class Source {
         USB,        // USB MIDI input
         TRS_IN,     // TRS MIDI input
@@ -23,8 +25,8 @@ struct MidiEvent {
     uint32_t timestamp; // System timestamp when event was received
     Source source;       // Where this MIDI event came from
     
-    MidiEvent() : type(daisy::MidiMessageType::NoteOff), channel(0), data{0, 0}, timestamp(0), source(Source::INTERNAL) {}
-    MidiEvent(daisy::MidiMessageType t, uint8_t ch, uint8_t d0, uint8_t d1, Source s = Source::INTERNAL, uint32_t ts = 0) 
+    MidiHubEvent() : type(daisy::MidiMessageType::NoteOff), channel(0), data{0, 0}, timestamp(0), source(Source::INTERNAL) {}
+    MidiHubEvent(daisy::MidiMessageType t, uint8_t ch, uint8_t d0, uint8_t d1, Source s = Source::INTERNAL, uint32_t ts = 0) 
         : type(t), channel(ch), data{d0, d1}, timestamp(ts), source(s) {}
 };
 
@@ -34,14 +36,14 @@ private:
     static MidiHub* instance_;
     
     // Input MIDI events (from external sources)
-    std::vector<MidiEvent> usb_input_events_;
-    std::vector<MidiEvent> trs_input_events_;
+    std::vector<MidiHubEvent> usb_input_events_;
+    std::vector<MidiHubEvent> trs_input_events_;
     
     // Generated MIDI events (from built-in keys, etc.)
-    std::vector<MidiEvent> generated_events_;
+    std::vector<MidiHubEvent> generated_events_;
     
     // Combined MIDI events (all inputs + generated)
-    std::vector<MidiEvent> combined_events_;
+    std::vector<MidiHubEvent> combined_events_;
     
     // MIDI clock and timing data
     uint32_t midi_clock_;
@@ -55,7 +57,7 @@ private:
     bool generated_enabled_;
     
     // TRS MIDI output buffer
-    std::vector<MidiEvent> trs_output_buffer_;
+    std::vector<MidiHubEvent> trs_output_buffer_;
     
 public:
     MidiHub();
@@ -66,31 +68,31 @@ public:
     
     // USB MIDI handling
     void AddUsbInputEvent(daisy::MidiMessageType type, uint8_t channel, uint8_t data0, uint8_t data1);
-    void AddUsbInputEvent(const MidiEvent& event);
+    void AddUsbInputEvent(const MidiHubEvent& event);
     void ClearUsbInputEvents();
-    const std::vector<MidiEvent>& GetUsbInputEvents() const { return usb_input_events_; }
+    const std::vector<MidiHubEvent>& GetUsbInputEvents() const { return usb_input_events_; }
     
     // TRS MIDI input handling
     void AddTrsInputEvent(daisy::MidiMessageType type, uint8_t channel, uint8_t data0, uint8_t data1);
-    void AddTrsInputEvent(const MidiEvent& event);
+    void AddTrsInputEvent(const MidiHubEvent& event);
     void ClearTrsInputEvents();
-    const std::vector<MidiEvent>& GetTrsInputEvents() const { return trs_input_events_; }
+    const std::vector<MidiHubEvent>& GetTrsInputEvents() const { return trs_input_events_; }
     
     // TRS MIDI output handling
     void AddTrsOutputEvent(daisy::MidiMessageType type, uint8_t channel, uint8_t data0, uint8_t data1);
-    void AddTrsOutputEvent(const MidiEvent& event);
+    void AddTrsOutputEvent(const MidiHubEvent& event);
     void ClearTrsOutputBuffer();
-    const std::vector<MidiEvent>& GetTrsOutputBuffer() const { return trs_output_buffer_; }
+    const std::vector<MidiHubEvent>& GetTrsOutputBuffer() const { return trs_output_buffer_; }
     
     // Generated MIDI handling
     void AddGeneratedEvent(daisy::MidiMessageType type, uint8_t channel, uint8_t data0, uint8_t data1);
-    void AddGeneratedEvent(const MidiEvent& event);
+    void AddGeneratedEvent(const MidiHubEvent& event);
     void ClearGeneratedEvents();
-    const std::vector<MidiEvent>& GetGeneratedEvents() const { return generated_events_; }
+    const std::vector<MidiHubEvent>& GetGeneratedEvents() const { return generated_events_; }
     
     // Combined MIDI access
     void UpdateCombinedEvents();
-    const std::vector<MidiEvent>& GetCombinedEvents() const { return combined_events_; }
+    const std::vector<MidiHubEvent>& GetCombinedEvents() const { return combined_events_; }
     
     // MIDI timing
     void SetMidiClock(uint32_t clock);
@@ -129,7 +131,7 @@ namespace Midi {
         }
     }
     
-    inline void AddUsbInputEvent(const MidiEvent& event) {
+    inline void AddUsbInputEvent(const MidiHubEvent& event) {
         if (MidiHub* hub = MidiHub::GetInstance()) {
             hub->AddUsbInputEvent(event);
         }
@@ -142,7 +144,7 @@ namespace Midi {
         }
     }
     
-    inline void AddTrsInputEvent(const MidiEvent& event) {
+    inline void AddTrsInputEvent(const MidiHubEvent& event) {
         if (MidiHub* hub = MidiHub::GetInstance()) {
             hub->AddTrsInputEvent(event);
         }
@@ -155,7 +157,7 @@ namespace Midi {
         }
     }
     
-    inline void AddTrsOutputEvent(const MidiEvent& event) {
+    inline void AddTrsOutputEvent(const MidiHubEvent& event) {
         if (MidiHub* hub = MidiHub::GetInstance()) {
             hub->AddTrsOutputEvent(event);
         }
@@ -168,18 +170,18 @@ namespace Midi {
         }
     }
     
-    inline void AddGeneratedEvent(const MidiEvent& event) {
+    inline void AddGeneratedEvent(const MidiHubEvent& event) {
         if (MidiHub* hub = MidiHub::GetInstance()) {
             hub->AddGeneratedEvent(event);
         }
     }
     
     // Get MIDI events by source
-    const std::vector<MidiEvent>& GetUsbInputEvents();
-    const std::vector<MidiEvent>& GetTrsInputEvents();
-    const std::vector<MidiEvent>& GetTrsOutputBuffer();
-    const std::vector<MidiEvent>& GetGeneratedEvents();
-    const std::vector<MidiEvent>& GetCombinedEvents();
+    const std::vector<MidiHubEvent>& GetUsbInputEvents();
+    const std::vector<MidiHubEvent>& GetTrsInputEvents();
+    const std::vector<MidiHubEvent>& GetTrsOutputBuffer();
+    const std::vector<MidiHubEvent>& GetGeneratedEvents();
+    const std::vector<MidiHubEvent>& GetCombinedEvents();
     
     // MIDI timing
     uint32_t GetMidiClock();

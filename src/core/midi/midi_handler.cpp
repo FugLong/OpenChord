@@ -59,7 +59,7 @@ void OpenChordMidiHandler::ProcessUsbMidi() {
     // Process any incoming MIDI events
     while (usb_midi_.HasEvents()) {
         daisy::MidiEvent event = usb_midi_.PopEvent();
-        AddToMidiHub(event, MidiEvent::Source::USB);
+        AddToMidiHub(event, MidiHubEvent::Source::USB);
     }
 }
 
@@ -72,15 +72,15 @@ void OpenChordMidiHandler::ProcessTrsMidi() {
     // Loop through any MIDI Events
     while (trs_midi_.HasEvents()) {
         daisy::MidiEvent event = trs_midi_.PopEvent();
-        AddToMidiHub(event, MidiEvent::Source::TRS_IN);
+        AddToMidiHub(event, MidiHubEvent::Source::TRS_IN);
     }
 }
 
 
-void OpenChordMidiHandler::SendMidi(const MidiEvent& event) {
+void OpenChordMidiHandler::SendMidi(const MidiHubEvent& event) {
     // Send to USB MIDI
     if (usb_midi_initialized_) {
-        // Convert OpenChord MidiEvent to raw MIDI bytes and send
+        // Convert OpenChord MidiHubEvent to raw MIDI bytes and send
         uint8_t midi_bytes[3];
         size_t byte_count = 0;
         ConvertToMidiBytes(event, midi_bytes, &byte_count);
@@ -103,13 +103,13 @@ void OpenChordMidiHandler::SendMidi(const MidiEvent& event) {
 }
 
 void OpenChordMidiHandler::SendMidi(daisy::MidiMessageType type, uint8_t channel, uint8_t data0, uint8_t data1) {
-    MidiEvent event(type, channel, data0, data1);
+    MidiHubEvent event(type, channel, data0, data1);
     SendMidi(event);
 }
 
-void OpenChordMidiHandler::AddToMidiHub(const daisy::MidiEvent& event, MidiEvent::Source source) {
-    // Convert Daisy MidiEvent to OpenChord MidiEvent and add to hub
-    MidiEvent openchord_event;
+void OpenChordMidiHandler::AddToMidiHub(const daisy::MidiEvent& event, MidiHubEvent::Source source) {
+    // Convert Daisy MidiEvent to OpenChord MidiHubEvent and add to hub
+    MidiHubEvent openchord_event;
     openchord_event.type = event.type;
     openchord_event.channel = event.channel;
     openchord_event.data[0] = event.data[0];
@@ -119,10 +119,10 @@ void OpenChordMidiHandler::AddToMidiHub(const daisy::MidiEvent& event, MidiEvent
     
     // Add to global MIDI hub based on source
     switch (source) {
-        case MidiEvent::Source::USB:
+        case MidiHubEvent::Source::USB:
             OpenChord::Midi::AddUsbInputEvent(openchord_event);
             break;
-        case MidiEvent::Source::TRS_IN:
+        case MidiHubEvent::Source::TRS_IN:
             OpenChord::Midi::AddTrsInputEvent(openchord_event);
             break;
         default:
@@ -130,7 +130,7 @@ void OpenChordMidiHandler::AddToMidiHub(const daisy::MidiEvent& event, MidiEvent
     }
 }
 
-void OpenChordMidiHandler::ConvertToMidiBytes(const MidiEvent& event, uint8_t* bytes, size_t* size) {
+void OpenChordMidiHandler::ConvertToMidiBytes(const MidiHubEvent& event, uint8_t* bytes, size_t* size) {
     *size = 0;
     
     // Convert OpenChord MidiEvent to raw MIDI bytes

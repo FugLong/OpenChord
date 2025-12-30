@@ -7,7 +7,14 @@
 #include "core/audio/volume_manager.h"
 #include "core/audio/audio_engine.h"
 #include "core/midi/midi_handler.h"
-#include "core/midi/midi_interface.h"
+// Note: track_interface.h includes plugin_interface.h which includes midi_types.h
+// This defines a different MidiEvent than midi_interface.h
+// We'll use the track system's MidiEvent (from midi_types.h) via the Track interface
+#include "core/tracks/track_interface.h"
+#include "core/ui/main_ui.h"
+#include "core/io/button_input_handler.h"
+#include "core/io/joystick_input_handler.h"
+#include "plugins/input/chord_mapping_input.h"
 #if DEBUG_SCREEN_ENABLED
 #include "core/ui/debug_screen.h"
 #include "core/ui/debug_views.h"
@@ -29,6 +36,13 @@ AudioEngine audio_engine;
 IOManager io_manager;
 OpenChordMidiHandler midi_handler;
 InputManager input_manager;
+
+// Track system
+Track main_track;
+ChordMappingInput* chord_plugin_ptr = nullptr;  // Keep reference for UI
+
+// UI system
+MainUI main_ui;
 
 #if DEBUG_SCREEN_ENABLED
 DebugScreen debug_screen;
@@ -96,9 +110,26 @@ int main(void) {
     midi_handler.Init(&hw);
     ExternalLog::PrintLine("MIDI handler initialized");
     
+    // Initialize track system
+    main_track.Init();
+    main_track.SetName("Track 1");
+    
+    // Set input modes for chord mapping
+    input_manager.SetButtonInputMode(InputMode::MIDI_NOTES);
+    input_manager.SetJoystickMode(JoystickMode::CHORD_MAPPING);
+    
+    // Create and add chord mapping plugin
+    auto chord_plugin = std::make_unique<ChordMappingInput>();
+    chord_plugin_ptr = chord_plugin.get();  // Keep reference for UI
+    chord_plugin->SetInputManager(&input_manager);
+    chord_plugin->Init();
+    main_track.AddInputPlugin(std::move(chord_plugin));
+    
+    ExternalLog::PrintLine("Track system initialized with chord mapping");
+    
     ExternalLog::PrintLine("Managers initialized");
     
-    // Check display status and initialize debug screen if enabled
+    // Check display status and initialize UI
     DisplayManager* display = io_manager.GetDisplay();
     if (display) {
         if (display->IsHealthy()) {
@@ -106,20 +137,22 @@ int main(void) {
             // Give display extra time to stabilize after init
             hw.DelayMs(200);
             
+            // Initialize main UI (default view)
+            main_ui.Init(display, &input_manager);
+            main_ui.SetTrack(&main_track);
+            main_ui.SetChordPlugin(chord_plugin_ptr);
+            ExternalLog::PrintLine("Main UI initialized");
+            
             #if DEBUG_SCREEN_ENABLED
-            // Initialize debug screen system
+            // Initialize debug screen system (disabled by default, toggle with INPUT+RECORD)
             debug_screen.Init(display, &input_manager);
             debug_screen.AddView("System", RenderSystemStatusWrapper);
             debug_screen.AddView("Inputs", RenderInputStatusWrapper);
             debug_screen.AddView("Analog", RenderAnalogStatusWrapper);
             debug_screen.AddView("Audio", RenderAudioStatusWrapper);
             debug_screen.AddView("MIDI", RenderMIDIStatusWrapper);
-            debug_screen.SetEnabled(true);
-            ExternalLog::PrintLine("Debug screen initialized");
-            #else
-            // Test display with simple pattern if debug screen disabled
-            display->TestDisplay();
-            ExternalLog::PrintLine("Display: Test pattern sent");
+            debug_screen.SetEnabled(false);  // Disabled by default, toggle with button combo
+            ExternalLog::PrintLine("Debug screen initialized (disabled by default)");
             #endif
         } else {
             ExternalLog::PrintLine("Display: Initialization FAILED");
@@ -152,71 +185,55 @@ int main(void) {
         input_manager.Update();       // Update unified input manager (handles all inputs)
         volume_mgr.Update();          // Update volume manager to get latest ADC values
         
+        // Update track system (processes input plugins and generates MIDI)
+        main_track.Update();
+        
+        // Get joystick position and route to track
+        JoystickInputHandler& joystick = input_manager.GetJoystick();
+        float joystick_x, joystick_y;
+        joystick.GetPosition(&joystick_x, &joystick_y);
+        main_track.HandleJoystick(joystick_x, joystick_y);
+        
         #if DEBUG_SCREEN_ENABLED
-        debug_screen.Update();        // Update debug screen (renders at configured interval)
+        // Check for debug screen toggle combo (INPUT + RECORD held for ~500ms)
+        // This needs to be checked even when debug screen is disabled
+        debug_screen.Update();  // Update() handles toggle combo internally
+        
+        // Show main UI only if debug screen is disabled
+        if (!debug_screen.IsEnabled()) {
+            main_ui.Update();
+        }
+        #else
+        // Update UI (main UI shows chord name)
+        main_ui.Update();
         #endif
         
-        // Handle button inputs using the unified input manager
-        // For now, we'll handle MIDI note generation for musical buttons
-        // System buttons will be handled in future UI/system code
-        
-        ButtonInputHandler& buttons = input_manager.GetButtons();
-        
-        // Process musical buttons (7 keys: 4 white + 3 black)
-        // Map to MIDI notes: White keys = 60-63, Black keys = 64-66
-        static bool prev_musical_states[7] = {false};
-        
-        for (int i = 0; i < static_cast<int>(MusicalButton::COUNT); i++) {
-            MusicalButton button = static_cast<MusicalButton>(i);
-            bool current_pressed = buttons.IsMusicalButtonPressed(button);
-            bool was_pressed = buttons.WasMusicalButtonPressed(button);
-            
-            // Calculate MIDI note based on button
-            // White keys (0-3): notes 60-63
-            // Black keys (4-6): notes 64-66
-            uint8_t midi_note = (i < 4) ? (60 + i) : (64 + (i - 4));
-            
-            // Handle press event
-            if (was_pressed || (!prev_musical_states[i] && current_pressed)) {
-                Midi::AddGeneratedEvent(
-                    daisy::MidiMessageType::NoteOn,
-                    0,  // Channel 0
-                    midi_note,
-                    100 // Velocity
-                );
-            }
-            
-            // Handle release event
-            if (prev_musical_states[i] && !current_pressed) {
-                Midi::AddGeneratedEvent(
-                    daisy::MidiMessageType::NoteOff,
-                    0,  // Channel 0
-                    midi_note,
-                    0   // Velocity (0 for NoteOff)
-                );
-            }
-            
-            prev_musical_states[i] = current_pressed;
-        }
-        
-        // Process system buttons (4 keys on top row)
-        // These will be used for UI/system control in the future
-        // For now, we just track their state but don't generate MIDI
-        // TODO: Implement system button handlers for:
-        // - INPUT: Input selection (also play/pause loop)
-        // - INSTRUMENT: Instrument selection/options
-        // - FX: FX selection/options
-        // - RECORD: Record start/stop, loop settings
-        
-        // Joystick control code removed - pins and initialization remain for future use
-        
-        // Process MIDI events at 1kHz for responsive timing
+        // Process incoming MIDI events at 1kHz for responsive timing
         midi_handler.ProcessMidi(&audio_engine);
         
-        // Forward generated MIDI events (from button matrix) to TRS MIDI output for testing
-        const std::vector<OpenChord::MidiEvent>& generated_events = Midi::GetGeneratedEvents();
-        for (const OpenChord::MidiEvent& event : generated_events) {
-            midi_handler.SendMidi(event.type, event.channel, event.data[0], event.data[1]);
+        // Generate MIDI from track's input stack and send to MIDI outputs
+        // Track uses MidiEvent from midi_types.h (via plugin_interface.h)
+        // Note: This is different from MidiHubEvent in midi_interface.h
+        // Use fully qualified name to avoid ambiguity with daisy::MidiEvent
+        ::OpenChord::MidiEvent midi_events[64];
+        size_t midi_event_count = 0;
+        main_track.GenerateMIDI(midi_events, &midi_event_count, 64);
+        
+        // Send generated MIDI events to USB and TRS MIDI outputs
+        // Convert from plugin system's MidiEvent (midi_types.h) to handler
+        for (size_t i = 0; i < midi_event_count; i++) {
+            const ::OpenChord::MidiEvent& event = midi_events[i];
+            // Convert MidiEvent::Type (from midi_types.h) to daisy::MidiMessageType
+            // midi_types.h uses: NOTE_ON = 0x90, NOTE_OFF = 0x80
+            daisy::MidiMessageType msg_type;
+            if (event.type == static_cast<uint8_t>(::OpenChord::MidiEvent::Type::NOTE_ON)) {
+                msg_type = daisy::MidiMessageType::NoteOn;
+            } else if (event.type == static_cast<uint8_t>(::OpenChord::MidiEvent::Type::NOTE_OFF)) {
+                msg_type = daisy::MidiMessageType::NoteOff;
+            } else {
+                msg_type = static_cast<daisy::MidiMessageType>(event.type);
+            }
+            midi_handler.SendMidi(msg_type, event.channel, event.data1, event.data2);
         }
         
         audio_engine.ProcessMidi();

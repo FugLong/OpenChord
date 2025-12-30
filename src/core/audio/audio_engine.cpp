@@ -37,7 +37,7 @@ void AudioEngine::ProcessMidi() {
     if (!initialized_) return;
     
     // Get all MIDI events from the hub (USB + TRS + generated)
-    const std::vector<MidiEvent>& events = Midi::GetCombinedEvents();
+    const std::vector<MidiHubEvent>& events = Midi::GetCombinedEvents();
     
     // Debug: Print number of events being processed
     static uint32_t debug_counter = 0;
@@ -45,7 +45,7 @@ void AudioEngine::ProcessMidi() {
     }
     
     // Process each MIDI event
-    for (const MidiEvent& event : events) {
+    for (const MidiHubEvent& event : events) {
         switch (event.type) {
             case daisy::MidiMessageType::NoteOn:
                 if (event.data[1] > 0) {  // Velocity > 0
