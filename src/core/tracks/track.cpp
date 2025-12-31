@@ -234,11 +234,18 @@ void Track::GenerateMIDI(MidiEvent* events, size_t* count, size_t max_events) {
     *count = 0;
     
     // Generate MIDI from input plugins
+    // Process plugins in order, but stop after first plugin generates MIDI
+    // This ensures only one input mode (chord mapping OR chromatic) generates MIDI at a time
     for (auto& plugin : input_plugins_) {
         if (plugin && plugin->IsActive()) {
             size_t plugin_count = 0;
             plugin->GenerateMIDI(events + *count, &plugin_count, max_events - *count);
-            *count += plugin_count;
+            
+            if (plugin_count > 0) {
+                // This plugin generated MIDI, stop processing other plugins
+                *count += plugin_count;
+                break;
+            }
             
             if (*count >= max_events) break;
         }

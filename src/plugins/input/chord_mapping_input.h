@@ -5,6 +5,7 @@
 #include "../../core/music/chord_engine.h"
 #include "../../core/io/button_input_handler.h"
 #include "../../core/io/joystick_input_handler.h"  // For JoystickDirection enum
+#include "../../core/ui/plugin_settings.h"
 #include <vector>
 
 // Forward declaration
@@ -21,7 +22,7 @@ namespace OpenChord {
  * chord inversions and extensions. Generates MIDI events for all
  * notes in the chord.
  */
-class ChordMappingInput : public IInputPlugin {
+class ChordMappingInput : public IInputPlugin, public IPluginWithSettings {
 public:
     ChordMappingInput();
     ~ChordMappingInput();
@@ -55,6 +56,10 @@ public:
         input_manager_ = input_manager;
     }
     
+    void SetOctaveUIActivePtr(bool* active_ptr) {
+        octave_ui_active_ptr_ = active_ptr;
+    }
+    
     // Get current chord for UI display
     const Chord* GetCurrentChord() const {
         return current_chord_.note_count > 0 ? &current_chord_ : nullptr;
@@ -71,9 +76,15 @@ public:
     // Get current joystick direction
     JoystickDirection GetCurrentJoystickDirection() const { return current_joystick_direction_; }
     
+    // IPluginWithSettings interface
+    int GetSettingCount() const override;
+    const PluginSetting* GetSetting(int index) const override;
+    void OnSettingChanged(int setting_index) override;
+    
 private:
     // Input access
     InputManager* input_manager_;
+    bool* octave_ui_active_ptr_;  // Pointer to external flag (nullptr = don't check)
     
     // State
     bool active_;
@@ -99,6 +110,12 @@ private:
     float joystick_y_;
     JoystickDirection current_joystick_direction_;
     JoystickDirection prev_joystick_direction_;
+    
+    // Settings support
+    static constexpr int SETTING_COUNT = 3;  // Key root, Mode, Preset
+    mutable PluginSetting settings_[SETTING_COUNT];
+    mutable int mode_setting_value_;  // Helper for mode enum setting
+    void InitializeSettings();
     
     // MIDI event buffer
     std::vector<MidiEvent> pending_events_;

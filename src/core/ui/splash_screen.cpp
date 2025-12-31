@@ -1,4 +1,5 @@
 #include "splash_screen.h"
+#include "daisy_seed.h"  // For System::GetNow()
 #include <cstring>
 
 namespace OpenChord {
@@ -6,7 +7,7 @@ namespace OpenChord {
 SplashScreen::SplashScreen()
     : display_(nullptr)
     , show_splash_(true)
-    , display_time_ms_(0)
+    , start_time_ms_(0)
 {
 }
 
@@ -16,14 +17,18 @@ SplashScreen::~SplashScreen() {
 void SplashScreen::Init(DisplayManager* display) {
     display_ = display;
     show_splash_ = true;
-    display_time_ms_ = 0;
+    start_time_ms_ = daisy::System::GetNow();  // Record start time in milliseconds
 }
 
 void SplashScreen::Update() {
-    if (show_splash_ && display_time_ms_ < SPLASH_DURATION_MS) {
-        display_time_ms_++;
-    } else if (display_time_ms_ >= SPLASH_DURATION_MS) {
-        // Automatically hide once duration is reached
+    if (!show_splash_) return;
+    
+    // Calculate elapsed time
+    uint32_t current_time_ms = daisy::System::GetNow();
+    uint32_t elapsed_ms = current_time_ms - start_time_ms_;
+    
+    // Hide splash once duration is reached
+    if (elapsed_ms >= SPLASH_DURATION_MS) {
         show_splash_ = false;
     }
 }

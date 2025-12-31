@@ -154,8 +154,8 @@ void DebugScreen::HandleToggleCombo() {
     if (both_pressed && !both_pressed_prev) {
         combo_hold_time_ = 0;
         already_toggled_this_cycle_ = false;
-    }
-    
+        }
+        
     // If both are held, increment timer
     if (both_pressed) {
         combo_hold_time_++;

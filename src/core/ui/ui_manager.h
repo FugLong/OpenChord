@@ -11,6 +11,11 @@ namespace OpenChord {
 // Forward declarations
 class SystemBar;
 class ContentArea;
+class MenuManager;
+class SettingsManager;
+class IPluginWithSettings;
+class OctaveUI;
+class OctaveShift;
 
 // Content render callback type
 typedef void (*ContentRenderFunc)(DisplayManager* display);
@@ -32,7 +37,8 @@ public:
         DEBUG,       // Debug screen
         MENU,        // Menu system
         SETTINGS,    // Settings UI
-        PLUGIN_UI    // Plugin-defined custom UI
+        PLUGIN_UI,   // Plugin-defined custom UI
+        OCTAVE_UI    // Octave adjustment overlay
     };
     
     UIManager();
@@ -42,12 +48,22 @@ public:
     void Init(DisplayManager* display, InputManager* input_manager, IOManager* io_manager);
     
     // Main update loop (call from main loop)
+    // Updates state but doesn't render - use Render() separately
     void Update();
+    
+    // Render the UI (call after Update() if rendering is needed)
+    void Render();
+    
+    // Render just the system bar (for overlays like octave UI)
+    void RenderSystemBar();
     
     // System bar control
     void SetTrack(Track* track);
     void SetTrackName(const char* name);  // Override track name display
     void SetContext(const char* context); // Set context indicator (e.g., "Menu", "Input", "DEBUG")
+    
+    // Octave shift system (must be set before using octave UI)
+    void SetOctaveShift(OctaveShift* octave_shift);
     
     // Content area control
     void SetContentType(ContentType type);
@@ -58,6 +74,20 @@ public:
     void SetDebugRenderer(ContentRenderFunc render_func);
     void SetPluginRenderer(ContentRenderFunc render_func);
     void ClearPluginRenderer();
+    
+    // Menu and Settings access
+    MenuManager* GetMenuManager() { return menu_manager_; }
+    SettingsManager* GetSettingsManager() { return settings_manager_; }
+    
+    // Octave UI control (managed by UI Manager)
+    void ActivateOctaveUI();
+    void DeactivateOctaveUI();
+    bool IsOctaveUIActive() const;
+    void UpdateOctaveUI(float joystick_x, uint32_t current_time_ms);
+    
+    // Debug mode control (for external debug screen management)
+    void SetDebugMode(bool enabled);
+    bool IsDebugModeActive() const { return debug_mode_active_; }
     
     // Health check
     bool IsHealthy() const;
@@ -70,6 +100,10 @@ private:
     // UI components
     SystemBar* system_bar_;
     ContentArea* content_area_;
+    MenuManager* menu_manager_;
+    SettingsManager* settings_manager_;
+    OctaveUI* octave_ui_;
+    OctaveShift* octave_shift_;
     
     // Content management
     ContentType content_type_;
@@ -82,9 +116,10 @@ private:
     uint32_t render_interval_ms_;
     uint32_t last_render_time_;
     bool needs_refresh_;
+    bool debug_mode_active_;  // Track if debug mode is active
     
-    void Render();
     void RenderContent();
+    void RenderOctaveUI();
 };
 
 } // namespace OpenChord

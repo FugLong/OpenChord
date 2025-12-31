@@ -156,6 +156,69 @@ if [ -f "$TARGET_FILE" ]; then
         print_info "      Run: ./clean_sd_bin.sh to remove it automatically"
         print_info ""
         
+        # Clean up .bin files and Mac temp files before ejecting
+        print_info "Cleaning up .bin files and Mac temp files..."
+        CLEANUP_COUNT=0
+        
+        # Delete all .bin files (case-insensitive)
+        find "$SD_MOUNT" -maxdepth 1 -type f \( -iname "*.bin" \) -print0 | while IFS= read -r -d '' file; do
+            rm -f "$file"
+            print_info "  Deleted: $(basename "$file")"
+            CLEANUP_COUNT=$((CLEANUP_COUNT + 1))
+        done
+        
+        # Delete bootloader log files (.log and bootloader-related .txt files)
+        find "$SD_MOUNT" -maxdepth 1 -type f \( -iname "*.log" -o -iname "*boot*.txt" -o -iname "*flash*.txt" \) -print0 | while IFS= read -r -d '' file; do
+            rm -f "$file"
+            print_info "  Deleted: $(basename "$file")"
+            CLEANUP_COUNT=$((CLEANUP_COUNT + 1))
+        done
+        
+        # Delete Mac temp files (only in root, not recursive to avoid deleting user files)
+        # .DS_Store - folder metadata
+        if [ -f "$SD_MOUNT/.DS_Store" ]; then
+            rm -f "$SD_MOUNT/.DS_Store"
+            print_info "  Deleted: .DS_Store"
+            CLEANUP_COUNT=$((CLEANUP_COUNT + 1))
+        fi
+        
+        # ._* files - Mac resource forks (hidden files starting with ._)
+        find "$SD_MOUNT" -maxdepth 1 -type f -name "._*" -print0 | while IFS= read -r -d '' file; do
+            rm -f "$file"
+            print_info "  Deleted: $(basename "$file")"
+            CLEANUP_COUNT=$((CLEANUP_COUNT + 1))
+        done
+        
+        # Remove Mac metadata directories if they exist (only if empty)
+        # .Spotlight-V100 - Spotlight index
+        if [ -d "$SD_MOUNT/.Spotlight-V100" ]; then
+            rmdir "$SD_MOUNT/.Spotlight-V100" 2>/dev/null && print_info "  Removed: .Spotlight-V100 (empty)" && CLEANUP_COUNT=$((CLEANUP_COUNT + 1)) || true
+        fi
+        
+        # .Trashes - trash folder
+        if [ -d "$SD_MOUNT/.Trashes" ]; then
+            rmdir "$SD_MOUNT/.Trashes" 2>/dev/null && print_info "  Removed: .Trashes (empty)" && CLEANUP_COUNT=$((CLEANUP_COUNT + 1)) || true
+        fi
+        
+        # .fseventsd - file system events
+        if [ -d "$SD_MOUNT/.fseventsd" ]; then
+            rmdir "$SD_MOUNT/.fseventsd" 2>/dev/null && print_info "  Removed: .fseventsd (empty)" && CLEANUP_COUNT=$((CLEANUP_COUNT + 1)) || true
+        fi
+        
+        # .VolumeIcon.icns - volume icon
+        if [ -f "$SD_MOUNT/.VolumeIcon.icns" ]; then
+            rm -f "$SD_MOUNT/.VolumeIcon.icns"
+            print_info "  Deleted: .VolumeIcon.icns"
+            CLEANUP_COUNT=$((CLEANUP_COUNT + 1))
+        fi
+        
+        if [ "$CLEANUP_COUNT" -gt 0 ]; then
+            print_info "✓ Cleaned up $CLEANUP_COUNT file(s)"
+        else
+            print_info "✓ No cleanup needed (SD card already clean)"
+        fi
+        print_info ""
+        
         # Automatically eject the SD card volume (same one we just copied to)
         if [[ "$OSTYPE" == "darwin"* ]]; then
             print_info "Ejecting SD card volume: $SD_MOUNT"

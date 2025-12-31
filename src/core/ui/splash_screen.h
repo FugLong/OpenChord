@@ -22,7 +22,7 @@ public:
     void Render();
     
     // Check if splash screen should be shown (call before showing main UI)
-    bool ShouldShow() const { return show_splash_ && display_time_ms_ < SPLASH_DURATION_MS; }
+    bool ShouldShow() const { return show_splash_; }
     
     // Update (call from main loop to track display time)
     void Update();
@@ -33,9 +33,9 @@ public:
 private:
     DisplayManager* display_;
     bool show_splash_;
-    uint32_t display_time_ms_;  // Time splash has been displayed (increment at 1kHz)
+    uint32_t start_time_ms_;  // System time when splash started (in milliseconds)
     
-    static constexpr uint32_t SPLASH_DURATION_MS = 2000;  // Show splash for 2 seconds
+    static constexpr uint32_t SPLASH_DURATION_MS = 1500;  // Show splash for 1.5 seconds
     
     void RenderLogo();
 };

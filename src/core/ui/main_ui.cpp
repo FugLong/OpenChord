@@ -1,6 +1,8 @@
 #include "main_ui.h"
+#include "content_area.h"
 #include "../music/chord_engine.h"
 #include "../../plugins/input/chord_mapping_input.h"
+#include "../../plugins/input/chromatic_input.h"
 #include <cstring>
 #include <cstdio>
 
@@ -11,6 +13,7 @@ MainUI::MainUI()
     , input_manager_(nullptr)
     , track_(nullptr)
     , chord_plugin_(nullptr)
+    , chromatic_plugin_(nullptr)
 {
 }
 
@@ -29,6 +32,10 @@ void MainUI::SetTrack(Track* track) {
 
 void MainUI::SetChordPlugin(ChordMappingInput* chord_plugin) {
     chord_plugin_ = chord_plugin;
+}
+
+void MainUI::SetChromaticPlugin(ChromaticInput* plugin) {
+    chromatic_plugin_ = plugin;
 }
 
 void MainUI::Update() {
@@ -50,63 +57,144 @@ void MainUI::RenderChordName(DisplayManager* display) {
     
     // Content area starts at y=10 (below system bar with spacing)
     
-    const char* chord_text = "No Chord";
-    char key_text[16] = "";
-    char preset_text[16] = "";
-    
-    // Get chord and key/preset info from chord plugin if available
-    if (chord_plugin_) {
-        const Chord* chord = chord_plugin_->GetCurrentChord();
-        if (chord && chord->note_count > 0) {
-            chord_text = chord->name;
-        }
-        
-        // Get key name
-        MusicalKey key = chord_plugin_->GetCurrentKey();
-        const char* note_names[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
-        const char* mode_names[] = {"Maj", "Dor", "Phr", "Lyd", "Mix", "Min", "Loc"};
-        
-        int note_idx = key.root_note % 12;
-        int mode_idx = static_cast<int>(key.mode);
-        
-        if (note_idx >= 0 && note_idx < 12 && mode_idx >= 0 && mode_idx < 7) {
-            snprintf(key_text, sizeof(key_text), "%s %s", note_names[note_idx], mode_names[mode_idx]);
-        }
-        
-        // Get preset name (using a temporary ChordEngine instance for lookup)
-        int preset_idx = chord_plugin_->GetCurrentJoystickPreset();
-        ChordEngine engine;
-        const JoystickPreset* preset = engine.GetJoystickPreset(preset_idx);
-        if (preset && preset->name) {
-            snprintf(preset_text, sizeof(preset_text), "Preset: %s", preset->name);
-        }
-    }
-    
-    // Content area layout (offset by 10 pixels: 8px system bar + 1px line + 1px spacing):
-    // Content area starts at y=10, screen is 64px tall, so content area is y=10 to y=63
-    // y=10: Key info
-    // y=26: Chord name (large, centered in available space)
-    // y=55: Preset info (6x8 font, so 55+8=63, fits at bottom)
-    
     int y = 10;  // Start below system bar with spacing
     
-    // Top line: Key info
-    if (key_text[0] != '\0') {
-        disp->SetCursor(0, y);
-        disp->WriteString(key_text, Font_6x8, true);
-        y += 10;
+    // Check if chord mapping plugin is active
+    bool chord_mode_active = chord_plugin_ && chord_plugin_->IsActive();
+    
+    if (chord_mode_active) {
+        // Chord mode: show chord name, key, and preset
+        const char* chord_text = "----";  // Default: show dashes when no chord
+        char key_text[16] = "";
+        char preset_text[16] = "";
+        
+        if (chord_plugin_) {
+            const Chord* chord = chord_plugin_->GetCurrentChord();
+            if (chord && chord->note_count > 0) {
+                chord_text = chord->name;
+            }
+            // else: keep "----" as default
+            
+            // Get key name
+            MusicalKey key = chord_plugin_->GetCurrentKey();
+            const char* note_names[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
+            const char* mode_names[] = {"Maj", "Dor", "Phr", "Lyd", "Mix", "Min", "Loc"};
+            
+            int note_idx = key.root_note % 12;
+            int mode_idx = static_cast<int>(key.mode);
+            
+            if (note_idx >= 0 && note_idx < 12 && mode_idx >= 0 && mode_idx < 7) {
+                snprintf(key_text, sizeof(key_text), "%s %s", note_names[note_idx], mode_names[mode_idx]);
+            }
+            
+            // Get preset name (using a temporary ChordEngine instance for lookup)
+            int preset_idx = chord_plugin_->GetCurrentJoystickPreset();
+            ChordEngine engine;
+            const JoystickPreset* preset = engine.GetJoystickPreset(preset_idx);
+            if (preset && preset->name) {
+                snprintf(preset_text, sizeof(preset_text), "Preset: %s", preset->name);
+            }
+        }
+        
+        // Top line: Key info
+        if (key_text[0] != '\0') {
+            disp->SetCursor(0, y);
+            disp->WriteString(key_text, Font_6x8, true);
+            y += 10;
+        }
+        
+        // Center: Chord name (large font, centered vertically in content area)
+        // Only render if chord_text is not nullptr
+        if (chord_text) {
+            int content_start_y = y;
+            int content_height = 64 - content_start_y - 8;  // Leave space at bottom for preset
+            int font_height = 18;  // Font_11x18 height
+            int chord_y = content_start_y + (content_height - font_height) / 2;
+            
+            // Calculate chord text width for centering
+            int chord_text_len = strlen(chord_text);
+            int chord_text_width = chord_text_len * 11;  // Font_11x18 width per character
+            int chord_x = (128 - chord_text_width) / 2;
+            if (chord_x < 0) chord_x = 0;
+            
+            disp->SetCursor(chord_x, chord_y);
+            disp->WriteString(chord_text, Font_11x18, true);
+        }
+        
+        // Bottom: Preset info
+        if (preset_text[0] != '\0') {
+            disp->SetCursor(0, 55);
+            disp->WriteString(preset_text, Font_6x8, true);
+        }
+    } else {
+        // Not in chord mode: show active notes from chromatic input
+        if (chromatic_plugin_ && chromatic_plugin_->IsActive()) {
+            RenderChromaticNotes(display);
+        } else if (chord_plugin_) {
+            // Fallback: show key only if available
+            MusicalKey key = chord_plugin_->GetCurrentKey();
+            const char* note_names[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
+            const char* mode_names[] = {"Maj", "Dor", "Phr", "Lyd", "Mix", "Min", "Loc"};
+            
+            int note_idx = key.root_note % 12;
+            int mode_idx = static_cast<int>(key.mode);
+            
+            if (note_idx >= 0 && note_idx < 12 && mode_idx >= 0 && mode_idx < 7) {
+                char key_text[16] = "";
+                snprintf(key_text, sizeof(key_text), "%s %s", note_names[note_idx], mode_names[mode_idx]);
+                disp->SetCursor(0, y);
+                disp->WriteString(key_text, Font_6x8, true);
+            }
+        }
+    }
+}
+
+void MainUI::RenderChromaticNotes(DisplayManager* display) {
+    if (!display || !display->IsHealthy() || !chromatic_plugin_) return;
+    
+    auto* disp = display->GetDisplay();
+    if (!disp) return;
+    
+    // Get active notes from chromatic plugin
+    std::vector<uint8_t> active_notes = chromatic_plugin_->GetActiveNotes();
+    
+    int y = ContentArea::OFFSET_Y;
+    
+    if (active_notes.empty()) {
+        // No notes active - show nothing or "--"
+        return;  // Just show nothing
     }
     
-    // Center: Chord name (large font, centered vertically in content area)
-    // Content area is y=10 to y=63, center is around y=26 (accounting for 18px font height)
-    disp->SetCursor(0, 26);
-    disp->WriteString(chord_text, Font_11x18, true);
+    // Build note name string
+    char note_text[64] = "";
+    const char* note_names[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
     
-    // Bottom: Preset info (positioned to fit within screen bounds)
-    if (preset_text[0] != '\0') {
-        disp->SetCursor(0, 55);
-        disp->WriteString(preset_text, Font_6x8, true);
+    for (size_t i = 0; i < active_notes.size() && i < 7; i++) {
+        uint8_t midi_note = active_notes[i];
+        int note_idx = midi_note % 12;
+        int octave = (midi_note / 12) - 1;  // MIDI note 60 = C4
+        
+        if (i > 0) {
+            strcat(note_text, " ");
+        }
+        
+        char note_str[8];
+        snprintf(note_str, sizeof(note_str), "%s%d", note_names[note_idx], octave);
+        strcat(note_text, note_str);
     }
+    
+    // Center the text
+    int text_width = strlen(note_text) * 11;  // Font_11x18 width
+    int text_x = (128 - text_width) / 2;
+    if (text_x < 0) text_x = 0;
+    
+    int content_start_y = y;
+    int content_height = 64 - content_start_y - 8;
+    int font_height = 18;
+    int text_y = content_start_y + (content_height - font_height) / 2;
+    
+    disp->SetCursor(text_x, text_y);
+    disp->WriteString(note_text, Font_11x18, true);
 }
 
 } // namespace OpenChord

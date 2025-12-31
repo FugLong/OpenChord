@@ -14,9 +14,13 @@
 #include "core/ui/main_ui.h"
 #include "core/ui/ui_manager.h"
 #include "core/ui/splash_screen.h"
+#include "core/ui/menu_manager.h"
+#include "core/ui/settings_manager.h"
+#include "core/midi/octave_shift.h"
 #include "core/io/button_input_handler.h"
 #include "core/io/joystick_input_handler.h"
 #include "plugins/input/chord_mapping_input.h"
+#include "plugins/input/chromatic_input.h"
 #if DEBUG_SCREEN_ENABLED
 #include "core/ui/debug_screen.h"
 #include "core/ui/debug_views.h"
@@ -39,14 +43,19 @@ IOManager io_manager;
 OpenChordMidiHandler midi_handler;
 InputManager input_manager;
 
+// Octave shift system
+OctaveShift octave_shift;
+
 // Track system
 Track main_track;
 ChordMappingInput* chord_plugin_ptr = nullptr;  // Keep reference for UI
+ChromaticInput* chromatic_plugin_ptr = nullptr;  // Keep reference for octave shift
 
 // UI system
 SplashScreen splash_screen;
 MainUI main_ui;
 UIManager ui_manager;
+bool octave_ui_active_flag_ = false;  // Flag for input plugins to check if octave UI is active
 
 #if DEBUG_SCREEN_ENABLED
 DebugScreen debug_screen;
@@ -123,13 +132,25 @@ int main(void) {
     input_manager.SetJoystickMode(JoystickMode::CHORD_MAPPING);
     
     // Create and add chord mapping plugin
+    // Add chord mapping plugin (higher priority)
     auto chord_plugin = std::make_unique<ChordMappingInput>();
     chord_plugin_ptr = chord_plugin.get();  // Keep reference for UI
     chord_plugin->SetInputManager(&input_manager);
+    // Pass pointer to octave UI active flag so chord mapping doesn't process joystick when octave UI is active
+    chord_plugin->SetOctaveUIActivePtr(&octave_ui_active_flag_);
     chord_plugin->Init();
     main_track.AddInputPlugin(std::move(chord_plugin));
     
-    ExternalLog::PrintLine("Track system initialized with chord mapping");
+    // Add chromatic input plugin (lower priority, fallback when no other input is active)
+    auto chromatic_plugin = std::make_unique<ChromaticInput>();
+    chromatic_plugin_ptr = chromatic_plugin.get();
+    chromatic_plugin->SetInputManager(&input_manager);
+    chromatic_plugin->SetOctaveShift(&octave_shift);
+    chromatic_plugin->SetTrack(&main_track);  // Allow it to check for other active plugins
+    chromatic_plugin->Init();
+    main_track.AddInputPlugin(std::move(chromatic_plugin));
+    
+    ExternalLog::PrintLine("Track system initialized with chord mapping and chromatic input");
     
     ExternalLog::PrintLine("Managers initialized");
     
@@ -149,6 +170,7 @@ int main(void) {
             // Initialize UI Manager (centralized UI coordinator)
             ui_manager.Init(display, &input_manager, &io_manager);
             ui_manager.SetTrack(&main_track);
+            ui_manager.SetOctaveShift(&octave_shift);  // Provide octave shift for octave UI
             ui_manager.SetContext(nullptr);  // Normal mode
             ExternalLog::PrintLine("UI Manager initialized");
             
@@ -156,6 +178,7 @@ int main(void) {
             main_ui.Init(display, &input_manager);
             main_ui.SetTrack(&main_track);
             main_ui.SetChordPlugin(chord_plugin_ptr);
+            main_ui.SetChromaticPlugin(chromatic_plugin_ptr);
             
             // Register MainUI renderer with UI Manager
             ui_manager.SetMainUIRenderer([](DisplayManager* disp) {
@@ -231,18 +254,254 @@ int main(void) {
             // Update debug screen (handles toggle combo internally)
             debug_screen.Update();
             
-            // Update UI Manager content type based on debug screen state
-            if (debug_screen.IsEnabled()) {
-                ui_manager.SetContentType(UIManager::ContentType::DEBUG);
+            // Check if we should show debug mode (takes priority over menu)
+            bool debug_enabled = debug_screen.IsEnabled();
+            ui_manager.SetDebugMode(debug_enabled);
+            
+            if (debug_enabled) {
                 ui_manager.SetContext("Debug Mode");
             } else {
-                ui_manager.SetContentType(UIManager::ContentType::MAIN_UI);
-                ui_manager.SetContext(nullptr);  // Normal mode - show track name
+                ui_manager.SetContext(nullptr);  // Clear debug context
             }
-            #endif
             
-            // Update UI Manager (coordinates system bar and content area)
-            // This handles rendering MainUI or DebugScreen based on content type
+            if (!debug_enabled)
+            #endif
+            {
+                // Handle menu navigation
+                MenuManager* menu_mgr = ui_manager.GetMenuManager();
+                SettingsManager* settings_mgr = ui_manager.GetSettingsManager();
+                
+                // Button presses open their respective menus (if menu is closed or same type)
+                // If menu is already open, pressing the same button closes it
+                if (input_manager.GetButtons().WasSystemButtonPressed(SystemButton::INPUT)) {
+                    if (menu_mgr) {
+                        if (menu_mgr->GetCurrentMenuType() == MenuManager::MenuType::INPUT_STACK) {
+                            // Already open, close it
+                            menu_mgr->CloseMenu();
+                            // Clear settings when closing menu (but preserve in settings manager for "memory")
+                            // Actually, we want menu memory - don't clear, so reopening can restore the view
+                            // The menu manager will handle the state
+                        } else {
+                            // Open input stack menu
+                            menu_mgr->OpenInputStackMenu();
+                            // If settings manager has a plugin set, restore it in menu manager (menu memory)
+                            if (settings_mgr && settings_mgr->GetPlugin()) {
+                                // Restore the settings plugin in menu manager so NavigateBack works correctly
+                                menu_mgr->SetCurrentSettingsPlugin(settings_mgr->GetPlugin());
+                            }
+                        }
+                    }
+                }
+                
+                if (input_manager.GetButtons().WasSystemButtonPressed(SystemButton::INSTRUMENT)) {
+                    if (menu_mgr) {
+                        if (menu_mgr->GetCurrentMenuType() == MenuManager::MenuType::INSTRUMENT) {
+                            // Already open, close it
+                            menu_mgr->CloseMenu();
+                        } else {
+                            // Open instrument menu (shows list)
+                            menu_mgr->OpenInstrumentMenu();
+                        }
+                    }
+                }
+                
+                if (input_manager.GetButtons().WasSystemButtonPressed(SystemButton::FX)) {
+                    if (menu_mgr) {
+                        if (menu_mgr->GetCurrentMenuType() == MenuManager::MenuType::FX) {
+                            // Already open, close it
+                            menu_mgr->CloseMenu();
+                        } else {
+                            // Open FX menu
+                            menu_mgr->OpenFXMenu();
+                        }
+                    }
+                }
+                
+                // Handle menu/settings navigation when menu is open
+                if (menu_mgr && menu_mgr->IsOpen()) {
+                    // Check if we're in settings mode
+                    IPluginWithSettings* settings_plugin = settings_mgr ? settings_mgr->GetPlugin() : nullptr;
+                    
+                    // Get joystick position for navigation
+                    float joystick_x, joystick_y;
+                    input_manager.GetJoystick().GetPosition(&joystick_x, &joystick_y);
+                    const float nav_threshold = 0.3f;
+                    static uint32_t last_nav_time = 0;
+                    uint32_t current_time = hw.system.GetNow();
+                    
+                    // Check joystick button click for toggle (works in both menu and settings)
+                    // Use a separate static variable for menu/settings context to avoid conflicts
+                    static bool prev_joystick_button_menu = false;
+                    bool joystick_button = false;
+                    if (io_manager.GetDigital()) {
+                        joystick_button = io_manager.GetDigital()->WasJoystickButtonPressed();
+                    }
+                    
+                    // Edge detection: trigger on rising edge (false -> true transition)
+                    // Edge detection: trigger on rising edge (false -> true transition)
+                    // Note: WasJoystickButtonPressed() returns true for ONE scan cycle only
+                    bool button_press_edge = joystick_button && !prev_joystick_button_menu;
+                    
+                    if (button_press_edge) {
+                        // Joystick button click: toggle current item (in menu) or toggle setting (in settings)
+                        // Check if we're actually in settings (menu open AND settings plugin active in menu manager)
+                        bool actually_in_settings = (menu_mgr && menu_mgr->GetCurrentSettingsPlugin() != nullptr);
+                        if (actually_in_settings) {
+                            // In settings mode: toggle current setting value (for bool/enum)
+                            if (settings_mgr) {
+                                settings_mgr->ToggleValue();
+                            }
+                        } else {
+                            // In menu mode: toggle current plugin on/off
+                            // Only toggle if we're actually in menu mode (not settings)
+                            if (menu_mgr && menu_mgr->IsOpen()) {
+                                // Debug: verify we're actually calling ToggleCurrentItem
+                                menu_mgr->ToggleCurrentItem();
+                            }
+                        }
+                    }
+                    // Update previous state AFTER checking edge (critical for edge detection)
+                    prev_joystick_button_menu = joystick_button;
+                    
+                    // Debounce navigation (every 200ms)
+                    if (current_time - last_nav_time > 200) {
+                        if (settings_plugin) {
+                            // Settings mode
+                            // Encoder changes values
+                            float encoder_delta = input_manager.GetEncoder().GetDelta();
+                            if (std::abs(encoder_delta) > 0.01f) {
+                                settings_mgr->ChangeValue(encoder_delta);
+                            }
+                            
+                            // Joystick Y: Navigate up/down in settings list
+                            if (joystick_y > nav_threshold) {
+                                // UP (joystick down = positive Y): move selection up (decrease index)
+                                settings_mgr->MoveSelection(-1);
+                                last_nav_time = current_time;
+                            } else if (joystick_y < -nav_threshold) {
+                                // DOWN (joystick up = negative Y): move selection down (increase index)
+                                settings_mgr->MoveSelection(1);
+                                last_nav_time = current_time;
+                            }
+                            
+                            // LEFT: Always go back to menu list from settings
+                            if (joystick_x < -nav_threshold) {
+                                menu_mgr->NavigateBack();
+                                // NavigateBack() clears current_settings_plugin_ in menu manager
+                                // Sync the settings manager to match
+                                if (settings_mgr) {
+                                    IPluginWithSettings* menu_plugin = menu_mgr->GetCurrentSettingsPlugin();
+                                    if (menu_plugin != settings_mgr->GetPlugin()) {
+                                        settings_mgr->SetPlugin(menu_plugin);  // Will be nullptr if we exited settings
+                                    }
+                                }
+                                last_nav_time = current_time;
+                            }
+                        } else {
+                            // Menu mode: handle navigation
+                            if (joystick_y > nav_threshold) {
+                                menu_mgr->NavigateUp();
+                                last_nav_time = current_time;
+                            } else if (joystick_y < -nav_threshold) {
+                                menu_mgr->NavigateDown();
+                                last_nav_time = current_time;
+                            } else if (joystick_x > nav_threshold) {
+                                // RIGHT: Enter settings for selected item
+                                menu_mgr->NavigateEnter();
+                                last_nav_time = current_time;
+                                
+                                // If we entered plugin settings, set it in settings manager
+                                IPluginWithSettings* plugin = menu_mgr->GetCurrentSettingsPlugin();
+                                if (plugin && settings_mgr) {
+                                    settings_mgr->SetPlugin(plugin);
+                                }
+                            }
+                            // Note: Joystick LEFT intentionally does NOT close top-level menus
+                            // Top-level menus can only be closed by pressing the button again
+                            // This prevents accidental closing
+                        }
+                    }
+                    
+                    // Update context in system bar based on menu type
+                    // Check if we're actually in settings mode (menu open AND settings plugin set)
+                    bool actually_in_settings = (settings_plugin != nullptr && menu_mgr && menu_mgr->IsOpen());
+                    if (actually_in_settings) {
+                        ui_manager.SetContext("Settings");
+                    } else {
+                        const char* context_name = "";
+                        switch (menu_mgr->GetCurrentMenuType()) {
+                            case MenuManager::MenuType::INPUT_STACK:
+                                context_name = "Input";
+                                break;
+                            case MenuManager::MenuType::INSTRUMENT:
+                                context_name = "Instrument";
+                                break;
+                            case MenuManager::MenuType::FX:
+                                context_name = "FX";
+                                break;
+                            case MenuManager::MenuType::MAIN:
+                                context_name = "Menu";
+                                break;
+                            default:
+                                context_name = "";
+                                break;
+                        }
+                        ui_manager.SetContext(context_name);
+                    }
+                } else {
+                    // Normal mode - handle octave UI (stick click)
+                    MenuManager* menu_mgr = ui_manager.GetMenuManager();
+                    bool menu_open = menu_mgr && menu_mgr->IsOpen();
+                    
+                    if (!menu_open) {
+                        // Handle octave shift UI (stick click in normal mode)
+                        static bool prev_joystick_button_normal = false;
+                        bool joystick_button = false;
+                        if (io_manager.GetDigital()) {
+                            joystick_button = io_manager.GetDigital()->WasJoystickButtonPressed();
+                        }
+                        
+                        if (joystick_button && !prev_joystick_button_normal) {
+                            // Toggle octave UI via UI Manager
+                            if (ui_manager.IsOctaveUIActive()) {
+                                ui_manager.DeactivateOctaveUI();
+                                octave_ui_active_flag_ = false;
+                            } else {
+                                ui_manager.ActivateOctaveUI();
+                                octave_ui_active_flag_ = true;
+                            }
+                        }
+                        prev_joystick_button_normal = joystick_button;
+                        
+                        // Update octave UI with joystick input (UI Manager handles state)
+                        if (ui_manager.IsOctaveUIActive()) {
+                            float joystick_x, joystick_y;
+                            input_manager.GetJoystick().GetPosition(&joystick_x, &joystick_y);
+                            uint32_t current_time = hw.system.GetNow();
+                            ui_manager.UpdateOctaveUI(joystick_x, current_time);
+                        }
+                        
+                        // Sync flag (in case UI Manager auto-deactivates)
+                        if (!ui_manager.IsOctaveUIActive() && octave_ui_active_flag_) {
+                            octave_ui_active_flag_ = false;
+                        } else if (ui_manager.IsOctaveUIActive() && !octave_ui_active_flag_) {
+                            octave_ui_active_flag_ = true;
+                        }
+                    } else {
+                        // Menu is open, deactivate octave UI if it was active
+                        if (ui_manager.IsOctaveUIActive()) {
+                            ui_manager.DeactivateOctaveUI();
+                            octave_ui_active_flag_ = false;
+                        }
+                    }
+                    
+                    ui_manager.SetContentType(UIManager::ContentType::MAIN_UI);
+                    ui_manager.SetContext(nullptr);  // Normal mode - show track name
+                }
+            }
+            
+            // Update UI Manager (handles all state updates and rendering)
+            // UI Manager owns the display lifecycle and coordinates all rendering
             ui_manager.Update();
         }
         
@@ -258,9 +517,16 @@ int main(void) {
         main_track.GenerateMIDI(midi_events, &midi_event_count, 64);
         
         // Send generated MIDI events to USB and TRS MIDI outputs
-        // Convert from plugin system's MidiEvent (midi_types.h) to handler
+        // Apply octave shift and convert from plugin system's MidiEvent (midi_types.h) to handler
         for (size_t i = 0; i < midi_event_count; i++) {
-            const ::OpenChord::MidiEvent& event = midi_events[i];
+            ::OpenChord::MidiEvent event = midi_events[i];  // Copy to apply shift
+            
+            // Apply octave shift to note messages
+            if (event.type == static_cast<uint8_t>(::OpenChord::MidiEvent::Type::NOTE_ON) ||
+                event.type == static_cast<uint8_t>(::OpenChord::MidiEvent::Type::NOTE_OFF)) {
+                event.data1 = octave_shift.ApplyShift(event.data1);
+            }
+            
             // Convert MidiEvent::Type (from midi_types.h) to daisy::MidiMessageType
             // midi_types.h uses: NOTE_ON = 0x90, NOTE_OFF = 0x80
             daisy::MidiMessageType msg_type;

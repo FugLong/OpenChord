@@ -35,6 +35,9 @@ public:
     // File system access
     FATFS* GetFileSystem() { return mounted_ ? &fsi_.GetSDFileSystem() : nullptr; }
     
+    // Cleanup operations
+    int CleanupBinFiles();  // Delete all .bin files from SD card root (returns count deleted)
+    
     // TODO: Implement storage methods
     // - File operations
     // - Audio file handling
