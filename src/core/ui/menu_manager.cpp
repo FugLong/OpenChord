@@ -129,7 +129,9 @@ void MenuManager::NavigateUp() {
     Menu* menu = GetCurrentMenu();
     if (!menu) return;
     
-    int& selected = selected_indices_[current_menu_stack_depth_];
+    // Use current_menu_stack_depth_ - 1 to match GetCurrentSelectedIndex()
+    if (current_menu_stack_depth_ <= 0) return;
+    int& selected = selected_indices_[current_menu_stack_depth_ - 1];
     selected--;
     if (selected < 0) {
         selected = menu->GetItemCount() - 1;
@@ -142,7 +144,9 @@ void MenuManager::NavigateDown() {
     Menu* menu = GetCurrentMenu();
     if (!menu) return;
     
-    int& selected = selected_indices_[current_menu_stack_depth_];
+    // Use current_menu_stack_depth_ - 1 to match GetCurrentSelectedIndex()
+    if (current_menu_stack_depth_ <= 0) return;
+    int& selected = selected_indices_[current_menu_stack_depth_ - 1];
     selected++;
     if (selected >= menu->GetItemCount()) {
         selected = 0;
@@ -161,13 +165,14 @@ void MenuManager::NavigateEnter() {
     
     switch (item->type) {
         case MenuItemType::PLUGIN_SETTINGS:
-            // RIGHT enters settings
+            // RIGHT enters settings (only if plugin has settings)
             if (item->context) {
                 // Context was stored as IPluginWithSettings* in CreatePluginSettingsItem
                 // Just cast it back - the pointer offset should be correct since we cast it
                 // through ChordMappingInput* when creating the menu item
                 current_settings_plugin_ = static_cast<IPluginWithSettings*>(item->context);
             }
+            // If context is nullptr, plugin doesn't have settings - do nothing (can't enter settings)
             break;
             
         case MenuItemType::SUBMENU:
@@ -200,10 +205,12 @@ void MenuManager::ToggleCurrentItem() {
     
     // Toggle plugin active state
     if (item->type == MenuItemType::PLUGIN_SETTINGS) {
-        if (item->context && item->label && current_track_) {
-            // The context is stored as IPluginWithSettings*, but we need to get the actual plugin
-            // from the track to correctly cast it to IInputPlugin (due to multiple inheritance).
-            // We identify the plugin by matching the menu item label with the plugin name.
+        // Works for both plugins with settings (item->context != nullptr) and without (item->context == nullptr)
+        // We search by name, so context is not required
+        if (item->label && current_track_) {
+            // The context is stored as IPluginWithSettings* for plugins with settings, but can be nullptr
+            // for plugins without settings. We identify the plugin by matching the menu item label 
+            // with the plugin name, which works for both cases.
             
             const char* plugin_name = item->label;
             const auto& plugins = current_track_->GetInputPlugins();
@@ -214,7 +221,9 @@ void MenuManager::ToggleCurrentItem() {
                     // Found the plugin! Now we can safely cast it
                     IInputPlugin* input_plugin = plugin.get();
                     if (input_plugin) {
-                        input_plugin->SetActive(!input_plugin->IsActive());
+                        // Use Track's SetInputPluginActive to handle exclusive plugin logic
+                        bool new_state = !input_plugin->IsActive();
+                        current_track_->SetInputPluginActive(input_plugin, new_state);
                         // Force menu refresh to update ON/OFF display
                         needs_refresh_ = true;
                         return;
@@ -270,11 +279,8 @@ void MenuManager::NavigateBack() {
 void MenuManager::Update() {
     if (!IsOpen() || !input_manager_) return;
     
-    // Handle joystick input
-    auto& joystick = input_manager_->GetJoystick();
-    float x, y;
-    joystick.GetPosition(&x, &y);
-    HandleJoystickInput(x, y);
+    // Joystick navigation is handled in main.cpp with proper timing
+    // This Update() function is kept for future use if needed
     
     // Handle button input for navigation
     HandleButtonInput();
@@ -333,9 +339,10 @@ void MenuManager::Render() {
         
         // For plugin items, show on/off status
         char status_suffix[8] = "";
-        if (item->type == MenuItemType::PLUGIN_SETTINGS && item->context && item->label && current_track_) {
+        if (item->type == MenuItemType::PLUGIN_SETTINGS && item->label && current_track_) {
             // We can't safely cast from IPluginWithSettings* to IInputPlugin* due to multiple inheritance.
             // Instead, look up the plugin from the track by name (same approach as ToggleCurrentItem).
+            // This works for both plugins with settings (item->context != nullptr) and without (item->context == nullptr).
             const char* plugin_name = item->label;
             
             // Search for the plugin in input plugins
@@ -379,19 +386,10 @@ void MenuManager::Render() {
 }
 
 void MenuManager::HandleJoystickInput(float x, float y) {
-    // Dead zone
-    const float dead_zone = 0.3f;
-    
-    // Vertical navigation (UP/DOWN)
-    if (y > dead_zone) {
-        NavigateUp();
-    } else if (y < -dead_zone) {
-        NavigateDown();
-    }
-    
-    // Horizontal navigation (LEFT/RIGHT)
-    // Note: We don't want to trigger on every frame, so we'd need debouncing
-    // For now, just handle in main loop with button/joystick handlers
+    // Joystick navigation is handled in main.cpp with timing-based edge detection
+    // This function is kept for potential future use but doesn't handle navigation here
+    (void)x;
+    (void)y;
 }
 
 void MenuManager::HandleButtonInput() {
@@ -415,16 +413,21 @@ void MenuManager::GenerateMainMenu() {
 void MenuManager::GenerateInputStackMenu() {
     if (!current_track_) return;
     
+    // Clear temp items array first
+    std::memset(temp_items_, 0, sizeof(temp_items_));
+    
     // Generate menu of input plugins
     int item_count = 0;
     const auto& plugins = current_track_->GetInputPlugins();
     
     for (size_t i = 0; i < plugins.size() && item_count < MAX_TEMP_ITEMS; i++) {
         auto* plugin = plugins[i].get();
+        if (!plugin) continue;  // Skip null plugins
         
         // Skip ChromaticInput - it's a default fallback, not a selectable mode
         const char* name = plugin->GetName();
-        if (name && strcmp(name, "Chromatic") == 0) {
+        if (!name) continue;  // Skip plugins without names
+        if (strcmp(name, "Chromatic") == 0) {
             continue;
         }
         
@@ -442,20 +445,38 @@ void MenuManager::GenerateInputStackMenu() {
         
         IPluginWithSettings* settings_plugin = nullptr;
         
-        // Check if this is ChordMappingInput by name (since we can't use typeid)
-        if (name && strcmp(name, "Chord Mapping") == 0) {
-            // This is ChordMappingInput - cast to the actual object type first
-            // Since ChordMappingInput inherits from both IInputPlugin and IPluginWithSettings,
-            // we need to cast to ChordMappingInput* first (which knows about both base classes),
-            // then to IPluginWithSettings*. This ensures the compiler adjusts the pointer offset.
-            ChordMappingInput* chord_plugin = static_cast<ChordMappingInput*>(plugin);
-            settings_plugin = static_cast<IPluginWithSettings*>(chord_plugin);
+        // Check if plugin supports settings by name (since we can't use typeid/dynamic_cast)
+        // Plugins that implement IPluginWithSettings need special casting to handle
+        // multiple inheritance pointer offset correctly
+        if (name) {
+            if (strcmp(name, "Chord Mapping") == 0) {
+                // This is ChordMappingInput - cast to the actual object type first
+                // Since ChordMappingInput inherits from both IInputPlugin and IPluginWithSettings,
+                // we need to cast to ChordMappingInput* first (which knows about both base classes),
+                // then to IPluginWithSettings*. This ensures the compiler adjusts the pointer offset.
+                ChordMappingInput* chord_plugin = static_cast<ChordMappingInput*>(plugin);
+                settings_plugin = static_cast<IPluginWithSettings*>(chord_plugin);
+            }
         }
         
-        // Only add to menu if plugin supports settings
+        // Add all plugins to menu (not just ones with settings)
+        // Plugins without settings can still be toggled on/off
+        // For plugins with settings, we can navigate into settings with RIGHT
         if (settings_plugin) {
+            // Plugin has settings - create settings item
             temp_items_[item_count++] = CreatePluginSettingsItem(
                 plugin->GetName(), settings_plugin);
+        } else if (name) {
+            // Plugin doesn't have settings - still create a menu item for toggling
+            // Use PLUGIN_SETTINGS type with nullptr - ToggleCurrentItem will find it by name
+            // We need to ensure the label pointer is valid (GetName() returns const char* to string literal)
+            MenuItem item;
+            item.label = name;  // String literal pointer, safe to store
+            item.type = MenuItemType::PLUGIN_SETTINGS;
+            item.context = nullptr;  // No settings plugin, but ToggleCurrentItem will find it by name
+            item.action = nullptr;
+            item.shortcut_hint = nullptr;
+            temp_items_[item_count++] = item;
         }
     }
     

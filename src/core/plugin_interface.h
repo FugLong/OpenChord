@@ -28,6 +28,11 @@ public:
     virtual const char* GetName() const = 0;
     virtual const char* GetCategory() const = 0;
     virtual int GetVersion() const = 0;
+    
+    // Exclusive plugin behavior
+    // If a plugin is exclusive, activating it will deactivate all other exclusive plugins
+    // This is useful for input modes that cannot coexist (e.g., chord mapping and drum pad)
+    virtual bool IsExclusive() const { return false; }
 
     // State management
     virtual void SaveState(void* buffer, size_t* size) const = 0;

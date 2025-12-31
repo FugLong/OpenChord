@@ -156,16 +156,11 @@ if [ -f "$TARGET_FILE" ]; then
         print_info "      Run: ./clean_sd_bin.sh to remove it automatically"
         print_info ""
         
-        # Clean up .bin files and Mac temp files before ejecting
-        print_info "Cleaning up .bin files and Mac temp files..."
+        # NOTE: Don't clean up .bin files here - the bootloader needs the file to flash!
+        # The firmware itself will clean up .bin files after it boots (via CleanupBinFiles)
+        # Only clean up Mac temp files before ejecting
+        print_info "Cleaning up Mac temp files..."
         CLEANUP_COUNT=0
-        
-        # Delete all .bin files (case-insensitive)
-        find "$SD_MOUNT" -maxdepth 1 -type f \( -iname "*.bin" \) -print0 | while IFS= read -r -d '' file; do
-            rm -f "$file"
-            print_info "  Deleted: $(basename "$file")"
-            CLEANUP_COUNT=$((CLEANUP_COUNT + 1))
-        done
         
         # Delete bootloader log files (.log and bootloader-related .txt files)
         find "$SD_MOUNT" -maxdepth 1 -type f \( -iname "*.log" -o -iname "*boot*.txt" -o -iname "*flash*.txt" \) -print0 | while IFS= read -r -d '' file; do

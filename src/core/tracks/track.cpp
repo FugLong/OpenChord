@@ -99,6 +99,24 @@ const std::vector<std::unique_ptr<IInputPlugin>>& Track::GetInputPlugins() const
     return input_plugins_;
 }
 
+void Track::SetInputPluginActive(IInputPlugin* plugin, bool active) {
+    if (!plugin) return;
+    
+    // If activating an exclusive plugin, deactivate all other exclusive plugins
+    if (active && plugin->IsExclusive()) {
+        for (auto& other_plugin : input_plugins_) {
+            if (other_plugin.get() != plugin && 
+                other_plugin->IsExclusive() && 
+                other_plugin->IsActive()) {
+                other_plugin->SetActive(false);
+            }
+        }
+    }
+    
+    // Set the requested plugin's active state
+    plugin->SetActive(active);
+}
+
 void Track::SetInstrument(std::unique_ptr<IInstrumentPlugin> instrument) {
     instrument_ = std::move(instrument);
 }

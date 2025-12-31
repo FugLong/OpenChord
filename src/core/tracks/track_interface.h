@@ -31,6 +31,10 @@ public:
     void RemoveInputPlugin(size_t index);
     void ReorderInputPlugin(size_t from, size_t to);
     const std::vector<std::unique_ptr<IInputPlugin>>& GetInputPlugins() const;
+    
+    // Exclusive plugin management
+    // When activating an exclusive plugin, deactivate all other exclusive plugins
+    void SetInputPluginActive(IInputPlugin* plugin, bool active);
 
     // Instrument management
     void SetInstrument(std::unique_ptr<IInstrumentPlugin> instrument);

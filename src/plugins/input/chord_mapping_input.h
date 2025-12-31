@@ -39,6 +39,7 @@ public:
     const char* GetName() const override { return "Chord Mapping"; }
     const char* GetCategory() const override { return "Input"; }
     int GetVersion() const override { return 1; }
+    bool IsExclusive() const override { return true; }  // Exclusive: deactivates other exclusive plugins
     
     void SaveState(void* buffer, size_t* size) const override;
     void LoadState(const void* buffer, size_t size) override;

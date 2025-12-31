@@ -21,6 +21,7 @@
 #include "core/io/joystick_input_handler.h"
 #include "plugins/input/chord_mapping_input.h"
 #include "plugins/input/chromatic_input.h"
+#include "plugins/input/drum_pad_input.h"
 #if DEBUG_SCREEN_ENABLED
 #include "core/ui/debug_screen.h"
 #include "core/ui/debug_views.h"
@@ -141,6 +142,12 @@ int main(void) {
     chord_plugin->Init();
     main_track.AddInputPlugin(std::move(chord_plugin));
     
+    // Add drum pad plugin (exclusive, medium priority)
+    auto drum_pad_plugin = std::make_unique<DrumPadInput>();
+    drum_pad_plugin->SetInputManager(&input_manager);
+    drum_pad_plugin->Init();
+    main_track.AddInputPlugin(std::move(drum_pad_plugin));
+    
     // Add chromatic input plugin (lower priority, fallback when no other input is active)
     auto chromatic_plugin = std::make_unique<ChromaticInput>();
     chromatic_plugin_ptr = chromatic_plugin.get();
@@ -150,7 +157,7 @@ int main(void) {
     chromatic_plugin->Init();
     main_track.AddInputPlugin(std::move(chromatic_plugin));
     
-    ExternalLog::PrintLine("Track system initialized with chord mapping and chromatic input");
+    ExternalLog::PrintLine("Track system initialized with chord mapping, drum pad, and chromatic input");
     
     ExternalLog::PrintLine("Managers initialized");
     
