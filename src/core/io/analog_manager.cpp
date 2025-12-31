@@ -6,7 +6,7 @@
 
 AnalogManager::AnalogManager() 
     : hw_(nullptr), filter_strength_(0.1f), dead_zone_(0.05f), 
-      battery_check_ms_(1000), low_battery_threshold_(3.0f), healthy_(true) {
+      battery_check_ms_(1000), low_battery_threshold_(3.3f), healthy_(true) {
     
     // Initialize ADC configuration
     memset(adc_configured_, 0, sizeof(adc_configured_));
@@ -49,7 +49,7 @@ void AnalogManager::Init(daisy::DaisySeed* hw) {
     joystick_cal_.calibrated = false;
     
     // Initialize battery monitoring
-    battery_.voltage = 4.2f; // Assume full battery initially
+    battery_.voltage = 4.11f; // Assume full battery initially (max voltage)
     battery_.percentage = 100.0f;
     battery_.is_low = false;
     battery_.is_charging = false;
@@ -319,7 +319,7 @@ void AnalogManager::UpdateBattery() {
         // Battery voltage = (adc_value * 3.3V) / 0.5 = adc_value * 6.6V
         battery_.voltage = adc_value * 6.6f;
         
-        // Calculate percentage (assuming 3.0V to 4.2V range)
+        // Calculate percentage (using 3.2V to 4.11V range for battery health)
         battery_.percentage = CalculateBatteryPercentage(battery_.voltage);
         
         // Check if battery is low
@@ -423,21 +423,57 @@ float AnalogManager::NormalizeValue(float raw_value, AnalogInputType type) {
 }
 
 float AnalogManager::CalculateBatteryPercentage(float voltage) {
-    // Battery percentage calculation for lithium batteries
-    // Using voltage divider with 0.5 reduction (2:1 ratio)
-    // Full charge range: 4.1V-4.2V should show as 100%
-    // Nominal: ~3.7V ≈ 50%
-    // Empty/cutoff: 3.0V = 0%
+    // Battery percentage calculation for user-facing display
+    // Maps voltage to usable capacity percentage for linear discharge experience
+    // 
+    // User expectation: If battery lasts 10 hours, each 10% should take ~1 hour
+    // This means we need to map voltage to actual energy/capacity remaining,
+    // not just voltage level.
+    //
+    // Voltage range: 4.11V (max, 100%) to 3.2V (min, 0%)
+    // Using 3.2V as cutoff protects battery health (avoids deep discharge)
+    //
+    // Li-ion capacity distribution (typical):
+    // - Voltage drops quickly from 4.11V to ~3.9V (uses ~15-20% of capacity)
+    // - Voltage stays relatively flat 3.9V to 3.6V (uses ~60-70% of capacity)
+    // - Voltage drops quickly from 3.6V to 3.2V (uses ~10-15% of capacity)
+    //
+    // For user experience, we map to represent actual usable energy:
+    // 4.11V = 100% (fully charged, max voltage)
+    // 3.9V = ~80% (top voltage drop represents ~20% capacity)
+    // 3.7V = ~50% (middle of capacity, not voltage)
+    // 3.6V = ~30% (most capacity used in flat region)
+    // 3.5V = ~15% (approaching empty)
+    // 3.2V = 0% (cutoff - protects battery from deep discharge)
     
-    if (voltage <= 3.0f) return 0.0f;
+    if (voltage <= 3.2f) return 0.0f;
+    if (voltage >= 4.11f) return 100.0f;
     
-    // Consider 4.1V and above as fully charged (100%)
-    // This accounts for the fact that batteries don't stay at exactly 4.2V
-    if (voltage >= 4.1f) return 100.0f;
-    
-    // Linear interpolation from 3.0V (0%) to 4.1V (100%)
-    // This ensures 4.1V+ shows as 100% and provides accurate readings throughout the range
-    return (voltage - 3.0f) / (4.1f - 3.0f) * 100.0f;
+    // Map voltage to capacity-based percentage for linear user experience
+    // This compensates for the flat voltage curve in the middle
+    if (voltage >= 4.0f) {
+        // 4.0V to 4.11V: 85% to 100% (top 15% of capacity)
+        return 85.0f + (voltage - 4.0f) / (4.11f - 4.0f) * 15.0f;
+    } else if (voltage >= 3.9f) {
+        // 3.9V to 4.0V: 80% to 85% (5% capacity in this range)
+        return 80.0f + (voltage - 3.9f) / (4.0f - 3.9f) * 5.0f;
+    } else if (voltage >= 3.7f) {
+        // 3.7V to 3.9V: 50% to 80% (30% capacity in flat region)
+        // This is where most of the battery life is spent
+        return 50.0f + (voltage - 3.7f) / (3.9f - 3.7f) * 30.0f;
+    } else if (voltage >= 3.6f) {
+        // 3.6V to 3.7V: 30% to 50% (20% capacity)
+        return 30.0f + (voltage - 3.6f) / (3.7f - 3.6f) * 20.0f;
+    } else if (voltage >= 3.5f) {
+        // 3.5V to 3.6V: 15% to 30% (15% capacity)
+        return 15.0f + (voltage - 3.5f) / (3.6f - 3.5f) * 15.0f;
+    } else if (voltage >= 3.3f) {
+        // 3.3V to 3.5V: 5% to 15% (10% capacity)
+        return 5.0f + (voltage - 3.3f) / (3.5f - 3.3f) * 10.0f;
+    } else {
+        // 3.2V to 3.3V: 0% to 5% (5% capacity remaining)
+        return (voltage - 3.2f) / (3.3f - 3.2f) * 5.0f;
+    }
 }
 
 bool AnalogManager::IsValidADCValue(float value) const {

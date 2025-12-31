@@ -57,8 +57,9 @@ public:
         input_manager_ = input_manager;
     }
     
-    void SetOctaveUIActivePtr(bool* active_ptr) {
-        octave_ui_active_ptr_ = active_ptr;
+    // Set callback to check if octave UI is active
+    void SetOctaveUICheckCallback(bool (*check_func)()) {
+        octave_ui_check_func_ = check_func;
     }
     
     // Get current chord for UI display
@@ -85,7 +86,7 @@ public:
 private:
     // Input access
     InputManager* input_manager_;
-    bool* octave_ui_active_ptr_;  // Pointer to external flag (nullptr = don't check)
+    bool (*octave_ui_check_func_)();  // Callback to check if octave UI is active (nullptr = don't check)
     
     // State
     bool active_;

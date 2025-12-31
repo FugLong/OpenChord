@@ -8,8 +8,7 @@
 #include <cstring>
 
 IOManager::IOManager() 
-    : hw_(nullptr), digital_(nullptr), analog_(nullptr), serial_(nullptr), 
-      display_(nullptr), storage_(nullptr), update_count_(0), last_update_time_(0) {
+    : hw_(nullptr), update_count_(0), last_update_time_(0) {
     
     // Initialize system status
     memset(&status_, 0, sizeof(status_));
@@ -27,18 +26,12 @@ IOManager::~IOManager() {
 void IOManager::Init(daisy::DaisySeed* hw) {
     hw_ = hw;
     
-    // Create and initialize all sub-managers
-    digital_ = new DigitalManager();
-    analog_ = new AnalogManager();
-    serial_ = new SerialManager();
-    display_ = new DisplayManager();
-    storage_ = new StorageManager();
-    
-    digital_->Init(hw);
-    analog_->Init(hw);
-    serial_->Init(hw);
-    display_->Init(hw);
-    storage_->Init(hw);
+    // Initialize all sub-managers (static allocation)
+    digital_.Init(hw);
+    analog_.Init(hw);
+    serial_.Init(hw);
+    display_.Init(hw);
+    storage_.Init(hw);
     
     // Reset update counters
     update_count_ = 0;
@@ -52,11 +45,11 @@ void IOManager::Update() {
     if (!hw_) return;
     
     // Update all sub-managers
-    if (digital_) digital_->Update();
-    if (analog_) analog_->Update();
-    if (serial_) serial_->Update();
-    if (display_) display_->Update();
-    if (storage_) storage_->Update();
+    digital_.Update();
+    analog_.Update();
+    serial_.Update();
+    display_.Update();
+    storage_.Update();
     
     // Update system status
     UpdateSystemStatus();
@@ -73,35 +66,11 @@ void IOManager::Shutdown() {
     if (!hw_) return;
     
     // Shutdown all sub-managers
-    if (digital_) {
-        digital_->Shutdown();
-        delete digital_;
-        digital_ = nullptr;
-    }
-    
-    if (analog_) {
-        analog_->Shutdown();
-        delete analog_;
-        analog_ = nullptr;
-    }
-    
-    if (serial_) {
-        serial_->Shutdown();
-        delete serial_;
-        serial_ = nullptr;
-    }
-    
-    if (display_) {
-        display_->Shutdown();
-        delete display_;
-        display_ = nullptr;
-    }
-    
-    if (storage_) {
-        storage_->Shutdown();
-        delete storage_;
-        storage_ = nullptr;
-    }
+    digital_.Shutdown();
+    analog_.Shutdown();
+    serial_.Shutdown();
+    display_.Shutdown();
+    storage_.Shutdown();
     
     hw_ = nullptr;
 }
@@ -119,21 +88,27 @@ const SystemStatus& IOManager::GetStatus() const {
     return status_;
 }
 
-void IOManager::ReportError(const char* component, const char* error) {
+void IOManager::ReportError(IOComponent component, const char* error) {
     status_.error_count++;
     status_.last_error_time = hw_ ? hw_->system.GetNow() : 0;
     
     // Mark the appropriate component as unhealthy
-    if (strcmp(component, "digital") == 0) {
-        status_.digital_healthy = false;
-    } else if (strcmp(component, "analog") == 0) {
-        status_.analog_healthy = false;
-    } else if (strcmp(component, "serial") == 0) {
-        status_.serial_healthy = false;
-    } else if (strcmp(component, "display") == 0) {
-        status_.display_healthy = false;
-    } else if (strcmp(component, "storage") == 0) {
-        status_.storage_healthy = false;
+    switch (component) {
+        case IOComponent::DIGITAL:
+            status_.digital_healthy = false;
+            break;
+        case IOComponent::ANALOG:
+            status_.analog_healthy = false;
+            break;
+        case IOComponent::SERIAL:
+            status_.serial_healthy = false;
+            break;
+        case IOComponent::DISPLAY:
+            status_.display_healthy = false;
+            break;
+        case IOComponent::STORAGE:
+            status_.storage_healthy = false;
+            break;
     }
     
     // TODO: Add proper error logging when we implement it
@@ -152,11 +127,11 @@ void IOManager::ClearErrors() {
 
 void IOManager::UpdateSystemStatus() {
     // Check health of each sub-manager
-    status_.digital_healthy = digital_ ? digital_->IsHealthy() : false;
-    status_.analog_healthy = analog_ ? analog_->IsHealthy() : false;
-    status_.serial_healthy = serial_ ? serial_->IsHealthy() : false;
-    status_.display_healthy = display_ ? display_->IsHealthy() : false;
-    status_.storage_healthy = storage_ ? storage_->IsHealthy() : false;
+    status_.digital_healthy = digital_.IsHealthy();
+    status_.analog_healthy = analog_.IsHealthy();
+    status_.serial_healthy = serial_.IsHealthy();
+    status_.display_healthy = display_.IsHealthy();
+    status_.storage_healthy = storage_.IsHealthy();
 }
 
 void IOManager::HandleErrors() {

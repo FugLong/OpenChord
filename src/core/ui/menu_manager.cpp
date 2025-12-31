@@ -1,10 +1,13 @@
 #include "menu_manager.h"
+#include "settings_manager.h"
 #include "../tracks/track_interface.h"
 #include "../plugin_interface.h"
+#include "../io/io_manager.h"
 #include "../../plugins/input/chord_mapping_input.h"  // For ChordMappingInput cast
 #include "daisy_seed.h"  // For Font_6x8
 #include <cstring>
 #include <cstdio>
+#include <cmath>  // For std::abs
 
 // Forward declaration for plugin casting
 namespace OpenChord {
@@ -42,8 +45,8 @@ MenuManager::MenuManager()
     , current_menu_type_(MenuType::NONE)
     , current_menu_stack_depth_(0)
     , current_settings_plugin_(nullptr)
-    , temp_menu_count_(0)
     , needs_refresh_(false)
+    , temp_menu_count_(0)
 {
     // Initialize menu stack
     for (int i = 0; i < MAX_MENU_DEPTH; i++) {
@@ -279,11 +282,122 @@ void MenuManager::NavigateBack() {
 void MenuManager::Update() {
     if (!IsOpen() || !input_manager_) return;
     
-    // Joystick navigation is handled in main.cpp with proper timing
-    // This Update() function is kept for future use if needed
-    
     // Handle button input for navigation
     HandleButtonInput();
+}
+
+bool MenuManager::UpdateMenuInput(SettingsManager* settings_mgr, IOManager* io_manager, uint32_t current_time_ms) {
+    if (!input_manager_ || !io_manager) return false;
+    
+    bool state_changed = false;
+    const float nav_threshold = 0.3f;
+    static uint32_t last_nav_time = 0;
+    static bool prev_joystick_button_menu = false;
+    
+    // Check joystick button click for toggle (works in both menu and settings)
+    bool joystick_button = false;
+    if (io_manager->GetDigital()) {
+        joystick_button = io_manager->GetDigital()->WasJoystickButtonPressed();
+    }
+    
+    // Edge detection: trigger on rising edge (false -> true transition)
+    bool button_press_edge = joystick_button && !prev_joystick_button_menu;
+    
+    if (button_press_edge) {
+        // Joystick button click: toggle current item (in menu) or toggle setting (in settings)
+        bool actually_in_settings = (current_settings_plugin_ != nullptr);
+        if (actually_in_settings) {
+            // In settings mode: toggle current setting value (for bool/enum)
+            if (settings_mgr) {
+                settings_mgr->ToggleValue();
+                state_changed = true;
+            }
+        } else {
+            // In menu mode: toggle current plugin on/off
+            if (IsOpen()) {
+                ToggleCurrentItem();
+                state_changed = true;
+            }
+        }
+    }
+    prev_joystick_button_menu = joystick_button;
+    
+    // Debounce navigation (every 200ms)
+    if (current_time_ms - last_nav_time > 200) {
+        IPluginWithSettings* settings_plugin = settings_mgr ? settings_mgr->GetPlugin() : nullptr;
+        
+        // Get joystick position for navigation
+        float joystick_x, joystick_y;
+        input_manager_->GetJoystick().GetPosition(&joystick_x, &joystick_y);
+        
+        if (settings_plugin) {
+            // Settings mode
+            // Encoder changes values
+            float encoder_delta = input_manager_->GetEncoder().GetDelta();
+            if (std::abs(encoder_delta) > 0.01f) {
+                if (settings_mgr) {
+                    settings_mgr->ChangeValue(encoder_delta);
+                    state_changed = true;
+                }
+            }
+            
+            // Joystick Y: Navigate up/down in settings list
+            if (joystick_y > nav_threshold) {
+                // UP (joystick down = positive Y): move selection up (decrease index)
+                if (settings_mgr) {
+                    settings_mgr->MoveSelection(-1);
+                    state_changed = true;
+                }
+                last_nav_time = current_time_ms;
+            } else if (joystick_y < -nav_threshold) {
+                // DOWN (joystick up = negative Y): move selection down (increase index)
+                if (settings_mgr) {
+                    settings_mgr->MoveSelection(1);
+                    state_changed = true;
+                }
+                last_nav_time = current_time_ms;
+            }
+            
+            // LEFT: Always go back to menu list from settings
+            if (joystick_x < -nav_threshold) {
+                NavigateBack();
+                // NavigateBack() clears current_settings_plugin_ in menu manager
+                // Sync the settings manager to match
+                if (settings_mgr) {
+                    IPluginWithSettings* menu_plugin = GetCurrentSettingsPlugin();
+                    if (menu_plugin != settings_mgr->GetPlugin()) {
+                        settings_mgr->SetPlugin(menu_plugin);  // Will be nullptr if we exited settings
+                    }
+                }
+                state_changed = true;
+                last_nav_time = current_time_ms;
+            }
+        } else {
+            // Menu mode: handle navigation
+            if (joystick_y > nav_threshold) {
+                NavigateUp();
+                state_changed = true;
+                last_nav_time = current_time_ms;
+            } else if (joystick_y < -nav_threshold) {
+                NavigateDown();
+                state_changed = true;
+                last_nav_time = current_time_ms;
+            } else if (joystick_x > nav_threshold) {
+                // RIGHT: Enter settings for selected item
+                NavigateEnter();
+                state_changed = true;
+                last_nav_time = current_time_ms;
+                
+                // If we entered plugin settings, set it in settings manager
+                IPluginWithSettings* plugin = GetCurrentSettingsPlugin();
+                if (plugin && settings_mgr) {
+                    settings_mgr->SetPlugin(plugin);
+                }
+            }
+        }
+    }
+    
+    return state_changed;
 }
 
 void MenuManager::Render() {
@@ -608,6 +722,25 @@ int MenuManager::GetCurrentSelectedIndex() const {
         return 0;
     }
     return selected_indices_[current_menu_stack_depth_ - 1];
+}
+
+const char* MenuManager::GetContextName() const {
+    if (current_settings_plugin_) {
+        return "Settings";
+    }
+    
+    switch (current_menu_type_) {
+        case MenuType::INPUT_STACK:
+            return "Input";
+        case MenuType::INSTRUMENT:
+            return "Instrument";
+        case MenuType::FX:
+            return "FX";
+        case MenuType::MAIN:
+            return "Menu";
+        default:
+            return "";
+    }
 }
 
 } // namespace OpenChord

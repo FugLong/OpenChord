@@ -56,7 +56,6 @@ ChromaticInput* chromatic_plugin_ptr = nullptr;  // Keep reference for octave sh
 SplashScreen splash_screen;
 MainUI main_ui;
 UIManager ui_manager;
-bool octave_ui_active_flag_ = false;  // Flag for input plugins to check if octave UI is active
 
 #if DEBUG_SCREEN_ENABLED
 DebugScreen debug_screen;
@@ -116,9 +115,8 @@ int main(void) {
     audio_engine.Init(&hw);
     audio_engine.SetVolumeManager(&volume_mgr);
     
-    // Enable microphone passthrough for wiring test (temporary)
+    // Microphone passthrough disabled by default
     audio_engine.SetMicPassthroughEnabled(false);
-    ExternalLog::PrintLine("Microphone passthrough enabled (temporary test)");
     
     // Initialize MIDI handler
     midi_handler.Init(&hw);
@@ -137,8 +135,8 @@ int main(void) {
     auto chord_plugin = std::make_unique<ChordMappingInput>();
     chord_plugin_ptr = chord_plugin.get();  // Keep reference for UI
     chord_plugin->SetInputManager(&input_manager);
-    // Pass pointer to octave UI active flag so chord mapping doesn't process joystick when octave UI is active
-    chord_plugin->SetOctaveUIActivePtr(&octave_ui_active_flag_);
+    // Pass function to check if octave UI is active (so chord mapping doesn't process joystick when octave UI is active)
+    // Note: This will be set after UI Manager is initialized
     chord_plugin->Init();
     main_track.AddInputPlugin(std::move(chord_plugin));
     
@@ -192,6 +190,13 @@ int main(void) {
                 main_ui.Render(disp);
             });
             ui_manager.SetContentType(UIManager::ContentType::MAIN_UI);
+            
+            // Set octave UI check callback for chord plugin (after UI Manager is initialized)
+            if (chord_plugin_ptr) {
+                chord_plugin_ptr->SetOctaveUICheckCallback([]() -> bool {
+                    return ui_manager.IsOctaveUIActive();
+                });
+            }
             ExternalLog::PrintLine("Main UI initialized");
             
             #if DEBUG_SCREEN_ENABLED
@@ -274,26 +279,19 @@ int main(void) {
             if (!debug_enabled)
             #endif
             {
-                // Handle menu navigation
+                // Handle menu system (button presses and navigation)
                 MenuManager* menu_mgr = ui_manager.GetMenuManager();
                 SettingsManager* settings_mgr = ui_manager.GetSettingsManager();
                 
-                // Button presses open their respective menus (if menu is closed or same type)
-                // If menu is already open, pressing the same button closes it
+                // Handle button presses to open/close menus
                 if (input_manager.GetButtons().WasSystemButtonPressed(SystemButton::INPUT)) {
                     if (menu_mgr) {
                         if (menu_mgr->GetCurrentMenuType() == MenuManager::MenuType::INPUT_STACK) {
-                            // Already open, close it
                             menu_mgr->CloseMenu();
-                            // Clear settings when closing menu (but preserve in settings manager for "memory")
-                            // Actually, we want menu memory - don't clear, so reopening can restore the view
-                            // The menu manager will handle the state
                         } else {
-                            // Open input stack menu
                             menu_mgr->OpenInputStackMenu();
-                            // If settings manager has a plugin set, restore it in menu manager (menu memory)
+                            // Restore settings plugin if it exists (menu memory)
                             if (settings_mgr && settings_mgr->GetPlugin()) {
-                                // Restore the settings plugin in menu manager so NavigateBack works correctly
                                 menu_mgr->SetCurrentSettingsPlugin(settings_mgr->GetPlugin());
                             }
                         }
@@ -303,10 +301,8 @@ int main(void) {
                 if (input_manager.GetButtons().WasSystemButtonPressed(SystemButton::INSTRUMENT)) {
                     if (menu_mgr) {
                         if (menu_mgr->GetCurrentMenuType() == MenuManager::MenuType::INSTRUMENT) {
-                            // Already open, close it
                             menu_mgr->CloseMenu();
                         } else {
-                            // Open instrument menu (shows list)
                             menu_mgr->OpenInstrumentMenu();
                         }
                     }
@@ -315,153 +311,23 @@ int main(void) {
                 if (input_manager.GetButtons().WasSystemButtonPressed(SystemButton::FX)) {
                     if (menu_mgr) {
                         if (menu_mgr->GetCurrentMenuType() == MenuManager::MenuType::FX) {
-                            // Already open, close it
                             menu_mgr->CloseMenu();
                         } else {
-                            // Open FX menu
                             menu_mgr->OpenFXMenu();
                         }
                     }
                 }
                 
-                // Handle menu/settings navigation when menu is open
+                // Handle menu/settings navigation (centralized in MenuManager)
                 if (menu_mgr && menu_mgr->IsOpen()) {
-                    // Check if we're in settings mode
-                    IPluginWithSettings* settings_plugin = settings_mgr ? settings_mgr->GetPlugin() : nullptr;
-                    
-                    // Get joystick position for navigation
-                    float joystick_x, joystick_y;
-                    input_manager.GetJoystick().GetPosition(&joystick_x, &joystick_y);
-                    const float nav_threshold = 0.3f;
-                    static uint32_t last_nav_time = 0;
                     uint32_t current_time = hw.system.GetNow();
+                    menu_mgr->UpdateMenuInput(settings_mgr, &io_manager, current_time);
                     
-                    // Check joystick button click for toggle (works in both menu and settings)
-                    // Use a separate static variable for menu/settings context to avoid conflicts
-                    static bool prev_joystick_button_menu = false;
-                    bool joystick_button = false;
-                    if (io_manager.GetDigital()) {
-                        joystick_button = io_manager.GetDigital()->WasJoystickButtonPressed();
-                    }
-                    
-                    // Edge detection: trigger on rising edge (false -> true transition)
-                    // Edge detection: trigger on rising edge (false -> true transition)
-                    // Note: WasJoystickButtonPressed() returns true for ONE scan cycle only
-                    bool button_press_edge = joystick_button && !prev_joystick_button_menu;
-                    
-                    if (button_press_edge) {
-                        // Joystick button click: toggle current item (in menu) or toggle setting (in settings)
-                        // Check if we're actually in settings (menu open AND settings plugin active in menu manager)
-                        bool actually_in_settings = (menu_mgr && menu_mgr->GetCurrentSettingsPlugin() != nullptr);
-                        if (actually_in_settings) {
-                            // In settings mode: toggle current setting value (for bool/enum)
-                            if (settings_mgr) {
-                                settings_mgr->ToggleValue();
-                            }
-                        } else {
-                            // In menu mode: toggle current plugin on/off
-                            // Only toggle if we're actually in menu mode (not settings)
-                            if (menu_mgr && menu_mgr->IsOpen()) {
-                                // Debug: verify we're actually calling ToggleCurrentItem
-                                menu_mgr->ToggleCurrentItem();
-                            }
-                        }
-                    }
-                    // Update previous state AFTER checking edge (critical for edge detection)
-                    prev_joystick_button_menu = joystick_button;
-                    
-                    // Debounce navigation (every 200ms)
-                    if (current_time - last_nav_time > 200) {
-                        if (settings_plugin) {
-                            // Settings mode
-                            // Encoder changes values
-                            float encoder_delta = input_manager.GetEncoder().GetDelta();
-                            if (std::abs(encoder_delta) > 0.01f) {
-                                settings_mgr->ChangeValue(encoder_delta);
-                            }
-                            
-                            // Joystick Y: Navigate up/down in settings list
-                            if (joystick_y > nav_threshold) {
-                                // UP (joystick down = positive Y): move selection up (decrease index)
-                                settings_mgr->MoveSelection(-1);
-                                last_nav_time = current_time;
-                            } else if (joystick_y < -nav_threshold) {
-                                // DOWN (joystick up = negative Y): move selection down (increase index)
-                                settings_mgr->MoveSelection(1);
-                                last_nav_time = current_time;
-                            }
-                            
-                            // LEFT: Always go back to menu list from settings
-                            if (joystick_x < -nav_threshold) {
-                                menu_mgr->NavigateBack();
-                                // NavigateBack() clears current_settings_plugin_ in menu manager
-                                // Sync the settings manager to match
-                                if (settings_mgr) {
-                                    IPluginWithSettings* menu_plugin = menu_mgr->GetCurrentSettingsPlugin();
-                                    if (menu_plugin != settings_mgr->GetPlugin()) {
-                                        settings_mgr->SetPlugin(menu_plugin);  // Will be nullptr if we exited settings
-                                    }
-                                }
-                                last_nav_time = current_time;
-                            }
-                        } else {
-                            // Menu mode: handle navigation
-                            if (joystick_y > nav_threshold) {
-                                menu_mgr->NavigateUp();
-                                last_nav_time = current_time;
-                            } else if (joystick_y < -nav_threshold) {
-                                menu_mgr->NavigateDown();
-                                last_nav_time = current_time;
-                            } else if (joystick_x > nav_threshold) {
-                                // RIGHT: Enter settings for selected item
-                                menu_mgr->NavigateEnter();
-                                last_nav_time = current_time;
-                                
-                                // If we entered plugin settings, set it in settings manager
-                                IPluginWithSettings* plugin = menu_mgr->GetCurrentSettingsPlugin();
-                                if (plugin && settings_mgr) {
-                                    settings_mgr->SetPlugin(plugin);
-                                }
-                            }
-                            // Note: Joystick LEFT intentionally does NOT close top-level menus
-                            // Top-level menus can only be closed by pressing the button again
-                            // This prevents accidental closing
-                        }
-                    }
-                    
-                    // Update context in system bar based on menu type
-                    // Check if we're actually in settings mode (menu open AND settings plugin set)
-                    bool actually_in_settings = (settings_plugin != nullptr && menu_mgr && menu_mgr->IsOpen());
-                    if (actually_in_settings) {
-                        ui_manager.SetContext("Settings");
-                    } else {
-                        const char* context_name = "";
-                        switch (menu_mgr->GetCurrentMenuType()) {
-                            case MenuManager::MenuType::INPUT_STACK:
-                                context_name = "Input";
-                                break;
-                            case MenuManager::MenuType::INSTRUMENT:
-                                context_name = "Instrument";
-                                break;
-                            case MenuManager::MenuType::FX:
-                                context_name = "FX";
-                                break;
-                            case MenuManager::MenuType::MAIN:
-                                context_name = "Menu";
-                                break;
-                            default:
-                                context_name = "";
-                                break;
-                        }
-                        ui_manager.SetContext(context_name);
-                    }
+                    // Update context in system bar
+                    ui_manager.SetContext(menu_mgr->GetContextName());
                 } else {
                     // Normal mode - handle octave UI (stick click)
-                    MenuManager* menu_mgr = ui_manager.GetMenuManager();
-                    bool menu_open = menu_mgr && menu_mgr->IsOpen();
-                    
-                    if (!menu_open) {
-                        // Handle octave shift UI (stick click in normal mode)
+                    if (!menu_mgr || !menu_mgr->IsOpen()) {
                         static bool prev_joystick_button_normal = false;
                         bool joystick_button = false;
                         if (io_manager.GetDigital()) {
@@ -469,36 +335,26 @@ int main(void) {
                         }
                         
                         if (joystick_button && !prev_joystick_button_normal) {
-                            // Toggle octave UI via UI Manager
+                            // Toggle octave UI via UI Manager (which manages its own state)
                             if (ui_manager.IsOctaveUIActive()) {
                                 ui_manager.DeactivateOctaveUI();
-                                octave_ui_active_flag_ = false;
                             } else {
                                 ui_manager.ActivateOctaveUI();
-                                octave_ui_active_flag_ = true;
                             }
                         }
                         prev_joystick_button_normal = joystick_button;
                         
-                        // Update octave UI with joystick input (UI Manager handles state)
+                        // Update octave UI with joystick input
                         if (ui_manager.IsOctaveUIActive()) {
                             float joystick_x, joystick_y;
                             input_manager.GetJoystick().GetPosition(&joystick_x, &joystick_y);
                             uint32_t current_time = hw.system.GetNow();
                             ui_manager.UpdateOctaveUI(joystick_x, current_time);
                         }
-                        
-                        // Sync flag (in case UI Manager auto-deactivates)
-                        if (!ui_manager.IsOctaveUIActive() && octave_ui_active_flag_) {
-                            octave_ui_active_flag_ = false;
-                        } else if (ui_manager.IsOctaveUIActive() && !octave_ui_active_flag_) {
-                            octave_ui_active_flag_ = true;
-                        }
                     } else {
                         // Menu is open, deactivate octave UI if it was active
                         if (ui_manager.IsOctaveUIActive()) {
                             ui_manager.DeactivateOctaveUI();
-                            octave_ui_active_flag_ = false;
                         }
                     }
                     
@@ -553,35 +409,17 @@ int main(void) {
         
         audio_engine.ProcessMidi();
         
-        // Debug: Check volume manager status every second
-        static uint32_t debug_counter = 0;
-        static bool midi_enabled_printed = false;
-        
         // Print MIDI enabled status once after initialization
-        if (!midi_enabled_printed && debug_counter > 100) {
+        static bool midi_enabled_printed = false;
+        static uint32_t init_counter = 0;
+        if (!midi_enabled_printed && ++init_counter > 100) {
             ExternalLog::PrintLine("MIDI Enabled: TRS=%s, USB=%s", 
                         midi_handler.IsTrsInitialized() ? "YES" : "NO",
                         midi_handler.IsUsbInitialized() ? "YES" : "NO");
             midi_enabled_printed = true;
         }
         
-        if (++debug_counter % 1000 == 0) { // Every 1000 iterations = ~1 second
-            // Commented out verbose debug logging
-            // const VolumeData& volume_data = volume_mgr.GetVolumeData();
-            // hw.PrintLine("Volume Debug - Raw: %.4f, Amp: %.4f, Line: %.4f, Changed: %s", 
-            //            volume_data.raw_adc, volume_data.amplitude, volume_data.line_level,
-            //            volume_mgr.HasVolumeChanged() ? "YES" : "NO");
-            
-            // Debug: Check what analog manager actually has
-            // float analog_raw = io_manager.GetAnalog()->GetADCValue(0);
-            // hw.PrintLine("Analog Debug - Raw: %.4f", analog_raw);
-        }
-        
         if (volume_mgr.HasVolumeChanged()) {
-            // Commented out verbose volume change logging
-            // const VolumeData& volume_data = volume_mgr.GetVolumeData();
-            // hw.PrintLine("Volume changed - Raw: %.3f, Amp: %.3f, Line: %.3f", 
-            //            volume_data.raw_adc, volume_data.amplitude, volume_data.line_level);
             volume_mgr.ClearChangeFlag();
         }
         

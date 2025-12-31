@@ -27,18 +27,17 @@ void Track::Process(float* in, float* out, size_t size) {
     // Skip processing if muted
     if (muted_) return;
     
-    // Generate MIDI from input stack
-    MidiEvent events[64];
+    // Generate MIDI from input stack (use member buffer to avoid stack allocation)
     size_t event_count = 0;
-    GenerateMIDI(events, &event_count, 64);
+    GenerateMIDI(midi_event_buffer_, &event_count, 64);
     
     // Process MIDI through instrument
     if (instrument_) {
         for (size_t i = 0; i < event_count; i++) {
-            if (events[i].type == static_cast<uint8_t>(MidiEvent::Type::NOTE_ON)) {
-                instrument_->NoteOn(events[i].data1, events[i].data2 / 127.0f);
-            } else if (events[i].type == static_cast<uint8_t>(MidiEvent::Type::NOTE_OFF)) {
-                instrument_->NoteOff(events[i].data1);
+            if (midi_event_buffer_[i].type == static_cast<uint8_t>(MidiEvent::Type::NOTE_ON)) {
+                instrument_->NoteOn(midi_event_buffer_[i].data1, midi_event_buffer_[i].data2 / 127.0f);
+            } else if (midi_event_buffer_[i].type == static_cast<uint8_t>(MidiEvent::Type::NOTE_OFF)) {
+                instrument_->NoteOff(midi_event_buffer_[i].data1);
             }
         }
         

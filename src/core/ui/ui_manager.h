@@ -97,7 +97,7 @@ private:
     InputManager* input_manager_;
     IOManager* io_manager_;
     
-    // UI components
+    // UI components (static allocation for embedded safety)
     SystemBar* system_bar_;
     ContentArea* content_area_;
     MenuManager* menu_manager_;

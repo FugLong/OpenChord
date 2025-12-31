@@ -10,6 +10,15 @@
 #include "display_manager.h"
 #include "storage_manager.h"
 
+// Component type for error reporting
+enum class IOComponent {
+    DIGITAL,
+    ANALOG,
+    SERIAL,
+    DISPLAY,
+    STORAGE
+};
+
 // System status structure
 struct SystemStatus {
     bool digital_healthy;
@@ -40,18 +49,18 @@ public:
     void Shutdown();
     
     // Manager access - provides access to specialized IO managers
-    DigitalManager* GetDigital() { return digital_; }
-    AnalogManager* GetAnalog() { return analog_; }
-    SerialManager* GetSerial() { return serial_; }
-    DisplayManager* GetDisplay() { return display_; }
-    StorageManager* GetStorage() { return storage_; }
+    DigitalManager* GetDigital() { return &digital_; }
+    AnalogManager* GetAnalog() { return &analog_; }
+    SerialManager* GetSerial() { return &serial_; }
+    DisplayManager* GetDisplay() { return &display_; }
+    StorageManager* GetStorage() { return &storage_; }
     
     // System status and health monitoring
     bool IsHealthy() const;
     const SystemStatus& GetStatus() const;
     
     // Error handling
-    void ReportError(const char* component, const char* error);
+    void ReportError(IOComponent component, const char* error);
     void ClearErrors();
     
     // System information
@@ -62,12 +71,12 @@ private:
     // Hardware reference
     daisy::DaisySeed* hw_;
     
-    // Sub-managers for different IO types
-    DigitalManager* digital_;
-    AnalogManager* analog_;
-    SerialManager* serial_;
-    DisplayManager* display_;
-    StorageManager* storage_;
+    // Sub-managers for different IO types (static allocation for embedded safety)
+    DigitalManager digital_;
+    AnalogManager analog_;
+    SerialManager serial_;
+    DisplayManager display_;
+    StorageManager storage_;
     
     // System status and monitoring
     SystemStatus status_;

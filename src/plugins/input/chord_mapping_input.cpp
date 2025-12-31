@@ -8,7 +8,7 @@ namespace OpenChord {
 
 ChordMappingInput::ChordMappingInput()
     : input_manager_(nullptr)
-    , octave_ui_active_ptr_(nullptr)
+    , octave_ui_check_func_(nullptr)
     , active_(true)
     , initialized_(false)
     , chord_active_(false)
@@ -294,7 +294,7 @@ void ChordMappingInput::ProcessJoystick() {
     if (!input_manager_) return;
     
     // Don't process joystick if octave UI is active (joystick is used for octave adjustment)
-    if (octave_ui_active_ptr_ && *octave_ui_active_ptr_) {
+    if (octave_ui_check_func_ && octave_ui_check_func_()) {
         // Reset to center position when octave UI takes over
         current_joystick_direction_ = JoystickDirection::CENTER;
         prev_joystick_direction_ = JoystickDirection::CENTER;

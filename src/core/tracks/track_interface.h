@@ -89,6 +89,7 @@ private:
     
     // MIDI processing
     std::vector<MidiEvent> midi_buffer_;
+    MidiEvent midi_event_buffer_[64];  // Reusable buffer for Process() to avoid stack allocation
     
     // Scene data
     struct SceneData {

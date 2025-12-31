@@ -10,6 +10,7 @@ namespace OpenChord {
 // Forward declarations
 class Track;
 class IPluginWithSettings;
+class SettingsManager;
 
 /**
  * Menu Item Types
@@ -117,6 +118,11 @@ public:
     // Update (call from main loop to handle input)
     void Update();
     
+    // Handle all menu-related input processing (button presses, joystick navigation, settings)
+    // This centralizes all menu input handling that was previously in main.cpp
+    // Returns true if menu state changed (needs UI refresh)
+    bool UpdateMenuInput(SettingsManager* settings_mgr, IOManager* io_manager, uint32_t current_time_ms);
+    
     // Rendering
     void Render();
     
@@ -131,6 +137,9 @@ public:
     
     // Request immediate refresh (for when plugin state changes)
     void RequestRefresh() { needs_refresh_ = true; }
+    
+    // Get context name for system bar
+    const char* GetContextName() const;
     
     // Health check
     bool IsHealthy() const { return display_ != nullptr && display_->IsHealthy(); }
