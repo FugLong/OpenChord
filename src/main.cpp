@@ -535,12 +535,16 @@ int main(void) {
             }
             
             // Convert MidiEvent::Type (from midi_types.h) to daisy::MidiMessageType
-            // midi_types.h uses: NOTE_ON = 0x90, NOTE_OFF = 0x80
+            // midi_types.h uses: NOTE_ON = 0x90, NOTE_OFF = 0x80, PITCH_BEND = 0xE0, CONTROL_CHANGE = 0xB0
             daisy::MidiMessageType msg_type;
             if (event.type == static_cast<uint8_t>(::OpenChord::MidiEvent::Type::NOTE_ON)) {
                 msg_type = daisy::MidiMessageType::NoteOn;
             } else if (event.type == static_cast<uint8_t>(::OpenChord::MidiEvent::Type::NOTE_OFF)) {
                 msg_type = daisy::MidiMessageType::NoteOff;
+            } else if (event.type == static_cast<uint8_t>(::OpenChord::MidiEvent::Type::PITCH_BEND)) {
+                msg_type = daisy::MidiMessageType::PitchBend;
+            } else if (event.type == static_cast<uint8_t>(::OpenChord::MidiEvent::Type::CONTROL_CHANGE)) {
+                msg_type = daisy::MidiMessageType::ControlChange;
             } else {
                 msg_type = static_cast<daisy::MidiMessageType>(event.type);
             }

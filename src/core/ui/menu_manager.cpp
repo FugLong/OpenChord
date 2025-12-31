@@ -481,7 +481,8 @@ void MenuManager::GenerateInputStackMenu() {
     }
     
     if (item_count > 0) {
-        temp_menus_[0].Init("Input Stack", temp_items_, item_count);
+        // No title - system bar already shows "Input"
+        temp_menus_[0].Init(nullptr, temp_items_, item_count);
         PushMenu(&temp_menus_[0]);
     }
 }

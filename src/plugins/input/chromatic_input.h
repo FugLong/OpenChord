@@ -80,8 +80,17 @@ private:
     size_t pending_read_pos_;
     size_t pending_write_pos_;
     
+    // Joystick state for pitch bend and mod wheel
+    float joystick_x_;
+    float joystick_y_;
+    int16_t last_pitch_bend_value_;
+    uint8_t last_mod_wheel_value_;
+    
     void ProcessButtons();
+    void ProcessJoystick();
     uint8_t GetMidiNote(int button_index) const;
+    int16_t CalculatePitchBend(float joystick_y) const;
+    uint8_t CalculateModWheel(float joystick_x) const;
 };
 
 } // namespace OpenChord

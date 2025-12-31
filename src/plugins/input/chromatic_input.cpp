@@ -4,6 +4,7 @@
 #include "../../core/tracks/track_interface.h"
 #include <cstring>
 #include <algorithm>
+#include <cmath>
 
 namespace OpenChord {
 
@@ -15,6 +16,10 @@ ChromaticInput::ChromaticInput()
     , initialized_(false)
     , pending_read_pos_(0)
     , pending_write_pos_(0)
+    , joystick_x_(0.0f)
+    , joystick_y_(0.0f)
+    , last_pitch_bend_value_(8192)  // Center (no bend)
+    , last_mod_wheel_value_(0)      // Mod wheel at 0
 {
     std::memset(prev_button_states_, false, sizeof(prev_button_states_));
     std::memset(current_button_states_, false, sizeof(current_button_states_));
@@ -32,6 +37,10 @@ void ChromaticInput::Init() {
     std::memset(prev_button_states_, false, sizeof(prev_button_states_));
     pending_read_pos_ = 0;
     pending_write_pos_ = 0;
+    joystick_x_ = 0.0f;
+    joystick_y_ = 0.0f;
+    last_pitch_bend_value_ = 8192;  // Center (no bend)
+    last_mod_wheel_value_ = 0;      // Mod wheel at 0
 }
 
 void ChromaticInput::Process(float* in, float* out, size_t size) {
@@ -44,6 +53,7 @@ void ChromaticInput::Update() {
     // Only process if we're actually active (not just enabled)
     // The track system will call GenerateMIDI which checks IsActive()
     ProcessButtons();
+    ProcessJoystick();
 }
 
 void ChromaticInput::UpdateUI() {
@@ -59,7 +69,9 @@ void ChromaticInput::HandleButton(int button, bool pressed) {
 }
 
 void ChromaticInput::HandleJoystick(float x, float y) {
-    // No joystick handling
+    // Store joystick position for processing in Update()
+    joystick_x_ = x;
+    joystick_y_ = y;
 }
 
 void ChromaticInput::SaveState(void* buffer, size_t* size) const {
@@ -178,6 +190,96 @@ void ChromaticInput::ProcessButtons() {
             prev_button_states_[i] = current_pressed;
         }
     }
+}
+
+void ChromaticInput::ProcessJoystick() {
+    if (!initialized_ || !active_ || !input_manager_) return;
+    
+    // Process pitch bend (Y axis: up/down)
+    // Apply dead zone to avoid noise when joystick is centered
+    const float dead_zone = 0.05f;
+    float y = (std::abs(joystick_y_) > dead_zone) ? joystick_y_ : 0.0f;
+    int16_t pitch_bend = CalculatePitchBend(y);
+    if (pitch_bend != last_pitch_bend_value_) {
+        // Pitch bend changed - send MIDI pitch bend message
+        // Pitch bend uses 14-bit value (0-16383), 8192 is center
+        // Split into LSB (7 bits) and MSB (7 bits)
+        if (pending_write_pos_ < pending_events_.size()) {
+            MidiEvent& event = pending_events_[pending_write_pos_];
+            event.type = static_cast<uint8_t>(MidiEvent::Type::PITCH_BEND);
+            event.channel = 0;
+            event.data1 = pitch_bend & 0x7F;        // LSB (bits 0-6)
+            event.data2 = (pitch_bend >> 7) & 0x7F; // MSB (bits 7-13)
+            event.timestamp = 0;
+            
+            pending_write_pos_++;
+            if (pending_write_pos_ >= pending_events_.size()) {
+                pending_write_pos_ = 0;
+            }
+        }
+        last_pitch_bend_value_ = pitch_bend;
+    }
+    
+    // Process mod wheel (X axis: left/right)
+    // Apply dead zone to avoid noise when joystick is centered
+    float x = (std::abs(joystick_x_) > dead_zone) ? joystick_x_ : 0.0f;
+    uint8_t mod_wheel = CalculateModWheel(x);
+    if (mod_wheel != last_mod_wheel_value_) {
+        // Mod wheel changed - send MIDI CC 1 (Modulation Wheel)
+        if (pending_write_pos_ < pending_events_.size()) {
+            MidiEvent& event = pending_events_[pending_write_pos_];
+            event.type = static_cast<uint8_t>(MidiEvent::Type::CONTROL_CHANGE);
+            event.channel = 0;
+            event.data1 = 1;  // CC 1 = Modulation Wheel
+            event.data2 = mod_wheel;  // Value 0-127
+            event.timestamp = 0;
+            
+            pending_write_pos_++;
+            if (pending_write_pos_ >= pending_events_.size()) {
+                pending_write_pos_ = 0;
+            }
+        }
+        last_mod_wheel_value_ = mod_wheel;
+    }
+}
+
+int16_t ChromaticInput::CalculatePitchBend(float joystick_y) const {
+    // Map joystick Y (-1.0 to 1.0) to pitch bend (0 to 16383)
+    // Center (0.0) = 8192 (no bend)
+    // Up (positive Y, 1.0) = 16383 (max bend up)
+    // Down (negative Y, -1.0) = 0 (max bend down)
+    // MIDI pitch bend: 0 = max down, 8192 = center, 16383 = max up
+    
+    // Clamp joystick value to [-1.0, 1.0]
+    if (joystick_y > 1.0f) joystick_y = 1.0f;
+    if (joystick_y < -1.0f) joystick_y = -1.0f;
+    
+    // Map from [-1.0, 1.0] to [0, 16383] with center at 8192
+    int16_t pitch_bend = static_cast<int16_t>(8192 + (joystick_y * 8192));
+    
+    // Clamp to valid range
+    if (pitch_bend < 0) pitch_bend = 0;
+    if (pitch_bend > 16383) pitch_bend = 16383;
+    
+    return pitch_bend;
+}
+
+uint8_t ChromaticInput::CalculateModWheel(float joystick_x) const {
+    // Map joystick X (-1.0 to 1.0) to mod wheel (0 to 127)
+    // Left (-1.0) = 0, Center (0.0) = 64, Right (1.0) = 127
+    
+    // Clamp joystick value to [-1.0, 1.0]
+    if (joystick_x > 1.0f) joystick_x = 1.0f;
+    if (joystick_x < -1.0f) joystick_x = -1.0f;
+    
+    // Map from [-1.0, 1.0] to [0, 127]
+    float normalized = (joystick_x + 1.0f) * 0.5f;  // [0.0, 1.0]
+    uint8_t mod_wheel = static_cast<uint8_t>(normalized * 127.0f);
+    
+    // Clamp to valid range
+    if (mod_wheel > 127) mod_wheel = 127;
+    
+    return mod_wheel;
 }
 
 uint8_t ChromaticInput::GetMidiNote(int button_index) const {

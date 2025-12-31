@@ -156,6 +156,13 @@ void OpenChordMidiHandler::ConvertToMidiBytes(const MidiHubEvent& event, uint8_t
             *size = 3;
             break;
             
+        case daisy::MidiMessageType::PitchBend:
+            bytes[0] = 0xE0 | (event.channel & 0x0F);
+            bytes[1] = event.data[0];  // LSB
+            bytes[2] = event.data[1];  // MSB
+            *size = 3;
+            break;
+            
         default:
             // Unsupported message type
             break;
