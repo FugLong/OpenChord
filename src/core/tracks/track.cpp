@@ -114,6 +114,35 @@ void Track::SetInputPluginActive(IInputPlugin* plugin, bool active) {
     
     // Set the requested plugin's active state
     plugin->SetActive(active);
+    
+    // If turning off an input plugin, check if all exclusive INPUT plugins are now off
+    // (FX and instrument plugins are separate and unaffected)
+    // If so, activate Piano as the default input plugin
+    if (!active) {
+        bool any_exclusive_active = false;
+        IInputPlugin* piano_plugin = nullptr;
+        
+        // Only check input plugins (FX and instruments are separate)
+        for (auto& other_plugin : input_plugins_) {
+            if (!other_plugin) continue;
+            
+            // Check if this is Notes (by name, since we can't use RTTI)
+            const char* name = other_plugin->GetName();
+            if (name && strcmp(name, "Notes") == 0) {
+                piano_plugin = other_plugin.get();
+            }
+            
+            // Check if any exclusive input plugin is active
+            if (other_plugin->IsExclusive() && other_plugin->IsActive()) {
+                any_exclusive_active = true;
+            }
+        }
+        
+        // If no exclusive input plugins are active and Piano exists, activate it as default
+        if (!any_exclusive_active && piano_plugin && !piano_plugin->IsActive()) {
+            piano_plugin->SetActive(true);
+        }
+    }
 }
 
 void Track::SetInstrument(std::unique_ptr<IInstrumentPlugin> instrument) {

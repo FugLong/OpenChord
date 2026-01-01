@@ -2,7 +2,7 @@
 #include "content_area.h"
 #include "../music/chord_engine.h"
 #include "../../plugins/input/chord_mapping_input.h"
-#include "../../plugins/input/chromatic_input.h"
+#include "../../plugins/input/piano_input.h"
 #include <cstring>
 #include <cstdio>
 
@@ -13,7 +13,7 @@ MainUI::MainUI()
     , input_manager_(nullptr)
     , track_(nullptr)
     , chord_plugin_(nullptr)
-    , chromatic_plugin_(nullptr)
+    , piano_plugin_(nullptr)
 {
 }
 
@@ -34,8 +34,8 @@ void MainUI::SetChordPlugin(ChordMappingInput* chord_plugin) {
     chord_plugin_ = chord_plugin;
 }
 
-void MainUI::SetChromaticPlugin(ChromaticInput* plugin) {
-    chromatic_plugin_ = plugin;
+void MainUI::SetPianoPlugin(PianoInput* plugin) {
+    piano_plugin_ = plugin;
 }
 
 void MainUI::Update() {
@@ -127,9 +127,9 @@ void MainUI::RenderChordName(DisplayManager* display) {
             disp->WriteString(preset_text, Font_6x8, true);
         }
     } else {
-        // Not in chord mode: show active notes from chromatic input
-        if (chromatic_plugin_ && chromatic_plugin_->IsActive()) {
-            RenderChromaticNotes(display);
+        // Not in chord mode: show active notes from piano input
+        if (piano_plugin_ && piano_plugin_->IsActive()) {
+            RenderPianoNotes(display);
         } else if (chord_plugin_) {
             // Fallback: show key only if available
             MusicalKey key = chord_plugin_->GetCurrentKey();
@@ -149,14 +149,14 @@ void MainUI::RenderChordName(DisplayManager* display) {
     }
 }
 
-void MainUI::RenderChromaticNotes(DisplayManager* display) {
-    if (!display || !display->IsHealthy() || !chromatic_plugin_) return;
+void MainUI::RenderPianoNotes(DisplayManager* display) {
+    if (!display || !display->IsHealthy() || !piano_plugin_) return;
     
     auto* disp = display->GetDisplay();
     if (!disp) return;
     
-    // Get active notes from chromatic plugin
-    std::vector<uint8_t> active_notes = chromatic_plugin_->GetActiveNotes();
+    // Get active notes from piano plugin
+    std::vector<uint8_t> active_notes = piano_plugin_->GetActiveNotes();
     
     int y = ContentArea::OFFSET_Y;
     

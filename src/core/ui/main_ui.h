@@ -34,8 +34,8 @@ public:
     // Set chord plugin directly (for direct access without RTTI)
     void SetChordPlugin(class ChordMappingInput* chord_plugin);
     
-    // Set chromatic plugin directly (for displaying active notes)
-    void SetChromaticPlugin(class ChromaticInput* plugin);
+    // Set piano plugin directly (for displaying active notes)
+    void SetPianoPlugin(class PianoInput* plugin);
     
     // Health check
     bool IsHealthy() const { return display_ != nullptr; }
@@ -45,11 +45,11 @@ private:
     InputManager* input_manager_;
     Track* track_;
     class ChordMappingInput* chord_plugin_;  // Direct reference to chord plugin
-    class ChromaticInput* chromatic_plugin_;  // Direct reference to chromatic plugin
+    class PianoInput* piano_plugin_;  // Direct reference to piano plugin
     
     // Render methods
     void RenderChordName(DisplayManager* display);
-    void RenderChromaticNotes(DisplayManager* display);
+    void RenderPianoNotes(DisplayManager* display);
 };
 
 } // namespace OpenChord

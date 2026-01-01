@@ -37,7 +37,7 @@ ChordMappingInput::~ChordMappingInput() {
 void ChordMappingInput::Init() {
     if (!input_manager_) return;
     
-    active_ = true;
+    active_ = false;  // Start inactive - Piano is the default
     initialized_ = true;
     
     // Set default key (C Major / Ionian) and joystick preset

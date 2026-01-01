@@ -5,6 +5,7 @@
 #include "../plugin_interface.h"
 #include "../io/io_manager.h"
 #include "../../plugins/input/chord_mapping_input.h"  // For ChordMappingInput cast
+#include "../../plugins/input/piano_input.h"  // For PianoInput cast
 #include "daisy_seed.h"  // For Font_6x8
 #include <cstring>
 #include <cstdio>
@@ -543,19 +544,47 @@ void MenuManager::GenerateInputStackMenu() {
     std::memset(temp_items_, 0, sizeof(temp_items_));
     
     // Generate menu of input plugins
-    int item_count = 0;
+    // First, collect all plugins with their priorities for sorting
+    struct PluginEntry {
+        IInputPlugin* plugin;
+        int priority;
+        size_t original_index;
+    };
+    
+    PluginEntry plugin_entries[16];  // Max plugins
+    int entry_count = 0;
     const auto& plugins = current_track_->GetInputPlugins();
     
-    for (size_t i = 0; i < plugins.size() && item_count < MAX_TEMP_ITEMS; i++) {
+    for (size_t i = 0; i < plugins.size() && entry_count < 16; i++) {
         auto* plugin = plugins[i].get();
         if (!plugin) continue;  // Skip null plugins
         
-        // Skip ChromaticInput - it's a default fallback, not a selectable mode
         const char* name = plugin->GetName();
         if (!name) continue;  // Skip plugins without names
-        if (strcmp(name, "Chromatic") == 0) {
-            continue;
+        
+        // Include all plugins now (PianoInput is visible)
+        plugin_entries[entry_count].plugin = plugin;
+        plugin_entries[entry_count].priority = plugin->GetPriority();
+        plugin_entries[entry_count].original_index = i;
+        entry_count++;
+    }
+    
+    // Sort by priority (lower number = higher priority = appears first)
+    for (int i = 0; i < entry_count - 1; i++) {
+        for (int j = i + 1; j < entry_count; j++) {
+            if (plugin_entries[i].priority > plugin_entries[j].priority) {
+                PluginEntry temp = plugin_entries[i];
+                plugin_entries[i] = plugin_entries[j];
+                plugin_entries[j] = temp;
+            }
         }
+    }
+    
+    // Now create menu items in priority order
+    int item_count = 0;
+    for (int i = 0; i < entry_count && item_count < MAX_TEMP_ITEMS; i++) {
+        auto* plugin = plugin_entries[i].plugin;
+        const char* name = plugin->GetName();
         
         // Check if plugin supports settings
         // Note: Can't use dynamic_cast due to -fno-rtti
@@ -565,9 +594,7 @@ void MenuManager::GenerateInputStackMenu() {
         // a pointer to IInputPlugin* points to the first base class, while IPluginWithSettings*
         // points to the second base class at a different offset.
         //
-        // Solution: Cast through the actual object type. Since we know ChordMappingInput
-        // is the only plugin that implements IPluginWithSettings currently, we can check
-        // by name and cast appropriately. For a more general solution, we'd need RTTI.
+        // Solution: Cast through the actual object type. We check by name and cast appropriately.
         
         IPluginWithSettings* settings_plugin = nullptr;
         
@@ -575,13 +602,14 @@ void MenuManager::GenerateInputStackMenu() {
         // Plugins that implement IPluginWithSettings need special casting to handle
         // multiple inheritance pointer offset correctly
         if (name) {
-            if (strcmp(name, "Chord Mapping") == 0) {
+            if (strcmp(name, "Chords") == 0) {
                 // This is ChordMappingInput - cast to the actual object type first
-                // Since ChordMappingInput inherits from both IInputPlugin and IPluginWithSettings,
-                // we need to cast to ChordMappingInput* first (which knows about both base classes),
-                // then to IPluginWithSettings*. This ensures the compiler adjusts the pointer offset.
                 ChordMappingInput* chord_plugin = static_cast<ChordMappingInput*>(plugin);
                 settings_plugin = static_cast<IPluginWithSettings*>(chord_plugin);
+            } else if (strcmp(name, "Notes") == 0) {
+                // This is PianoInput - cast to the actual object type first
+                PianoInput* piano_plugin = static_cast<PianoInput*>(plugin);
+                settings_plugin = static_cast<IPluginWithSettings*>(piano_plugin);
             }
         }
         

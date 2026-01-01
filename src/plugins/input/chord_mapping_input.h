@@ -36,7 +36,7 @@ public:
     void HandleButton(int button, bool pressed) override;
     void HandleJoystick(float x, float y) override;
     
-    const char* GetName() const override { return "Chord Mapping"; }
+    const char* GetName() const override { return "Chords"; }
     const char* GetCategory() const override { return "Input"; }
     int GetVersion() const override { return 1; }
     bool IsExclusive() const override { return true; }  // Exclusive: deactivates other exclusive plugins
@@ -50,7 +50,7 @@ public:
     void ProcessMIDI(const MidiEvent* events, size_t count) override;
     bool IsActive() const override { return active_; }
     void SetActive(bool active) override { active_ = active; }
-    int GetPriority() const override { return 50; }  // Medium priority
+    int GetPriority() const override { return 30; }  // Medium priority (after Piano, before Drum Pad)
     
     // Setup - must be called before Init()
     void SetInputManager(InputManager* input_manager) {

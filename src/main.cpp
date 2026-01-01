@@ -23,7 +23,7 @@
 #include "core/io/button_input_handler.h"
 #include "core/io/joystick_input_handler.h"
 #include "plugins/input/chord_mapping_input.h"
-#include "plugins/input/chromatic_input.h"
+#include "plugins/input/piano_input.h"
 #include "plugins/input/drum_pad_input.h"
 #if DEBUG_SCREEN_ENABLED
 #include "core/ui/debug_screen.h"
@@ -60,7 +60,7 @@ TransportControl transport_control;
 // Track system
 Track main_track;
 ChordMappingInput* chord_plugin_ptr = nullptr;  // Keep reference for UI
-ChromaticInput* chromatic_plugin_ptr = nullptr;  // Keep reference for octave shift
+PianoInput* piano_plugin_ptr = nullptr;  // Keep reference for UI
 
 // UI system
 SplashScreen splash_screen;
@@ -200,8 +200,23 @@ int main(void) {
     input_manager.SetButtonInputMode(InputMode::MIDI_NOTES);
     input_manager.SetJoystickMode(JoystickMode::CHORD_MAPPING);
     
+    // Add piano input plugin first (highest priority, default exclusive plugin)
+    // This is the default input mode and appears at the top of the menu
+    auto piano_plugin = std::make_unique<PianoInput>();
+    piano_plugin_ptr = piano_plugin.get();
+    piano_plugin->SetInputManager(&input_manager);
+    piano_plugin->SetOctaveShift(&octave_shift);
+    piano_plugin->SetTrack(&main_track);  // Allow it to check for other active plugins and ensure default activation
+    piano_plugin->Init();
+    // Add Piano first, then explicitly activate it to deactivate other exclusive plugins
+    main_track.AddInputPlugin(std::move(piano_plugin));
+    // Piano is already active by default, but ensure it deactivates others
+    if (piano_plugin_ptr) {
+        main_track.SetInputPluginActive(piano_plugin_ptr, true);
+    }
+    
     // Create and add chord mapping plugin
-    // Add chord mapping plugin (higher priority)
+    // Add chord mapping plugin (medium priority)
     auto chord_plugin = std::make_unique<ChordMappingInput>();
     chord_plugin_ptr = chord_plugin.get();  // Keep reference for UI
     chord_plugin->SetInputManager(&input_manager);
@@ -216,16 +231,7 @@ int main(void) {
     drum_pad_plugin->Init();
     main_track.AddInputPlugin(std::move(drum_pad_plugin));
     
-    // Add chromatic input plugin (lower priority, fallback when no other input is active)
-    auto chromatic_plugin = std::make_unique<ChromaticInput>();
-    chromatic_plugin_ptr = chromatic_plugin.get();
-    chromatic_plugin->SetInputManager(&input_manager);
-    chromatic_plugin->SetOctaveShift(&octave_shift);
-    chromatic_plugin->SetTrack(&main_track);  // Allow it to check for other active plugins
-    chromatic_plugin->Init();
-    main_track.AddInputPlugin(std::move(chromatic_plugin));
-    
-    ExternalLog::PrintLine("Track system initialized with chord mapping, drum pad, and chromatic input");
+    ExternalLog::PrintLine("Track system initialized with piano, chord mapping, and drum pad input");
     
     ExternalLog::PrintLine("Managers initialized");
     
@@ -249,7 +255,7 @@ int main(void) {
             main_ui.Init(display, &input_manager);
             main_ui.SetTrack(&main_track);
             main_ui.SetChordPlugin(chord_plugin_ptr);
-            main_ui.SetChromaticPlugin(chromatic_plugin_ptr);
+            main_ui.SetPianoPlugin(piano_plugin_ptr);
             
             // Register MainUI renderer with UI Manager
             ui_manager.SetMainUIRenderer([](DisplayManager* disp) {
