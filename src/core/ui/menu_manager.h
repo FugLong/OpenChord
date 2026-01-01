@@ -11,6 +11,7 @@ namespace OpenChord {
 class Track;
 class IPluginWithSettings;
 class SettingsManager;
+class GlobalSettings;
 
 /**
  * Menu Item Types
@@ -104,6 +105,7 @@ public:
     void OpenInstrumentMenu();     // Press INSTRUMENT button - opens instrument settings
     void OpenFXMenu();             // Press FX button - opens effects menu
     void OpenMainMenu();           // Opens main system menu (separate access method)
+    void OpenGlobalSettingsMenu(); // Opens global device settings menu (e.g., via RECORD hold)
     
     // Get current menu type
     enum class MenuType {
@@ -111,7 +113,8 @@ public:
         INPUT_STACK,    // Input stack menu
         INSTRUMENT,     // Instrument menu
         FX,             // Effects menu
-        MAIN            // Main system menu
+        MAIN,           // Main system menu
+        GLOBAL_SETTINGS // Global device settings menu
     };
     MenuType GetCurrentMenuType() const { return current_menu_type_; }
     
@@ -135,6 +138,9 @@ public:
     // Set track context (for menu generation)
     void SetTrack(Track* track) { current_track_ = track; }
     
+    // Set global settings (for global settings menu)
+    void SetGlobalSettings(GlobalSettings* global_settings) { global_settings_ = global_settings; }
+    
     // Request immediate refresh (for when plugin state changes)
     void RequestRefresh() { needs_refresh_ = true; }
     
@@ -148,6 +154,7 @@ private:
     DisplayManager* display_;
     InputManager* input_manager_;
     Track* current_track_;
+    GlobalSettings* global_settings_;
     
     MenuType current_menu_type_;  // What type of menu is currently open
     int current_menu_stack_depth_;

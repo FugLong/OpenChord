@@ -5,6 +5,7 @@
 #include "settings_manager.h"
 #include "octave_ui.h"
 #include "../midi/octave_shift.h"
+#include "../io/power_manager.h"
 #include <new>
 
 namespace OpenChord {
@@ -24,10 +25,11 @@ UIManager::UIManager()
     , debug_render_func_(nullptr)
     , plugin_render_func_(nullptr)
     , current_track_(nullptr)
-    , render_interval_ms_(100)  // 10 FPS
+    , render_interval_ms_(100)  // 10 FPS default
     , last_render_time_(0)
     , needs_refresh_(true)
     , debug_mode_active_(false)
+    , power_mgr_(nullptr)
 {
     // Allocate UI components
         system_bar_ = new (std::nothrow) SystemBar();
@@ -214,6 +216,11 @@ void UIManager::Update() {
         }
     }
     
+    // Update render interval based on power mode (adaptive refresh)
+    if (power_mgr_) {
+        render_interval_ms_ = power_mgr_->GetDisplayInterval();
+    }
+    
     // Render periodically (UI Manager owns all rendering)
     if (last_render_time_ >= render_interval_ms_ || needs_refresh_) {
         Render();
@@ -317,6 +324,10 @@ void UIManager::UpdateOctaveUI(float joystick_x, uint32_t current_time_ms) {
         octave_ui_->Update(joystick_x, current_time_ms);
         needs_refresh_ = true;  // Request render after update
     }
+}
+
+void UIManager::SetPowerManager(OpenChord::PowerManager* power_mgr) {
+    power_mgr_ = power_mgr;
 }
 
 void UIManager::SetDebugMode(bool enabled) {

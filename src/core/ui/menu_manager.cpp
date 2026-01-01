@@ -1,5 +1,6 @@
 #include "menu_manager.h"
 #include "settings_manager.h"
+#include "global_settings.h"
 #include "../tracks/track_interface.h"
 #include "../plugin_interface.h"
 #include "../io/io_manager.h"
@@ -42,6 +43,7 @@ MenuManager::MenuManager()
     : display_(nullptr)
     , input_manager_(nullptr)
     , current_track_(nullptr)
+    , global_settings_(nullptr)
     , current_menu_type_(MenuType::NONE)
     , current_menu_stack_depth_(0)
     , current_settings_plugin_(nullptr)
@@ -121,6 +123,16 @@ void MenuManager::OpenMainMenu() {
     CloseMenu();
     current_menu_type_ = MenuType::MAIN;
     GenerateMainMenu();
+    if (current_menu_stack_depth_ > 0) {
+        selected_indices_[0] = 0;
+    }
+}
+
+void MenuManager::OpenGlobalSettingsMenu() {
+    // Close any existing menu and open global settings menu
+    CloseMenu();
+    current_menu_type_ = MenuType::GLOBAL_SETTINGS;
+    GenerateSystemMenu();  // GenerateSystemMenu creates the global settings menu
     if (current_menu_stack_depth_ > 0) {
         selected_indices_[0] = 0;
     }
@@ -648,7 +660,16 @@ void MenuManager::GenerateTrackMenu(int track_index) {
 }
 
 void MenuManager::GenerateSystemMenu() {
-    // TODO: Implement system settings menu
+    // Generate global settings menu
+    // Directly enter settings view (similar to instrument menu when it has settings)
+    
+    if (!global_settings_) {
+        return;  // No global settings available
+    }
+    
+    // Directly set the global settings plugin (similar to instrument menu)
+    // This bypasses the menu list and goes straight to settings view
+    current_settings_plugin_ = global_settings_;
 }
 
 MenuItem MenuManager::CreateSubmenuItem(const char* label, Menu* submenu) {
@@ -738,6 +759,8 @@ const char* MenuManager::GetContextName() const {
             return "FX";
         case MenuType::MAIN:
             return "Menu";
+        case MenuType::GLOBAL_SETTINGS:
+            return "Global";
         default:
             return "";
     }

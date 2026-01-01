@@ -5,10 +5,12 @@
 #include "serial_manager.h"
 #include "display_manager.h"
 #include "storage_manager.h"
+#include "power_manager.h"
 #include <cstring>
 
 IOManager::IOManager() 
-    : hw_(nullptr), update_count_(0), last_update_time_(0) {
+    : hw_(nullptr), update_count_(0), last_update_time_(0), 
+      power_mgr_(nullptr), last_analog_update_(0) {
     
     // Initialize system status
     memset(&status_, 0, sizeof(status_));
@@ -44,9 +46,19 @@ void IOManager::Init(daisy::DaisySeed* hw) {
 void IOManager::Update() {
     if (!hw_) return;
     
-    // Update all sub-managers
+    uint32_t now = hw_->system.GetNow();
+    
+    // Always update digital manager - it needs high frequency for proper debouncing
+    // Power savings come from other subsystems, not input responsiveness
     digital_.Update();
+    
+    // Update analog manager conditionally (power-aware)
+    if (!power_mgr_ || power_mgr_->ShouldUpdateADC(last_analog_update_)) {
     analog_.Update();
+        last_analog_update_ = now;
+    }
+    
+    // Serial, display, and storage are updated less frequently or on-demand
     serial_.Update();
     display_.Update();
     storage_.Update();
@@ -59,7 +71,7 @@ void IOManager::Update() {
     
     // Update counters
     update_count_++;
-    last_update_time_ = hw_->system.GetNow();
+    last_update_time_ = now;
 }
 
 void IOManager::Shutdown() {

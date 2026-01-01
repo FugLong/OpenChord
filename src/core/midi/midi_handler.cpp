@@ -130,6 +130,25 @@ void OpenChordMidiHandler::AddToMidiHub(const daisy::MidiEvent& event, MidiHubEv
     }
 }
 
+void OpenChordMidiHandler::SendSystemRealtime(uint8_t status_byte) {
+    // System real-time messages are single-byte messages (0xF8-0xFF)
+    // Valid transport messages: 0xFA (START), 0xFB (CONTINUE), 0xFC (STOP)
+    // Send directly as raw bytes (no channel or data bytes)
+    
+    uint8_t midi_byte = status_byte;
+    
+    // Send to USB MIDI
+    if (usb_midi_initialized_) {
+        usb_midi_.SendMessage(&midi_byte, 1);
+    }
+    
+    // Send to TRS MIDI
+    if (trs_midi_initialized_) {
+        trs_midi_.SendMessage(&midi_byte, 1);
+    }
+}
+
+
 void OpenChordMidiHandler::ConvertToMidiBytes(const MidiHubEvent& event, uint8_t* bytes, size_t* size) {
     *size = 0;
     

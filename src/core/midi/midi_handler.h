@@ -30,6 +30,9 @@ public:
     void SendMidi(const MidiHubEvent& event);
     void SendMidi(daisy::MidiMessageType type, uint8_t channel, uint8_t data0, uint8_t data1);
     
+    // System real-time messages (single-byte messages: START, STOP, CONTINUE)
+    void SendSystemRealtime(uint8_t status_byte);  // Status byte: 0xFA (START), 0xFB (CONTINUE), 0xFC (STOP)
+    
 private:
     // USB MIDI
     daisy::MidiUsbHandler usb_midi_;

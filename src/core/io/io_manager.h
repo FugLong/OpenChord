@@ -10,6 +10,11 @@
 #include "display_manager.h"
 #include "storage_manager.h"
 
+// Forward declaration
+namespace OpenChord {
+    class PowerManager;
+}
+
 // Component type for error reporting
 enum class IOComponent {
     DIGITAL,
@@ -48,6 +53,13 @@ public:
     void Update();
     void Shutdown();
     
+    // Partial initialization (for early display init)
+    void SetHardware(daisy::DaisySeed* hw) { hw_ = hw; }
+    
+    // Power management
+    void SetPowerManager(OpenChord::PowerManager* power_mgr) { power_mgr_ = power_mgr; }
+    OpenChord::PowerManager* GetPowerManager() { return power_mgr_; }
+    
     // Manager access - provides access to specialized IO managers
     DigitalManager* GetDigital() { return &digital_; }
     AnalogManager* GetAnalog() { return &analog_; }
@@ -82,6 +94,10 @@ private:
     SystemStatus status_;
     uint32_t update_count_;
     uint32_t last_update_time_;
+    
+    // Power management
+    OpenChord::PowerManager* power_mgr_;
+    uint32_t last_analog_update_;  // Used for power-aware ADC updates
     
     // Internal methods
     void UpdateSystemStatus();

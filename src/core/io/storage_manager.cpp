@@ -16,6 +16,8 @@ void StorageManager::Init(daisy::DaisySeed* hw) {
     card_present_ = false;
     mounted_ = false;
     
+    // Note: Delay before SD card init is handled in main.cpp to show splash screen
+    // This allows the splash screen to be visible during the card stabilization delay
     if (hw_) {
         hw_->PrintLine("SD card: Initializing...");
     }
@@ -101,10 +103,6 @@ void StorageManager::Init(daisy::DaisySeed* hw) {
             if (hw_) {
                 hw_->PrintLine("SD card: Mounted successfully");
             }
-            
-            // Cleanup any leftover .bin files and bootloader log files from firmware updates
-            int deleted_count = CleanupBinFiles();
-            // Don't log cleanup - user doesn't need this info unless debugging
         } else {
             // Mount failed for other reasons (hardware issue, etc.)
             if (hw_) {
@@ -132,23 +130,6 @@ void StorageManager::Update() {
     // - Monitor filesystem health
 }
 
-bool StorageManager::TestCard() {
-    if (!hw_ || !mounted_) {
-        return false;
-    }
-    
-    // Try to open and read the root directory to verify filesystem is working
-    DIR dir;
-    FRESULT result = f_opendir(&dir, "/");
-    
-    if (result == FR_OK) {
-        f_closedir(&dir);
-        return true;
-    }
-    
-    return false;
-}
-
 void StorageManager::Shutdown() {
     if (!hw_) return;
     
@@ -161,138 +142,4 @@ void StorageManager::Shutdown() {
     healthy_ = false;
     card_present_ = false;
     hw_ = nullptr;
-}
-
-int StorageManager::CleanupBinFiles() {
-    if (!mounted_ || !hw_) {
-        return 0;
-    }
-    
-    const char* sd_path = fsi_.GetSDPath();  // Get SD card path (e.g., "0:")
-    if (!sd_path) {
-        return 0;
-    }
-    
-    DIR dir;
-    FILINFO fno;  // File information structure
-    int deleted_count = 0;
-    
-    // Open root directory
-    FRESULT result = f_opendir(&dir, sd_path);
-    if (result != FR_OK) {
-        // Directory open failed, log error and return
-        if (hw_) {
-            hw_->PrintLine("SD card: Failed to open directory for cleanup (error %d)", result);
-        }
-        return 0;
-    }
-    
-    // Read through all directory entries
-    while (true) {
-        result = f_readdir(&dir, &fno);
-        if (result != FR_OK || fno.fname[0] == 0) {
-            // End of directory or error
-            break;
-        }
-        
-        // Skip directories (only process files)
-        if (fno.fattrib & AM_DIR) {
-            continue;
-        }
-        
-        const char* filename = fno.fname;
-        size_t name_len = strlen(filename);
-        bool should_delete = false;
-        
-        // Check if file ends with .bin extension (case-insensitive)
-        if (name_len >= 4 && filename[name_len - 4] == '.') {
-            char ext[4];
-            ext[0] = filename[name_len - 3];
-            ext[1] = filename[name_len - 2];
-            ext[2] = filename[name_len - 1];
-            ext[3] = '\0';
-            
-            // Case-insensitive comparison for "bin"
-            if ((ext[0] == 'b' || ext[0] == 'B') &&
-                (ext[1] == 'i' || ext[1] == 'I') &&
-                (ext[2] == 'n' || ext[2] == 'N')) {
-                should_delete = true;
-            }
-        }
-        
-        // Also delete bootloader log files (typically .log or .txt files created by bootloader)
-        // Common names: bootloader.log, flash.log, or any .log/.txt file
-        if (!should_delete && name_len >= 4) {
-            // Check for .log extension
-            if (name_len >= 5 && filename[name_len - 4] == '.' &&
-                (filename[name_len - 3] == 'l' || filename[name_len - 3] == 'L') &&
-                (filename[name_len - 2] == 'o' || filename[name_len - 2] == 'O') &&
-                (filename[name_len - 1] == 'g' || filename[name_len - 1] == 'G')) {
-                should_delete = true;
-            }
-            // Check for .txt extension (bootloader might use this)
-            else if (name_len >= 5 && filename[name_len - 4] == '.' &&
-                     (filename[name_len - 3] == 't' || filename[name_len - 3] == 'T') &&
-                     (filename[name_len - 2] == 'x' || filename[name_len - 2] == 'X') &&
-                     (filename[name_len - 1] == 't' || filename[name_len - 1] == 'T')) {
-                // Only delete .txt files that look like bootloader logs
-                // Check if filename contains "boot", "flash", or "log"
-                bool is_bootlog = false;
-                for (size_t i = 0; i < name_len - 4; i++) {
-                    char c = filename[i];
-                    if (c >= 'A' && c <= 'Z') c += 32; // Convert to lowercase
-                    if ((c == 'b' && i + 4 < name_len && 
-                         (filename[i+1] == 'o' || filename[i+1] == 'O') &&
-                         (filename[i+2] == 'o' || filename[i+2] == 'O') &&
-                         (filename[i+3] == 't' || filename[i+3] == 'T')) ||
-                        (c == 'f' && i + 5 < name_len &&
-                         (filename[i+1] == 'l' || filename[i+1] == 'L') &&
-                         (filename[i+2] == 'a' || filename[i+2] == 'A') &&
-                         (filename[i+3] == 's' || filename[i+3] == 'S') &&
-                         (filename[i+4] == 'h' || filename[i+4] == 'H')) ||
-                        (c == 'l' && i + 3 < name_len &&
-                         (filename[i+1] == 'o' || filename[i+1] == 'O') &&
-                         (filename[i+2] == 'g' || filename[i+2] == 'G'))) {
-                        is_bootlog = true;
-                        break;
-                    }
-                }
-                should_delete = is_bootlog;
-            }
-        }
-        
-        if (should_delete) {
-            // Construct full path for deletion
-            // FatFS paths: "0:filename.bin" format
-            char full_path[64];  // Increased size for longer paths
-            int path_len = snprintf(full_path, sizeof(full_path), "%s/%s", sd_path, filename);
-            
-            if (path_len < 0 || path_len >= (int)sizeof(full_path)) {
-                // Path too long, skip this file
-                if (hw_) {
-                    hw_->PrintLine("SD card: Path too long for %s, skipping", filename);
-                }
-                continue;
-            }
-            
-            // Delete the file
-            result = f_unlink(full_path);
-            if (result == FR_OK) {
-                deleted_count++;
-                if (hw_) {
-                    hw_->PrintLine("SD card: Deleted %s", filename);
-                }
-            } else {
-                // Deletion failed, log but continue
-                if (hw_) {
-                    hw_->PrintLine("SD card: Failed to delete %s (error %d)", filename, result);
-                }
-            }
-        }
-    }
-    
-    // Close directory
-    f_closedir(&dir);
-    
-    return deleted_count;
 }

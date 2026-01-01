@@ -112,6 +112,9 @@ public:
     // Returns true if an event occurred, fills in the event structure
     bool PollEvent(ButtonEvent& event);
     
+    // Check if there are pending events (for power management)
+    bool HasPendingEvents() const { return event_queue_count_ > 0; }
+    
     // Configuration
     void SetHoldThreshold(uint32_t ms);
     uint32_t GetHoldThreshold() const { return hold_threshold_ms_; }

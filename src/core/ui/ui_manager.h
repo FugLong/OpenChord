@@ -6,6 +6,11 @@
 #include "../tracks/track_interface.h"
 #include <cstdint>
 
+// Forward declaration
+namespace OpenChord {
+    class PowerManager;
+}
+
 namespace OpenChord {
 
 // Forward declarations
@@ -46,6 +51,9 @@ public:
     
     // Initialization
     void Init(DisplayManager* display, InputManager* input_manager, IOManager* io_manager);
+    
+    // Power management
+    void SetPowerManager(OpenChord::PowerManager* power_mgr);
     
     // Main update loop (call from main loop)
     // Updates state but doesn't render - use Render() separately
@@ -117,6 +125,7 @@ private:
     uint32_t last_render_time_;
     bool needs_refresh_;
     bool debug_mode_active_;  // Track if debug mode is active
+    OpenChord::PowerManager* power_mgr_;  // Power management for adaptive refresh
     
     void RenderContent();
     void RenderOctaveUI();

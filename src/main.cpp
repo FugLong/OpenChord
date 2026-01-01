@@ -4,6 +4,7 @@
 #include "core/io/io_manager.h"
 #include "core/io/input_manager.h"
 #include "core/io/storage_manager.h"
+#include "core/io/power_manager.h"
 #include "core/audio/volume_manager.h"
 #include "core/audio/audio_engine.h"
 #include "core/midi/midi_handler.h"
@@ -16,6 +17,8 @@
 #include "core/ui/splash_screen.h"
 #include "core/ui/menu_manager.h"
 #include "core/ui/settings_manager.h"
+#include "core/ui/global_settings.h"
+#include "core/transport_control.h"
 #include "core/midi/octave_shift.h"
 #include "core/io/button_input_handler.h"
 #include "core/io/joystick_input_handler.h"
@@ -43,9 +46,16 @@ AudioEngine audio_engine;
 IOManager io_manager;
 OpenChordMidiHandler midi_handler;
 InputManager input_manager;
+PowerManager power_mgr;
 
 // Octave shift system
 OctaveShift octave_shift;
+
+// Global settings
+GlobalSettings global_settings;
+
+// Transport control
+TransportControl transport_control;
 
 // Track system
 Track main_track;
@@ -101,12 +111,56 @@ int main(void) {
     
     ExternalLog::PrintLine("OpenChord firmware booting...");
     
-    // 3) Configure audio
+    // 3) Initialize display FIRST to show splash screen immediately
+    // This provides immediate visual feedback and better UX
+    io_manager.SetHardware(&hw);  // Set hw pointer so io_manager works properly
+    io_manager.GetDisplay()->Init(&hw);
+    DisplayManager* display = io_manager.GetDisplay();
+    SplashScreen* splash_ptr = nullptr;
+    if (display && display->IsHealthy()) {
+        ExternalLog::PrintLine("Display: Initialized OK");
+        hw.DelayMs(200);  // Give display time to stabilize
+        
+        // Initialize and show splash screen immediately
+        splash_screen.Init(display);
+        splash_screen.Render();
+        splash_ptr = &splash_screen;
+        ExternalLog::PrintLine("Splash screen displayed");
+    }
+    
+    // 4) Delay while splash screen is visible (1000ms = 1 second)
+    // This delay allows SD card to stabilize before initialization
+    // User sees splash screen immediately, making the delay feel shorter
+    if (splash_ptr) {
+        // Update splash screen during delay (50ms chunks = 1000ms total)
+        for (int i = 0; i < 20; i++) {
+            hw.DelayMs(50);
+            splash_ptr->Update();
+            if (splash_ptr->ShouldShow()) {
+                splash_ptr->Render();
+            }
+        }
+    } else {
+        // No display, just delay
+        hw.DelayMs(1000);
+    }
+    
+    // 5) Configure audio
     hw.SetAudioBlockSize(4);
     ExternalLog::PrintLine("Audio configured");
     
-    // 4) Initialize managers
-    io_manager.Init(&hw);
+    // 6) Initialize power manager (for power optimization)
+    power_mgr.Init(&hw);
+    
+    // 7) Initialize rest of IO manager (SD card, digital, analog, serial)
+    // Display was already initialized above, so we initialize the rest manually
+    // This ensures SD card init happens after the delay
+    io_manager.GetDigital()->Init(&hw);
+    io_manager.GetAnalog()->Init(&hw);
+    io_manager.GetSerial()->Init(&hw);
+    io_manager.GetStorage()->Init(&hw);  // SD card init happens here (after delay)
+    io_manager.SetPowerManager(&power_mgr);
+    
     
     // Initialize unified input manager (coordinates buttons, joystick, encoder)
     input_manager.Init(&io_manager);
@@ -115,12 +169,28 @@ int main(void) {
     audio_engine.Init(&hw);
     audio_engine.SetVolumeManager(&volume_mgr);
     
-    // Microphone passthrough disabled by default
-    audio_engine.SetMicPassthroughEnabled(false);
+    // Audio input configuration - default to line in, processing disabled (power savings)
+    audio_engine.SetInputSource(AudioEngine::AudioInputSource::LINE_IN);
+    audio_engine.SetAudioInputProcessingEnabled(false);  // Disabled by default for power savings
+    
+    // Disable mic ADC reads in analog manager (power savings - mic ADC consumes significant power)
+    // Mic ADC is only needed when:
+    // 1. Audio input processing is enabled AND
+    // 2. Input source is set to MICROPHONE
+    // Since both are disabled by default, mic ADC is disabled
+    io_manager.GetAnalog()->SetMicADCEnabled(false);  // Disabled by default - saves power
     
     // Initialize MIDI handler
     midi_handler.Init(&hw);
     ExternalLog::PrintLine("MIDI handler initialized");
+    
+    // Initialize global settings
+    // (No explicit init needed - constructor handles it)
+    ExternalLog::PrintLine("Global settings initialized");
+    
+    // Initialize transport control
+    transport_control.Init(&midi_handler, &global_settings);
+    ExternalLog::PrintLine("Transport control initialized");
     
     // Initialize track system
     main_track.Init();
@@ -159,24 +229,20 @@ int main(void) {
     
     ExternalLog::PrintLine("Managers initialized");
     
-    // Check display status and initialize UI
-    DisplayManager* display = io_manager.GetDisplay();
-    if (display) {
-        if (display->IsHealthy()) {
-            ExternalLog::PrintLine("Display: Initialized OK");
-            // Give display extra time to stabilize after init
-            hw.DelayMs(200);
-            
-            // Initialize and show splash screen
-            splash_screen.Init(display);
-            splash_screen.Render();
-            ExternalLog::PrintLine("Splash screen displayed");
-            
+    // Initialize UI (splash screen was already shown during SD card delay)
+    if (display && display->IsHealthy()) {
             // Initialize UI Manager (centralized UI coordinator)
             ui_manager.Init(display, &input_manager, &io_manager);
             ui_manager.SetTrack(&main_track);
             ui_manager.SetOctaveShift(&octave_shift);  // Provide octave shift for octave UI
             ui_manager.SetContext(nullptr);  // Normal mode
+            ui_manager.SetPowerManager(&power_mgr);  // Enable power-aware display refresh
+            
+            // Set global settings in menu manager
+            MenuManager* menu_mgr = ui_manager.GetMenuManager();
+            if (menu_mgr) {
+                menu_mgr->SetGlobalSettings(&global_settings);
+            }
             ExternalLog::PrintLine("UI Manager initialized");
             
             // Initialize main UI (default view)
@@ -215,9 +281,8 @@ int main(void) {
             });
             ExternalLog::PrintLine("Debug screen initialized (disabled by default)");
             #endif
-        } else {
-            ExternalLog::PrintLine("Display: Initialization FAILED");
-        }
+    } else {
+        ExternalLog::PrintLine("Display: Initialization FAILED");
     }
     
     ExternalLog::PrintLine("Audio engine ready");
@@ -228,28 +293,31 @@ int main(void) {
     
     hw.DelayMs(100);
     
-    // Test SD card
-    StorageManager* storage = io_manager.GetStorage();
-    if (storage) {
-        if (storage->TestCard()) {
-            ExternalLog::PrintLine("SD card: Test PASSED");
-        } else {
-            ExternalLog::PrintLine("SD card: Test FAILED (not mounted or filesystem error)");
-        }
-    }
-    
     ExternalLog::PrintLine("System initialized OK");
     
-    // 7) Main loop - 1kHz constant timing for predictable behavior
+    // 7) Main loop - Adaptive timing for power optimization
     while(1) {
+        // Update power manager and get recommended loop delay
+        uint32_t loop_delay = power_mgr.Update();
+        
         io_manager.Update();
         input_manager.Update();       // Update unified input manager (handles all inputs)
+        
+        // Check for user input activity (buttons, encoder, joystick)
+        if (input_manager.IsAnySystemButtonPressed() || 
+            input_manager.GetEncoder().GetDelta() != 0.0f ||
+            input_manager.GetJoystick().GetDeltaX() != 0.0f ||
+            input_manager.GetJoystick().GetDeltaY() != 0.0f) {
+            power_mgr.ReportUserInput();
+        }
+        
         volume_mgr.Update();          // Update volume manager to get latest ADC values
         
         // Update track system (processes input plugins and generates MIDI)
         main_track.Update();
         
         // Get joystick position and route to track
+        // Note: Joystick movement activity is already tracked above via GetDeltaX/Y check
         JoystickInputHandler& joystick = input_manager.GetJoystick();
         float joystick_x, joystick_y;
         joystick.GetPosition(&joystick_x, &joystick_y);
@@ -260,6 +328,8 @@ int main(void) {
         
         // Show splash screen if it should be displayed
         if (splash_screen.ShouldShow()) {
+            // Report activity during splash to prevent power optimization from interfering
+            power_mgr.ReportActivity();
             splash_screen.Render();
         } else {
             #if DEBUG_SCREEN_ENABLED
@@ -283,40 +353,201 @@ int main(void) {
                 MenuManager* menu_mgr = ui_manager.GetMenuManager();
                 SettingsManager* settings_mgr = ui_manager.GetSettingsManager();
                 
-                // Handle button presses to open/close menus
-                if (input_manager.GetButtons().WasSystemButtonPressed(SystemButton::INPUT)) {
-                    if (menu_mgr) {
-                        if (menu_mgr->GetCurrentMenuType() == MenuManager::MenuType::INPUT_STACK) {
-                            menu_mgr->CloseMenu();
+                // Track button states for release detection
+                static bool prev_input_pressed = false;
+                static bool prev_record_pressed = false;
+                static bool prev_instrument_pressed = false;
+                static bool prev_fx_pressed = false;
+                
+                bool input_pressed = input_manager.GetButtons().IsSystemButtonPressed(SystemButton::INPUT);
+                bool record_pressed = input_manager.GetButtons().IsSystemButtonPressed(SystemButton::RECORD);
+                bool instrument_pressed = input_manager.GetButtons().IsSystemButtonPressed(SystemButton::INSTRUMENT);
+                bool fx_pressed = input_manager.GetButtons().IsSystemButtonPressed(SystemButton::FX);
+                
+                // Detect button releases (for menu opening - wait for release to detect combos)
+                bool input_released = prev_input_pressed && !input_pressed;
+                bool record_released = prev_record_pressed && !record_pressed;
+                bool instrument_released = prev_instrument_pressed && !instrument_pressed;
+                bool fx_released = prev_fx_pressed && !fx_pressed;
+                
+                // Button hold detection for menus (500ms threshold)
+                // Hold = open menu (menu stays open while held), Tap = MIDI transport (for INPUT and RECORD)
+                // Menus close automatically when button is released
+                const uint32_t BUTTON_HOLD_THRESHOLD_MS = 250;
+                
+                static uint32_t input_hold_start_time = 0;
+                static uint32_t record_hold_start_time = 0;
+                static uint32_t instrument_hold_start_time = 0;
+                static uint32_t fx_hold_start_time = 0;
+                
+                static bool input_menu_open = false;  // Track if menu was opened by hold
+                static bool record_menu_open = false;
+                static bool instrument_menu_open = false;
+                static bool fx_menu_open = false;
+                
+                #if DEBUG_SCREEN_ENABLED
+                bool debug_mode = debug_screen.IsEnabled();
+                #else
+                bool debug_mode = false;
+                #endif
+                
+                // Only handle button holds/menus if not in debug mode
+                if (!debug_mode) {
+                    // INPUT button hold detection
+                    if (input_pressed) {
+                        if (input_hold_start_time == 0) {
+                            input_hold_start_time = hw.system.GetNow();
                         } else {
-                            menu_mgr->OpenInputStackMenu();
-                            // Restore settings plugin if it exists (menu memory)
-                            if (settings_mgr && settings_mgr->GetPlugin()) {
-                                menu_mgr->SetCurrentSettingsPlugin(settings_mgr->GetPlugin());
+                            uint32_t hold_duration = hw.system.GetNow() - input_hold_start_time;
+                            if (hold_duration >= BUTTON_HOLD_THRESHOLD_MS && !input_menu_open) {
+                                // INPUT held - open Input Stack menu
+                                if (menu_mgr) {
+                                    menu_mgr->OpenInputStackMenu();
+                                    if (settings_mgr && settings_mgr->GetPlugin()) {
+                                        menu_mgr->SetCurrentSettingsPlugin(settings_mgr->GetPlugin());
+                                    }
+                                }
+                                input_menu_open = true;
+                            }
+                        }
+                    } else {
+                        // INPUT button released
+                        if (input_hold_start_time > 0) {
+                            uint32_t press_duration = hw.system.GetNow() - input_hold_start_time;
+                            
+                            // Close menu if it was open
+                            if (input_menu_open && menu_mgr && menu_mgr->GetCurrentMenuType() == MenuManager::MenuType::INPUT_STACK) {
+                                menu_mgr->CloseMenu();
+                            }
+                            
+                            // Only trigger transport if it was a tap (released before hold threshold)
+                            // Store the duration check result before resetting the timer
+                            bool was_tap = (press_duration < BUTTON_HOLD_THRESHOLD_MS);
+                            input_hold_start_time = 0;
+                            input_menu_open = false;
+                            
+                            // Trigger play/pause only if it was a tap (not a hold)
+                            if (was_tap) {
+                                transport_control.HandleCombo(0);  // 0 = Play/Pause
                             }
                         }
                     }
-                }
-                
-                if (input_manager.GetButtons().WasSystemButtonPressed(SystemButton::INSTRUMENT)) {
-                    if (menu_mgr) {
-                        if (menu_mgr->GetCurrentMenuType() == MenuManager::MenuType::INSTRUMENT) {
-                            menu_mgr->CloseMenu();
+                    
+                    // RECORD button hold detection
+                    if (record_pressed) {
+                        if (record_hold_start_time == 0) {
+                            record_hold_start_time = hw.system.GetNow();
                         } else {
-                            menu_mgr->OpenInstrumentMenu();
+                            uint32_t hold_duration = hw.system.GetNow() - record_hold_start_time;
+                            if (hold_duration >= BUTTON_HOLD_THRESHOLD_MS && !record_menu_open) {
+                                // RECORD held - open Global Settings menu
+                                if (menu_mgr) {
+                                    menu_mgr->OpenGlobalSettingsMenu();
+                                    if (settings_mgr) {
+                                        IPluginWithSettings* plugin = menu_mgr->GetCurrentSettingsPlugin();
+                                        if (plugin) {
+                                            settings_mgr->SetPlugin(plugin);
+                                        }
+                                    }
+                                }
+                                record_menu_open = true;
+                            }
+                        }
+                    } else {
+                        // RECORD button released
+                        if (record_hold_start_time > 0) {
+                            uint32_t press_duration = hw.system.GetNow() - record_hold_start_time;
+                            
+                            // Close menu if it was open
+                            if (record_menu_open && menu_mgr && menu_mgr->GetCurrentMenuType() == MenuManager::MenuType::GLOBAL_SETTINGS) {
+                                menu_mgr->CloseMenu();
+                                if (settings_mgr) {
+                                    settings_mgr->SetPlugin(nullptr);
+                                }
+                            }
+                            
+                            // Only trigger transport if it was a tap (released before hold threshold)
+                            bool was_tap = (press_duration < BUTTON_HOLD_THRESHOLD_MS);
+                            record_hold_start_time = 0;
+                            record_menu_open = false;
+                            
+                            // Trigger record only if it was a tap (not a hold)
+                            if (was_tap) {
+                                transport_control.HandleCombo(1);  // 1 = Record toggle
+                            }
                         }
                     }
+                    
+                    // INSTRUMENT button hold detection
+                    if (instrument_pressed) {
+                        if (instrument_hold_start_time == 0) {
+                            instrument_hold_start_time = hw.system.GetNow();
+                        } else {
+                            uint32_t hold_duration = hw.system.GetNow() - instrument_hold_start_time;
+                            if (hold_duration >= BUTTON_HOLD_THRESHOLD_MS && !instrument_menu_open) {
+                                // INSTRUMENT held - open Instrument menu
+                                if (menu_mgr) {
+                                    menu_mgr->OpenInstrumentMenu();
+                                }
+                                instrument_menu_open = true;
+                            }
+                        }
+                    } else {
+                        // INSTRUMENT button released - close menu if it was open
+                        if (instrument_menu_open && menu_mgr && menu_mgr->GetCurrentMenuType() == MenuManager::MenuType::INSTRUMENT) {
+                            menu_mgr->CloseMenu();
+                        }
+                        instrument_hold_start_time = 0;
+                        instrument_menu_open = false;
+                    }
+                    
+                    // FX button hold detection
+                    if (fx_pressed) {
+                        if (fx_hold_start_time == 0) {
+                            fx_hold_start_time = hw.system.GetNow();
+                        } else {
+                            uint32_t hold_duration = hw.system.GetNow() - fx_hold_start_time;
+                            if (hold_duration >= BUTTON_HOLD_THRESHOLD_MS && !fx_menu_open) {
+                                // FX held - open FX menu
+                                if (menu_mgr) {
+                                    menu_mgr->OpenFXMenu();
+                                }
+                                fx_menu_open = true;
+                            }
+                        }
+                    } else {
+                        // FX button released - close menu if it was open
+                        if (fx_menu_open && menu_mgr && menu_mgr->GetCurrentMenuType() == MenuManager::MenuType::FX) {
+                            menu_mgr->CloseMenu();
+                        }
+                        fx_hold_start_time = 0;
+                        fx_menu_open = false;
+                    }
+                } else {
+                    // Debug mode - reset all hold timers and close menus
+                    if (input_menu_open && menu_mgr) menu_mgr->CloseMenu();
+                    if (record_menu_open && menu_mgr) menu_mgr->CloseMenu();
+                    if (instrument_menu_open && menu_mgr) menu_mgr->CloseMenu();
+                    if (fx_menu_open && menu_mgr) menu_mgr->CloseMenu();
+                    
+                    input_hold_start_time = 0;
+                    record_hold_start_time = 0;
+                    instrument_hold_start_time = 0;
+                    fx_hold_start_time = 0;
+                    input_menu_open = false;
+                    record_menu_open = false;
+                    instrument_menu_open = false;
+                    fx_menu_open = false;
                 }
                 
-                if (input_manager.GetButtons().WasSystemButtonPressed(SystemButton::FX)) {
-                    if (menu_mgr) {
-                        if (menu_mgr->GetCurrentMenuType() == MenuManager::MenuType::FX) {
-                            menu_mgr->CloseMenu();
-                        } else {
-                            menu_mgr->OpenFXMenu();
-                        }
-                    }
-                }
+                // Transport triggers are now handled in the button release sections above
+                // (moved to be part of the release handling logic)
+                
+                // Update previous button states
+                prev_input_pressed = input_pressed;
+                prev_record_pressed = record_pressed;
+                prev_instrument_pressed = instrument_pressed;
+                prev_fx_pressed = fx_pressed;
                 
                 // Handle menu/settings navigation (centralized in MenuManager)
                 if (menu_mgr && menu_mgr->IsOpen()) {
@@ -409,29 +640,47 @@ int main(void) {
         
         audio_engine.ProcessMidi();
         
-        // Print MIDI enabled status once after initialization
+        // Print MIDI enabled status once after initialization (reduced logging for power)
         static bool midi_enabled_printed = false;
         static uint32_t init_counter = 0;
         if (!midi_enabled_printed && ++init_counter > 100) {
+            #if DEBUG_MODE
             ExternalLog::PrintLine("MIDI Enabled: TRS=%s, USB=%s", 
                         midi_handler.IsTrsInitialized() ? "YES" : "NO",
                         midi_handler.IsUsbInitialized() ? "YES" : "NO");
+            #endif
             midi_enabled_printed = true;
+        }
+        
+        // Report audio activity for power management (if note is playing)
+        if (audio_engine.IsNoteOn()) {
+            power_mgr.ReportAudioActivity();
         }
         
         if (volume_mgr.HasVolumeChanged()) {
             volume_mgr.ClearChangeFlag();
         }
         
-        // LED heartbeat
+        // LED heartbeat - reduced frequency for power savings
+        // Only blink when active, slower when idle
         static uint32_t heartbeat = 0;
-        if (++heartbeat % 1000 == 0) { // Every 1000 iterations = ~1 second
+        uint32_t heartbeat_interval = power_mgr.IsIdle() ? 5000 : 2000;  // 5s when idle, 2s when active
+        if (++heartbeat % heartbeat_interval == 0) {
             hw.SetLed(true);   // Turn LED on
-            hw.DelayMs(50);    // Keep on for 50ms
+            hw.DelayMs(20);    // Keep on for 20ms (reduced from 50ms)
             hw.SetLed(false);  // Turn LED off
         }
         
-        // 1kHz constant timing - 1ms delay for predictable behavior
-        hw.DelayMs(1);
+        // Adaptive timing - use power manager's recommended delay
+        // Power savings come from:
+        // 1. Reduced ADC sampling (10-100 Hz instead of 1 kHz when idle)
+        // 2. Reduced display refresh (1-20 Hz adaptive, power optimized)
+        // 3. Disabled mic ADC when not needed (disabled by default)
+        // 4. Disabled audio input processing by default (power savings)
+        // 5. Adaptive loop frequency (100 Hz-1 kHz based on activity)
+        // 
+        // Note: Sleep mode (WFI) removed - too finicky and can cause hangs.
+        // The above optimizations provide significant power savings without the complexity.
+        hw.DelayMs(loop_delay);
     }
 } 

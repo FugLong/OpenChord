@@ -112,6 +112,10 @@ public:
     void SetBatteryCheckInterval(uint32_t ms);
     void SetLowBatteryThreshold(float voltage);
 
+    // Power optimization - disable mic ADC reads when not needed
+    void SetMicADCEnabled(bool enabled) { mic_adc_enabled_ = enabled; }
+    bool IsMicADCEnabled() const { return mic_adc_enabled_; }
+
 private:
     // Hardware reference
     daisy::DaisySeed* hw_;
@@ -138,6 +142,7 @@ private:
     uint32_t battery_check_ms_;   // Battery check interval
     float low_battery_threshold_; // Low battery voltage threshold
     bool healthy_;
+    bool mic_adc_enabled_;        // Enable/disable mic ADC reads (power savings)
     
     // Internal methods
     void ConfigureADC();

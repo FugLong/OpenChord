@@ -6,7 +6,8 @@
 
 AnalogManager::AnalogManager() 
     : hw_(nullptr), filter_strength_(0.1f), dead_zone_(0.05f), 
-      battery_check_ms_(1000), low_battery_threshold_(3.3f), healthy_(true) {
+      battery_check_ms_(1000), low_battery_threshold_(3.3f), healthy_(true),
+      mic_adc_enabled_(false) {  // Disabled by default for power savings
     
     // Initialize ADC configuration
     memset(adc_configured_, 0, sizeof(adc_configured_));
@@ -299,11 +300,17 @@ void AnalogManager::UpdateInputs() {
     inputs_[3].filtered_value = joystick_y;
     inputs_[3].healthy = (joystick_y >= 0.0f && joystick_y <= 1.0f);
     
-    // inputs_[4] = ADC channel 4 (Microphone)
+    // inputs_[4] = ADC channel 4 (Microphone) - ONLY read if enabled
+    // Skip mic ADC read when disabled (power savings - mic ADC consumes significant power)
+    if (mic_adc_enabled_) {
     float mic_value = hw_->adc.GetFloat(4);
     inputs_[4].raw_value = mic_value;
     inputs_[4].filtered_value = mic_value;
     inputs_[4].healthy = (mic_value >= 0.0f && mic_value <= 1.0f);
+    } else {
+        // Keep last value, mark as not healthy to indicate it's not being read
+        inputs_[4].healthy = false;
+    }
 }
 
 void AnalogManager::UpdateBattery() {
@@ -430,16 +437,16 @@ float AnalogManager::CalculateBatteryPercentage(float voltage) {
     // This means we need to map voltage to actual energy/capacity remaining,
     // not just voltage level.
     //
-    // Voltage range: 4.11V (max, 100%) to 3.2V (min, 0%)
+    // Voltage range: 4.1V (max, 100%) to 3.2V (min, 0%)
     // Using 3.2V as cutoff protects battery health (avoids deep discharge)
     //
     // Li-ion capacity distribution (typical):
-    // - Voltage drops quickly from 4.11V to ~3.9V (uses ~15-20% of capacity)
+    // - Voltage drops quickly from 4.1V to ~3.9V (uses ~15-20% of capacity)
     // - Voltage stays relatively flat 3.9V to 3.6V (uses ~60-70% of capacity)
     // - Voltage drops quickly from 3.6V to 3.2V (uses ~10-15% of capacity)
     //
     // For user experience, we map to represent actual usable energy:
-    // 4.11V = 100% (fully charged, max voltage)
+    // 4.1V = 100% (fully charged, max voltage)
     // 3.9V = ~80% (top voltage drop represents ~20% capacity)
     // 3.7V = ~50% (middle of capacity, not voltage)
     // 3.6V = ~30% (most capacity used in flat region)
@@ -447,13 +454,13 @@ float AnalogManager::CalculateBatteryPercentage(float voltage) {
     // 3.2V = 0% (cutoff - protects battery from deep discharge)
     
     if (voltage <= 3.2f) return 0.0f;
-    if (voltage >= 4.11f) return 100.0f;
+    if (voltage >= 4.1f) return 100.0f;
     
     // Map voltage to capacity-based percentage for linear user experience
     // This compensates for the flat voltage curve in the middle
     if (voltage >= 4.0f) {
-        // 4.0V to 4.11V: 85% to 100% (top 15% of capacity)
-        return 85.0f + (voltage - 4.0f) / (4.11f - 4.0f) * 15.0f;
+        // 4.0V to 4.1V: 85% to 100% (top 15% of capacity)
+        return 85.0f + (voltage - 4.0f) / (4.1f - 4.0f) * 15.0f;
     } else if (voltage >= 3.9f) {
         // 3.9V to 4.0V: 80% to 85% (5% capacity in this range)
         return 80.0f + (voltage - 3.9f) / (4.0f - 3.9f) * 5.0f;

@@ -260,9 +260,15 @@ private:
 ### Update Frequencies
 - **Digital I/O**: 1kHz (1ms) for responsive button handling
 - **Analog I/O**: 100Hz (10ms) for smooth control response
-- **Display**: 60Hz (16.7ms) for smooth animations
+- **Display**: Adaptive refresh rate for power optimization:
+  - **Idle**: 1Hz (1s) - minimal updates for power savings
+  - **Low**: 2Hz (500ms) - reduced updates during low activity
+  - **Normal**: 10Hz (100ms) - standard UI updates (sufficient for smooth operation)
+  - **Active**: 20Hz (50ms) - responsive updates during user interaction
 - **Storage**: On-demand for file operations
 - **MIDI**: Real-time for low-latency performance
+
+**Note**: Display refresh rates are optimized for battery-powered operation. The adaptive system balances visual quality with power consumption, automatically adjusting based on system activity.
 
 ### Memory Management
 - **Static Allocation**: Pre-allocate buffers to avoid fragmentation

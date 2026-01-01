@@ -4,8 +4,10 @@
 namespace OpenChord {
 
 AudioEngine::AudioEngine() 
-    : hw_(nullptr), volume_manager_(nullptr), initialized_(false),
-      current_freq_(440.0f), gate_signal_(false), mic_passthrough_enabled_(false) {
+    : hw_(nullptr), volume_manager_(nullptr),
+      current_freq_(440.0f), gate_signal_(false), 
+      input_source_(AudioInputSource::LINE_IN), audio_input_processing_enabled_(false),
+      initialized_(false) {
 }
 
 AudioEngine::~AudioEngine() {
@@ -87,11 +89,14 @@ void AudioEngine::ProcessAudio(const float* const* in, float* const* out, size_t
         return;
     }
 
+    // Process audio input only if processing is enabled and source is selected
+    // Non-selected source is never processed
+    if (audio_input_processing_enabled_) {
+        if (input_source_ == AudioInputSource::MICROPHONE) {
     // Microphone passthrough mode (for wiring test)
     // NOTE: Using ADC for audio is not ideal, but we're pin-limited
     // Reading ADC twice per block to get ~24kHz effective rate (instead of 12kHz)
     // This improves quality but still has some bitcrushing
-    if (mic_passthrough_enabled_) {
         // Get current volume data from volume manager
         const VolumeData& volume_data = volume_manager_->GetVolumeData();
         
@@ -138,9 +143,30 @@ void AudioEngine::ProcessAudio(const float* const* in, float* const* out, size_t
         }
         
         return;
-    }
-
+        } else if (input_source_ == AudioInputSource::LINE_IN && in != nullptr) {
+            // Line input mode - process audio from audio jack (stereo line in)
     // Get current volume data from volume manager
+            const VolumeData& volume_data = volume_manager_->GetVolumeData();
+            
+            // Process line input with volume control
+            for (size_t i = 0; i < size; i++) {
+                // Mix both input channels and apply volume
+                float line_input = (in[0][i] + in[1][i]) * 0.5f;  // Average stereo to mono
+                line_input *= volume_data.line_level;
+                
+                // Soft clipping
+                if (line_input > 1.0f) line_input = 1.0f;
+                if (line_input < -1.0f) line_input = -1.0f;
+                
+                out[0][i] = line_input;
+                out[1][i] = line_input;
+            }
+            return;
+        }
+    }
+    // If processing is disabled or source not selected, fall through to synth output
+
+    // Get current volume data from volume manager (for synth output)
     const VolumeData& volume_data = volume_manager_->GetVolumeData();
     
     // Debug: Check if we're getting reasonable volume values
@@ -245,13 +271,18 @@ float AudioEngine::mtof(uint8_t note) const {
     return 440.0f * powf(2.0f, (note - 69) / 12.0f);
 }
 
-// Microphone passthrough methods
-void AudioEngine::SetMicPassthroughEnabled(bool enabled) {
-    mic_passthrough_enabled_ = enabled;
+// Audio input source methods
+void AudioEngine::SetInputSource(AudioInputSource source) {
+    input_source_ = source;
+    // Note: Changing source doesn't enable/disable processing
+    // Processing must be explicitly enabled/disabled separately
 }
 
-bool AudioEngine::IsMicPassthroughEnabled() const {
-    return mic_passthrough_enabled_;
+void AudioEngine::SetAudioInputProcessingEnabled(bool enabled) {
+    audio_input_processing_enabled_ = enabled;
+    // When processing is disabled, no audio input is processed (power savings)
+    // When enabled, only the selected source is processed
+    // Note: Mic ADC enable/disable is coordinated in main.cpp via AnalogManager
 }
 
 } // namespace OpenChord

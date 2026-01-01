@@ -49,9 +49,30 @@ public:
     void SetSustainLevel(float sustain_percent);
     void SetReleaseTime(float release_ms);
     
-    // Microphone passthrough (temporary for wiring test)
-    void SetMicPassthroughEnabled(bool enabled);
-    bool IsMicPassthroughEnabled() const;
+    // Audio input source control
+    enum class AudioInputSource {
+        LINE_IN,      // Audio jack input (stereo line in)
+        MICROPHONE    // Microphone via ADC
+    };
+    
+    // Audio input source selection (selects which source to use)
+    void SetInputSource(AudioInputSource source);
+    AudioInputSource GetInputSource() const { return input_source_; }
+    
+    // Audio input processing toggle (enable/disable processing of selected source)
+    // When disabled, no audio input is processed (power savings)
+    // When enabled, only the selected source is processed
+    void SetAudioInputProcessingEnabled(bool enabled);
+    bool IsAudioInputProcessingEnabled() const { return audio_input_processing_enabled_; }
+    
+    // Legacy method for backward compatibility
+    void SetMicPassthroughEnabled(bool enabled) { 
+        SetInputSource(enabled ? AudioInputSource::MICROPHONE : AudioInputSource::LINE_IN);
+        SetAudioInputProcessingEnabled(enabled);
+    }
+    bool IsMicPassthroughEnabled() const { 
+        return input_source_ == AudioInputSource::MICROPHONE && audio_input_processing_enabled_;
+    }
     
 private:
     // MIDI note to frequency conversion
@@ -67,7 +88,8 @@ private:
     
     // Audio processing state
     bool initialized_;
-    bool mic_passthrough_enabled_;
+    AudioInputSource input_source_;  // Selected audio input source
+    bool audio_input_processing_enabled_;  // Enable/disable processing of selected source
 };
 
 } // namespace OpenChord

@@ -29,14 +29,8 @@ public:
     bool IsCardPresent() const { return card_present_; }
     bool IsMounted() const { return mounted_; }
     
-    // Test SD card functionality
-    bool TestCard();
-    
     // File system access
     FATFS* GetFileSystem() { return mounted_ ? &fsi_.GetSDFileSystem() : nullptr; }
-    
-    // Cleanup operations
-    int CleanupBinFiles();  // Delete all .bin files from SD card root (returns count deleted)
     
     // TODO: Implement storage methods
     // - File operations
