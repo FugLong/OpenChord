@@ -326,7 +326,7 @@ void UIManager::UpdateOctaveUI(float joystick_x, uint32_t current_time_ms) {
     }
 }
 
-void UIManager::SetPowerManager(OpenChord::PowerManager* power_mgr) {
+void UIManager::SetPowerManager(PowerManager* power_mgr) {
     power_mgr_ = power_mgr;
 }
 

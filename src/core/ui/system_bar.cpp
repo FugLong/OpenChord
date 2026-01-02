@@ -10,6 +10,7 @@ SystemBar::SystemBar()
     , current_track_(nullptr)
     , context_text_(nullptr)
     , battery_percentage_(100.0f)
+    , battery_charging_(false)
     , last_battery_update_(0)
 {
     track_name_override_[0] = '\0';
@@ -25,6 +26,7 @@ void SystemBar::Init(DisplayManager* display, IOManager* io_manager) {
     context_text_ = nullptr;
     track_name_override_[0] = '\0';
     battery_percentage_ = 100.0f;
+    battery_charging_ = false;
     last_battery_update_ = 0;
 }
 
@@ -88,6 +90,7 @@ void SystemBar::UpdateBattery() {
         auto* analog_mgr = io_manager_->GetAnalog();
         if (analog_mgr) {
             battery_percentage_ = analog_mgr->GetBatteryPercentage();
+            battery_charging_ = analog_mgr->IsBatteryCharging();
         }
     }
 }
@@ -124,9 +127,14 @@ void SystemBar::RenderBattery() {
     auto* disp = display_->GetDisplay();
     if (!disp) return;
     
-    // Render battery percentage on right side
-    char battery_str[8];
-    snprintf(battery_str, sizeof(battery_str), "%.0f%%", battery_percentage_);
+    // Render battery percentage on right side with charging indicator
+    char battery_str[12];
+    if (battery_charging_) {
+        // Show charging indicator: "100%+" (plus sign indicates charging)
+        snprintf(battery_str, sizeof(battery_str), "%.0f%%+", battery_percentage_);
+    } else {
+        snprintf(battery_str, sizeof(battery_str), "%.0f%%", battery_percentage_);
+    }
     
     // Right-align the battery text
     // Font is 6x8, so each char is 6 pixels wide

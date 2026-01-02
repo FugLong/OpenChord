@@ -46,6 +46,7 @@ private:
     
     // Cached values (updated periodically)
     float battery_percentage_;
+    bool battery_charging_;
     uint32_t last_battery_update_;
     static constexpr uint32_t BATTERY_UPDATE_INTERVAL_MS = 1000;  // Update battery display every second
     

@@ -75,9 +75,9 @@ public:
     // Get currently active notes (for UI display)
     std::vector<uint8_t> GetActiveNotes() const;
     
-    // Key selection
+    // Key selection (updates track key)
     void SetKey(MusicalKey key);
-    MusicalKey GetCurrentKey() const { return current_key_; }
+    MusicalKey GetCurrentKey() const;
     
     // Play mode selection
     void SetPlayMode(PlayMode mode);
@@ -98,16 +98,14 @@ private:
     // Chord engine for scale mode
     ChordEngine chord_engine_;
     
-    // Play mode and key
+    // Play mode (key is stored in track)
     PlayMode play_mode_;
-    MusicalKey current_key_;
     
     // Settings support
-    static constexpr int SETTING_COUNT = 3;  // Mode, Key root, Mode (scale mode)
+    static constexpr int SETTING_COUNT = 2;  // Mode, Pitch bend limit (key removed - now track-level)
     mutable PluginSetting settings_[SETTING_COUNT];
-    mutable int mode_setting_value_;  // Helper for mode enum setting
     mutable int play_mode_setting_value_;  // Helper for play mode enum setting
-    mutable int key_root_setting_value_;  // Helper for key root enum setting
+    mutable bool pitch_bend_half_range_;  // Limit pitch bend to half range (0.5 semitones)
     void InitializeSettings();
     
     // Button state tracking
@@ -129,8 +127,8 @@ private:
     void ProcessJoystick();
     uint8_t GetMidiNote(int button_index) const;
     uint8_t GetScaleNote(int button_index) const;  // For scale mode
-    int16_t CalculatePitchBend(float joystick_y) const;
-    uint8_t CalculateModWheel(float joystick_x) const;
+    int16_t CalculatePitchBend(float joystick_y, float max_deflection) const;
+    uint8_t CalculateModWheel(float joystick_x, float max_deflection) const;
     
     // Ensure default activation when all plugins are off
     void EnsureDefaultActivation();

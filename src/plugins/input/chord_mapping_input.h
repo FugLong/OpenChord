@@ -11,6 +11,7 @@
 // Forward declaration
 namespace OpenChord {
     class InputManager;
+    class Track;
 }
 
 namespace OpenChord {
@@ -57,6 +58,9 @@ public:
         input_manager_ = input_manager;
     }
     
+    // Set track to access track-level key
+    void SetTrack(Track* track) { track_ = track; }
+    
     // Set callback to check if octave UI is active
     void SetOctaveUICheckCallback(bool (*check_func)()) {
         octave_ui_check_func_ = check_func;
@@ -67,9 +71,9 @@ public:
         return current_chord_.note_count > 0 ? &current_chord_ : nullptr;
     }
     
-    // Key selection
+    // Key selection (updates track key)
     void SetKey(MusicalKey key);
-    MusicalKey GetCurrentKey() const { return current_key_; }
+    MusicalKey GetCurrentKey() const;
     
     // Joystick preset management
     void SetJoystickPreset(int preset_index);
@@ -86,6 +90,7 @@ public:
 private:
     // Input access
     InputManager* input_manager_;
+    Track* track_;  // To access track-level key
     bool (*octave_ui_check_func_)();  // Callback to check if octave UI is active (nullptr = don't check)
     
     // State
@@ -99,8 +104,7 @@ private:
     Chord current_chord_;
     bool chord_active_;
     
-    // Key and preset
-    MusicalKey current_key_;
+    // Preset (key is stored in track)
     int current_joystick_preset_index_;
     const JoystickPreset* current_joystick_preset_;
     
@@ -114,9 +118,8 @@ private:
     JoystickDirection prev_joystick_direction_;
     
     // Settings support
-    static constexpr int SETTING_COUNT = 3;  // Key root, Mode, Preset
+    static constexpr int SETTING_COUNT = 1;  // Preset only (key removed - now track-level)
     mutable PluginSetting settings_[SETTING_COUNT];
-    mutable int mode_setting_value_;  // Helper for mode enum setting
     void InitializeSettings();
     
     // MIDI event buffer

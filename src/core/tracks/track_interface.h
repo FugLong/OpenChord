@@ -2,10 +2,21 @@
 
 #include "../plugin_interface.h"
 #include "../midi/midi_types.h"
+#include "../music/chord_engine.h"
 #include <vector>
 #include <memory>
 
 namespace OpenChord {
+
+/**
+ * Track context - shared data accessible to all plugins
+ */
+struct TrackContext {
+    MusicalKey key;         // Current musical key for the track
+    float bpm;              // Current BPM (future use)
+    
+    TrackContext() : key(MusicalKey(0, MusicalMode::IONIAN)), bpm(120.0f) {}
+};
 
 /**
  * Track structure - the primary unit of music creation
@@ -66,6 +77,11 @@ public:
     void SetName(const char* name);
     const char* GetName() const;
 
+    // Track context (key, BPM, etc.) - accessible to plugins
+    void SetKey(MusicalKey key);
+    MusicalKey GetKey() const;
+    const TrackContext& GetContext() const { return context_; }
+
     // Scene management
     void SaveScene(int scene_index);
     void LoadScene(int scene_index);
@@ -86,6 +102,9 @@ private:
     bool muted_;
     bool soloed_;
     char name_[32];
+    
+    // Track context (key, BPM, etc.)
+    TrackContext context_;
     
     // MIDI processing
     std::vector<MidiEvent> midi_buffer_;

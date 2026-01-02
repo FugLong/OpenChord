@@ -326,11 +326,14 @@ void AnalogManager::UpdateBattery() {
         // Battery voltage = (adc_value * 3.3V) / 0.5 = adc_value * 6.6V
         battery_.voltage = adc_value * 6.6f;
         
-        // Calculate percentage (using 3.2V to 4.11V range for battery health)
+        // Calculate percentage (using 3.2V to 4.0V range - 4.0V+ = 100%)
         battery_.percentage = CalculateBatteryPercentage(battery_.voltage);
         
         // Check if battery is low
         battery_.is_low = battery_.voltage < low_battery_threshold_;
+        
+        // Detect charging: voltage >= 4.1V indicates charging (charger provides higher voltage)
+        battery_.is_charging = battery_.voltage >= 4.1f;
         
         battery_.last_check_time = current_time;
     }
@@ -433,20 +436,17 @@ float AnalogManager::CalculateBatteryPercentage(float voltage) {
     // Battery percentage calculation for user-facing display
     // Maps voltage to usable capacity percentage for linear discharge experience
     // 
-    // User expectation: If battery lasts 10 hours, each 10% should take ~1 hour
-    // This means we need to map voltage to actual energy/capacity remaining,
-    // not just voltage level.
-    //
-    // Voltage range: 4.1V (max, 100%) to 3.2V (min, 0%)
+    // Updated: Charger only charges to 4.0V max, so 4.0V+ = 100%
+    // Voltage range: 4.0V (max, 100%) to 3.2V (min, 0%)
     // Using 3.2V as cutoff protects battery health (avoids deep discharge)
     //
     // Li-ion capacity distribution (typical):
-    // - Voltage drops quickly from 4.1V to ~3.9V (uses ~15-20% of capacity)
+    // - Voltage drops quickly from 4.0V to ~3.9V (uses ~15-20% of capacity)
     // - Voltage stays relatively flat 3.9V to 3.6V (uses ~60-70% of capacity)
     // - Voltage drops quickly from 3.6V to 3.2V (uses ~10-15% of capacity)
     //
     // For user experience, we map to represent actual usable energy:
-    // 4.1V = 100% (fully charged, max voltage)
+    // 4.0V = 100% (fully charged, max voltage from charger)
     // 3.9V = ~80% (top voltage drop represents ~20% capacity)
     // 3.7V = ~50% (middle of capacity, not voltage)
     // 3.6V = ~30% (most capacity used in flat region)
@@ -454,16 +454,13 @@ float AnalogManager::CalculateBatteryPercentage(float voltage) {
     // 3.2V = 0% (cutoff - protects battery from deep discharge)
     
     if (voltage <= 3.2f) return 0.0f;
-    if (voltage >= 4.1f) return 100.0f;
+    if (voltage >= 4.0f) return 100.0f;  // 4.0V and above = 100%
     
     // Map voltage to capacity-based percentage for linear user experience
     // This compensates for the flat voltage curve in the middle
-    if (voltage >= 4.0f) {
-        // 4.0V to 4.1V: 85% to 100% (top 15% of capacity)
-        return 85.0f + (voltage - 4.0f) / (4.1f - 4.0f) * 15.0f;
-    } else if (voltage >= 3.9f) {
-        // 3.9V to 4.0V: 80% to 85% (5% capacity in this range)
-        return 80.0f + (voltage - 3.9f) / (4.0f - 3.9f) * 5.0f;
+    if (voltage >= 3.9f) {
+        // 3.9V to 4.0V: 80% to 100% (top 20% of capacity)
+        return 80.0f + (voltage - 3.9f) / (4.0f - 3.9f) * 20.0f;
     } else if (voltage >= 3.7f) {
         // 3.7V to 3.9V: 50% to 80% (30% capacity in flat region)
         // This is where most of the battery life is spent

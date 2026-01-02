@@ -16,6 +16,10 @@ void Track::Init() {
     muted_ = false;
     soloed_ = false;
     
+    // Initialize track context (key, BPM, etc.)
+    context_.key = MusicalKey(0, MusicalMode::IONIAN);  // Default: C Major
+    context_.bpm = 120.0f;  // Default BPM
+    
     // Clear MIDI buffer
     midi_buffer_.clear();
     
@@ -323,6 +327,23 @@ void Track::SetName(const char* name) {
 
 const char* Track::GetName() const {
     return name_;
+}
+
+void Track::SetKey(MusicalKey key) {
+    context_.key = key;
+    
+    // Notify all input plugins that key changed
+    // Plugins can query the key via GetKey() or GetContext()
+    for (auto& plugin : input_plugins_) {
+        if (plugin) {
+            // Plugins will read the key when they need it
+            // No explicit notification needed - they can poll GetKey()
+        }
+    }
+}
+
+MusicalKey Track::GetKey() const {
+    return context_.key;
 }
 
 void Track::SaveScene(int scene_index) {

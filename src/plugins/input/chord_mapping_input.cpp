@@ -1,5 +1,6 @@
 #include "chord_mapping_input.h"
 #include "../../core/io/input_manager.h"
+#include "../../core/tracks/track_interface.h"
 #include <cstring>
 #include <algorithm>
 #include <cmath>
@@ -8,11 +9,11 @@ namespace OpenChord {
 
 ChordMappingInput::ChordMappingInput()
     : input_manager_(nullptr)
+    , track_(nullptr)
     , octave_ui_check_func_(nullptr)
     , active_(true)
     , initialized_(false)
     , chord_active_(false)
-    , current_key_(MusicalKey(0, MusicalMode::IONIAN))  // C Ionian (C Major)
     , current_joystick_preset_index_(0)
     , current_joystick_preset_(nullptr)
     , joystick_x_(0.0f)
@@ -25,7 +26,6 @@ ChordMappingInput::ChordMappingInput()
     std::memset(prev_button_states_, false, sizeof(prev_button_states_));
     pending_events_.resize(128);  // Buffer for MIDI events
     current_chord_.note_count = 0;
-    mode_setting_value_ = static_cast<int>(MusicalMode::IONIAN);  // Initialize mode setting
     
     // Initialize settings
     InitializeSettings();
@@ -40,8 +40,10 @@ void ChordMappingInput::Init() {
     active_ = false;  // Start inactive - Piano is the default
     initialized_ = true;
     
-    // Set default key (C Major / Ionian) and joystick preset
-    SetKey(MusicalKey(0, MusicalMode::IONIAN));  // C Ionian (C Major)
+    // Set default key in track (C Major / Ionian) if track is available
+    if (track_) {
+        SetKey(MusicalKey(0, MusicalMode::IONIAN));  // C Ionian (C Major)
+    }
     SetJoystickPreset(0);
     
     // Reset state
@@ -96,16 +98,15 @@ void ChordMappingInput::HandleJoystick(float x, float y) {
 void ChordMappingInput::SaveState(void* buffer, size_t* size) const {
     if (!buffer || !size) return;
     
-    // Save state: active flag, key, and preset index
+    // Save state: active flag and preset index
+    // Note: key is now stored in track, not in plugin state
     struct State {
         bool active;
-        MusicalKey key;
         int preset_index;
     };
     
     State state;
     state.active = active_;
-    state.key = current_key_;
     state.preset_index = current_joystick_preset_index_;
     
     std::memcpy(buffer, &state, sizeof(State));
@@ -113,24 +114,38 @@ void ChordMappingInput::SaveState(void* buffer, size_t* size) const {
 }
 
 void ChordMappingInput::LoadState(const void* buffer, size_t size) {
-    if (!buffer || size < sizeof(bool) + sizeof(MusicalKey) + sizeof(int)) return;
+    if (!buffer || size < sizeof(bool)) return;
     
     struct State {
+        bool active;
+        int preset_index;
+    };
+    
+    struct LegacyState {
         bool active;
         MusicalKey key;
         int preset_index;
     };
     
-    State state;
-    std::memcpy(&state, buffer, sizeof(State));
-    
-    active_ = state.active;
-    SetKey(state.key);
-    SetJoystickPreset(state.preset_index);
+    if (size >= sizeof(State)) {
+        const State* state = reinterpret_cast<const State*>(buffer);
+        active_ = state->active;
+        SetJoystickPreset(state->preset_index);
+    } else if (size >= sizeof(LegacyState)) {
+        // Legacy format: load old state but key is now in track
+        const LegacyState* state = reinterpret_cast<const LegacyState*>(buffer);
+        active_ = state->active;
+        SetJoystickPreset(state->preset_index);
+        // Key is now stored in track, not here
+    } else {
+        // Very old format: just active flag
+        active_ = *reinterpret_cast<const bool*>(buffer);
+        SetJoystickPreset(0);
+    }
 }
 
 size_t ChordMappingInput::GetStateSize() const {
-    return sizeof(bool) + sizeof(MusicalKey) + sizeof(int);
+    return sizeof(bool) + sizeof(int);  // active, preset_index (key removed - now track-level)
 }
 
 void ChordMappingInput::GenerateMIDI(MidiEvent* events, size_t* count, size_t max_events) {
@@ -389,11 +404,12 @@ void ChordMappingInput::UpdateChord(int button_index) {
     int scale_degree = chord_engine_.PhysicalButtonToScaleDegree(button_index);
     
     // Get MIDI note for this scale degree in the current key/mode
+    MusicalKey key = GetCurrentKey();
     uint8_t root_midi_note;
-    chord_engine_.GetButtonMapping(current_key_, button_index, &root_midi_note);
+    chord_engine_.GetButtonMapping(key, button_index, &root_midi_note);
     
     // Get base chord quality for this scale degree in the current mode
-    ChordQuality base_quality = chord_engine_.GetChordQualityForDegree(current_key_.mode, scale_degree);
+    ChordQuality base_quality = chord_engine_.GetChordQualityForDegree(key.mode, scale_degree);
     
     // Apply joystick variation if joystick is not centered
     ChordQuality final_quality = base_quality;
@@ -485,7 +501,9 @@ MusicalButton ChordMappingInput::ButtonIndexToMusicalButton(int index) const {
 }
 
 void ChordMappingInput::SetKey(MusicalKey key) {
-    current_key_ = key;
+    if (track_) {
+        track_->SetKey(key);
+    }
     
     // If chord is active, regenerate it with new key
     if (chord_active_) {
@@ -496,6 +514,14 @@ void ChordMappingInput::SetKey(MusicalKey key) {
             }
         }
     }
+}
+
+MusicalKey ChordMappingInput::GetCurrentKey() const {
+    if (track_) {
+        return track_->GetKey();
+    }
+    // Fallback to default if no track
+    return MusicalKey(0, MusicalMode::IONIAN);
 }
 
 void ChordMappingInput::SetJoystickPreset(int preset_index) {
@@ -519,51 +545,19 @@ void ChordMappingInput::SetJoystickPreset(int preset_index) {
     }
 }
 
-// Static arrays for enum options
-static const char* note_names[] = {
-    "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B", nullptr
-};
-
-static const char* mode_names[] = {
-    "Ionian", "Dorian", "Phrygian", "Lydian", "Mixolydian", "Aeolian", "Locrian", nullptr
-};
-
 // Settings implementation
 void ChordMappingInput::InitializeSettings() {
-    // Setting 0: Key Root (0-11, enum)
-    settings_[0].name = "Key Root";
-    settings_[0].type = SettingType::ENUM;
-    settings_[0].value_ptr = &current_key_.root_note;
+    // Setting 0: Joystick Preset (0 to preset_count-1, enum)
+    // Note: Key and Mode settings removed - now track-level settings
+    settings_[0].name = "Joystick Preset";
+    settings_[0].type = SettingType::INT;
+    settings_[0].value_ptr = &current_joystick_preset_index_;
     settings_[0].min_value = 0.0f;
-    settings_[0].max_value = 11.0f;
+    settings_[0].max_value = static_cast<float>(chord_engine_.GetJoystickPresetCount() - 1);
     settings_[0].step_size = 1.0f;
-    settings_[0].enum_options = note_names;
-    settings_[0].enum_count = 12;
+    settings_[0].enum_options = nullptr;
+    settings_[0].enum_count = 0;
     settings_[0].on_change_callback = nullptr;
-    
-    // Setting 1: Mode (0-6, enum)
-    // Store mode as int for settings (since enums can be tricky with pointers)
-    settings_[1].name = "Mode";
-    settings_[1].type = SettingType::ENUM;
-    // Use a helper int that we'll sync with current_key_.mode
-    settings_[1].value_ptr = &mode_setting_value_;
-    settings_[1].min_value = 0.0f;
-    settings_[1].max_value = 6.0f;
-    settings_[1].step_size = 1.0f;
-    settings_[1].enum_options = mode_names;
-    settings_[1].enum_count = 7;
-    settings_[1].on_change_callback = nullptr;
-    
-    // Setting 2: Joystick Preset (0 to preset_count-1, enum)
-    settings_[2].name = "Joystick Preset";
-    settings_[2].type = SettingType::INT;
-    settings_[2].value_ptr = &current_joystick_preset_index_;
-    settings_[2].min_value = 0.0f;
-    settings_[2].max_value = static_cast<float>(chord_engine_.GetJoystickPresetCount() - 1);
-    settings_[2].step_size = 1.0f;
-    settings_[2].enum_options = nullptr;
-    settings_[2].enum_count = 0;
-    settings_[2].on_change_callback = nullptr;
 }
 
 int ChordMappingInput::GetSettingCount() const {
@@ -575,22 +569,9 @@ const PluginSetting* ChordMappingInput::GetSetting(int index) const {
         return nullptr;
     }
     
-    // Sync setting values with current state before returning
-    if (index == 0) {
-        // Key Root: Ensure value is in valid range (0-11)
-        // current_key_.root_note should already be valid, but ensure it's set correctly
-        if (current_key_.root_note < 0 || current_key_.root_note > 11) {
-            // This shouldn't happen, but ensure it's clamped
-            const_cast<MusicalKey&>(current_key_).root_note = 0;
-        }
-    } else if (index == 1) {
-        // Mode: Sync mode_setting_value_ with current_key_.mode
-        mode_setting_value_ = static_cast<int>(current_key_.mode);
-    }
-    
     // Update enum count for preset (in case it changed)
-    if (index == 2) {
-        settings_[2].max_value = static_cast<float>(chord_engine_.GetJoystickPresetCount() - 1);
+    if (index == 0) {
+        settings_[0].max_value = static_cast<float>(chord_engine_.GetJoystickPresetCount() - 1);
     }
     
     return &settings_[index];
@@ -598,18 +579,7 @@ const PluginSetting* ChordMappingInput::GetSetting(int index) const {
 
 void ChordMappingInput::OnSettingChanged(int setting_index) {
     switch (setting_index) {
-        case 0:  // Key Root changed
-            // Key root changed, update current key
-            SetKey(MusicalKey(current_key_.root_note, current_key_.mode));
-            break;
-            
-        case 1:  // Mode changed
-            // Mode changed - sync mode_setting_value_ to current_key_.mode
-            current_key_.mode = static_cast<MusicalMode>(mode_setting_value_);
-            SetKey(MusicalKey(current_key_.root_note, current_key_.mode));
-            break;
-            
-        case 2:  // Joystick Preset changed
+        case 0:  // Joystick Preset changed
             // Preset index changed, update preset
             SetJoystickPreset(current_joystick_preset_index_);
             break;

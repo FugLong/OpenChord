@@ -12,6 +12,7 @@ class Track;
 class IPluginWithSettings;
 class SettingsManager;
 class GlobalSettings;
+class TrackSettings;
 
 /**
  * Menu Item Types
@@ -141,6 +142,9 @@ public:
     // Set global settings (for global settings menu)
     void SetGlobalSettings(GlobalSettings* global_settings) { global_settings_ = global_settings; }
     
+    // Set track settings (for track-level settings like key)
+    void SetTrackSettings(TrackSettings* track_settings) { track_settings_ = track_settings; }
+    
     // Request immediate refresh (for when plugin state changes)
     void RequestRefresh() { needs_refresh_ = true; }
     
@@ -155,6 +159,7 @@ private:
     InputManager* input_manager_;
     Track* current_track_;
     GlobalSettings* global_settings_;
+    TrackSettings* track_settings_;
     
     MenuType current_menu_type_;  // What type of menu is currently open
     int current_menu_stack_depth_;

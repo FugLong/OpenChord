@@ -1,6 +1,7 @@
 #include "menu_manager.h"
 #include "settings_manager.h"
 #include "global_settings.h"
+#include "track_settings.h"
 #include "../tracks/track_interface.h"
 #include "../plugin_interface.h"
 #include "../io/io_manager.h"
@@ -45,6 +46,7 @@ MenuManager::MenuManager()
     , input_manager_(nullptr)
     , current_track_(nullptr)
     , global_settings_(nullptr)
+    , track_settings_(nullptr)
     , current_menu_type_(MenuType::NONE)
     , current_menu_stack_depth_(0)
     , current_settings_plugin_(nullptr)
@@ -132,6 +134,8 @@ void MenuManager::OpenMainMenu() {
 void MenuManager::OpenGlobalSettingsMenu() {
     // Close any existing menu and open global settings menu
     CloseMenu();
+    // Ensure settings plugin is cleared (CloseMenu does this, but be explicit)
+    current_settings_plugin_ = nullptr;
     current_menu_type_ = MenuType::GLOBAL_SETTINGS;
     GenerateSystemMenu();  // GenerateSystemMenu creates the global settings menu
     if (current_menu_stack_depth_ > 0) {
@@ -148,10 +152,19 @@ void MenuManager::NavigateUp() {
     // Use current_menu_stack_depth_ - 1 to match GetCurrentSelectedIndex()
     if (current_menu_stack_depth_ <= 0) return;
     int& selected = selected_indices_[current_menu_stack_depth_ - 1];
-    selected--;
-    if (selected < 0) {
-        selected = menu->GetItemCount() - 1;
-    }
+    
+    // Skip separators when navigating
+    int start_selected = selected;
+    do {
+        selected--;
+        if (selected < 0) {
+            selected = menu->GetItemCount() - 1;
+        }
+        // If we've wrapped around completely, break to avoid infinite loop
+        if (selected == start_selected) break;
+    } while (selected < menu->GetItemCount() && 
+             menu->GetItem(selected) && 
+             menu->GetItem(selected)->type == MenuItemType::SEPARATOR);
 }
 
 void MenuManager::NavigateDown() {
@@ -163,10 +176,19 @@ void MenuManager::NavigateDown() {
     // Use current_menu_stack_depth_ - 1 to match GetCurrentSelectedIndex()
     if (current_menu_stack_depth_ <= 0) return;
     int& selected = selected_indices_[current_menu_stack_depth_ - 1];
-    selected++;
-    if (selected >= menu->GetItemCount()) {
-        selected = 0;
-    }
+    
+    // Skip separators when navigating
+    int start_selected = selected;
+    do {
+        selected++;
+        if (selected >= menu->GetItemCount()) {
+            selected = 0;
+        }
+        // If we've wrapped around completely, break to avoid infinite loop
+        if (selected == start_selected) break;
+    } while (selected < menu->GetItemCount() && 
+             menu->GetItem(selected) && 
+             menu->GetItem(selected)->type == MenuItemType::SEPARATOR);
 }
 
 void MenuManager::NavigateEnter() {
@@ -178,6 +200,9 @@ void MenuManager::NavigateEnter() {
     int selected = GetCurrentSelectedIndex();
     const MenuItem* item = menu->GetItem(selected);
     if (!item) return;
+    
+    // Don't enter separators
+    if (item->type == MenuItemType::SEPARATOR) return;
     
     switch (item->type) {
         case MenuItemType::PLUGIN_SETTINGS:
@@ -218,6 +243,9 @@ void MenuManager::ToggleCurrentItem() {
     int selected = GetCurrentSelectedIndex();
     const MenuItem* item = menu->GetItem(selected);
     if (!item) return;
+    
+    // Don't toggle separators
+    if (item->type == MenuItemType::SEPARATOR) return;
     
     // Toggle plugin active state
     if (item->type == MenuItemType::PLUGIN_SETTINGS) {
@@ -301,6 +329,15 @@ void MenuManager::Update() {
 
 bool MenuManager::UpdateMenuInput(SettingsManager* settings_mgr, IOManager* io_manager, uint32_t current_time_ms) {
     if (!input_manager_ || !io_manager) return false;
+    
+    // Sync settings manager with menu manager state (important for state consistency)
+    // This ensures that when menus are opened/closed, the settings manager reflects the current state
+    if (settings_mgr) {
+        IPluginWithSettings* menu_plugin = GetCurrentSettingsPlugin();
+        if (menu_plugin != settings_mgr->GetPlugin()) {
+            settings_mgr->SetPlugin(menu_plugin);  // Sync settings manager to menu state
+        }
+    }
     
     bool state_changed = false;
     const float nav_threshold = 0.3f;
@@ -457,12 +494,20 @@ void MenuManager::Render() {
         if (!item) continue;
         
         if (item->type == MenuItemType::SEPARATOR) {
-            // Draw separator line
-            y += 2;
+            // Draw subtle separator line (just a simple line, not selectable)
+            // Use a more subtle visual - just a few dashes centered
+            char separator_line[22] = "  - - - - - - - - -  ";
+            disp->SetCursor(0, y);
+            disp->WriteString(separator_line, Font_6x8, true);
+            y += line_height;
             continue;
         }
         
         const char* prefix = (i == selected) ? "> " : "  ";
+        
+        // Check if item has submenu/settings (can navigate right)
+        bool has_submenu = (item->type == MenuItemType::PLUGIN_SETTINGS && item->context != nullptr) ||
+                          (item->type == MenuItemType::SUBMENU);
         
         // For plugin items, show on/off status
         char status_suffix[8] = "";
@@ -501,8 +546,22 @@ void MenuManager::Render() {
             }
         }
         
+        // Build the label with submenu indicator
         char buffer[40];
-        snprintf(buffer, sizeof(buffer), "%s%s%s", prefix, item->label, status_suffix);
+        if (has_submenu) {
+            // Add " >" indicator on the right for items with submenus
+            snprintf(buffer, sizeof(buffer), "%s%s%s >", prefix, item->label ? item->label : "", status_suffix);
+        } else {
+            snprintf(buffer, sizeof(buffer), "%s%s%s", prefix, item->label ? item->label : "", status_suffix);
+        }
+        
+        // Truncate if too long (128 pixels = ~21 chars at 6x8 font)
+        if (strlen(buffer) > 21) {
+            buffer[18] = '.';
+            buffer[19] = '.';
+            buffer[20] = '.';
+            buffer[21] = '\0';
+        }
         
         disp->SetCursor(0, y);
         disp->WriteString(buffer, Font_6x8, true);
@@ -582,6 +641,18 @@ void MenuManager::GenerateInputStackMenu() {
     
     // Now create menu items in priority order
     int item_count = 0;
+    
+    // Add "Settings" as first item (track-level settings like key, BPM, etc.)
+    if (track_settings_ && current_track_) {
+        track_settings_->SetTrack(current_track_);
+        temp_items_[item_count++] = CreatePluginSettingsItem("Settings", track_settings_);
+    }
+    
+    // Add separator after track-level settings
+    if (item_count > 0 && item_count < MAX_TEMP_ITEMS) {
+        temp_items_[item_count++] = CreateSeparatorItem();
+    }
+    
     for (int i = 0; i < entry_count && item_count < MAX_TEMP_ITEMS; i++) {
         auto* plugin = plugin_entries[i].plugin;
         const char* name = plugin->GetName();
@@ -689,15 +760,21 @@ void MenuManager::GenerateTrackMenu(int track_index) {
 
 void MenuManager::GenerateSystemMenu() {
     // Generate global settings menu
-    // Directly enter settings view (similar to instrument menu when it has settings)
+    // Create a menu list with "Settings" as an item that can be navigated into
     
     if (!global_settings_) {
         return;  // No global settings available
     }
     
-    // Directly set the global settings plugin (similar to instrument menu)
-    // This bypasses the menu list and goes straight to settings view
-    current_settings_plugin_ = global_settings_;
+    // Clear temp items array first
+    std::memset(temp_items_, 0, sizeof(temp_items_));
+    
+    // Create menu with "Settings" item that navigates to global settings
+    temp_items_[0] = CreatePluginSettingsItem("Settings", global_settings_);
+    
+    // Initialize menu without title (system bar already shows "Global")
+    temp_menus_[3].Init(nullptr, temp_items_, 1);
+    PushMenu(&temp_menus_[3]);
 }
 
 MenuItem MenuManager::CreateSubmenuItem(const char* label, Menu* submenu) {
@@ -746,7 +823,19 @@ void MenuManager::PushMenu(Menu* menu) {
     }
     
     menu_stack_[current_menu_stack_depth_] = menu;
-    selected_indices_[current_menu_stack_depth_] = 0;
+    
+    // Find first non-separator item for initial selection
+    int first_valid = 0;
+    if (menu) {
+        for (int i = 0; i < menu->GetItemCount(); i++) {
+            const MenuItem* item = menu->GetItem(i);
+            if (item && item->type != MenuItemType::SEPARATOR) {
+                first_valid = i;
+                break;
+            }
+        }
+    }
+    selected_indices_[current_menu_stack_depth_] = first_valid;
     current_menu_stack_depth_++;
 }
 

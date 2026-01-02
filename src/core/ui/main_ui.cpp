@@ -155,10 +155,31 @@ void MainUI::RenderPianoNotes(DisplayManager* display) {
     auto* disp = display->GetDisplay();
     if (!disp) return;
     
+    int y = 10;  // Start below system bar with spacing
+    
+    // Show key info at top (like Chords mode)
+    if (track_ && piano_plugin_) {
+        MusicalKey key = piano_plugin_->GetCurrentKey();
+        const char* note_names[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
+        const char* mode_names[] = {"Maj", "Dor", "Phr", "Lyd", "Mix", "Min", "Loc"};
+        
+        int note_idx = key.root_note % 12;
+        int mode_idx = static_cast<int>(key.mode);
+        
+        if (note_idx >= 0 && note_idx < 12 && mode_idx >= 0 && mode_idx < 7) {
+            char key_text[16] = "";
+            snprintf(key_text, sizeof(key_text), "%s %s", note_names[note_idx], mode_names[mode_idx]);
+            disp->SetCursor(0, y);
+            disp->WriteString(key_text, Font_6x8, true);
+            y += 10;  // Move down for notes display
+        }
+    }
+    
     // Get active notes from piano plugin
     std::vector<uint8_t> active_notes = piano_plugin_->GetActiveNotes();
     
-    int y = ContentArea::OFFSET_Y;
+    // y already set above for key display, adjust for notes
+    int notes_y = y;  // Start notes display after key
     
     if (active_notes.empty()) {
         // No notes active - show nothing or "--"
@@ -188,7 +209,7 @@ void MainUI::RenderPianoNotes(DisplayManager* display) {
     int text_x = (128 - text_width) / 2;
     if (text_x < 0) text_x = 0;
     
-    int content_start_y = y;
+    int content_start_y = notes_y;
     int content_height = 64 - content_start_y - 8;
     int font_height = 18;
     int text_y = content_start_y + (content_height - font_height) / 2;

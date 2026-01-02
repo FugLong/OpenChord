@@ -18,6 +18,7 @@
 #include "core/ui/menu_manager.h"
 #include "core/ui/settings_manager.h"
 #include "core/ui/global_settings.h"
+#include "core/ui/track_settings.h"
 #include "core/transport_control.h"
 #include "core/midi/octave_shift.h"
 #include "core/io/button_input_handler.h"
@@ -53,6 +54,7 @@ OctaveShift octave_shift;
 
 // Global settings
 GlobalSettings global_settings;
+TrackSettings track_settings;
 
 // Transport control
 TransportControl transport_control;
@@ -220,6 +222,7 @@ int main(void) {
     auto chord_plugin = std::make_unique<ChordMappingInput>();
     chord_plugin_ptr = chord_plugin.get();  // Keep reference for UI
     chord_plugin->SetInputManager(&input_manager);
+    chord_plugin->SetTrack(&main_track);  // Allow it to access track-level key
     // Pass function to check if octave UI is active (so chord mapping doesn't process joystick when octave UI is active)
     // Note: This will be set after UI Manager is initialized
     chord_plugin->Init();
@@ -244,10 +247,11 @@ int main(void) {
             ui_manager.SetContext(nullptr);  // Normal mode
             ui_manager.SetPowerManager(&power_mgr);  // Enable power-aware display refresh
             
-            // Set global settings in menu manager
+            // Set global settings and track settings in menu manager
             MenuManager* menu_mgr = ui_manager.GetMenuManager();
             if (menu_mgr) {
                 menu_mgr->SetGlobalSettings(&global_settings);
+                menu_mgr->SetTrackSettings(&track_settings);
             }
             ExternalLog::PrintLine("UI Manager initialized");
             
