@@ -3,7 +3,6 @@
 #include "daisy_seed.h"
 #include "hid/midi.h"
 #include "midi_interface.h"
-#include "../audio/audio_engine.h"
 
 namespace OpenChord {
 
@@ -20,7 +19,7 @@ public:
     void Init(daisy::DaisySeed* hw);
     
     // MIDI processing (called by system)
-    void ProcessMidi(AudioEngine* audio_engine);
+    void ProcessMidi();
     
     // Status queries
     bool IsUsbInitialized() const { return usb_midi_initialized_; }

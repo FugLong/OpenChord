@@ -59,9 +59,12 @@ void ChordMappingInput::Init() {
     pending_write_pos_ = 0;
 }
 
-void ChordMappingInput::Process(float* in, float* out, size_t size) {
+void ChordMappingInput::Process(const float* const* in, float* const* out, size_t size) {
     // This plugin doesn't process audio directly
     // It only generates MIDI events
+    (void)in;
+    (void)out;
+    (void)size;
 }
 
 void ChordMappingInput::Update() {

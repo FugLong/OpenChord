@@ -40,7 +40,7 @@ void OpenChordMidiHandler::Init(daisy::DaisySeed* hw) {
     trs_midi_initialized_ = true;
 }
 
-void OpenChordMidiHandler::ProcessMidi(AudioEngine* audio_engine) {
+void OpenChordMidiHandler::ProcessMidi() {
     // Process MIDI from enabled sources and add to MidiHub
     if (usb_midi_initialized_) {
         ProcessUsbMidi();

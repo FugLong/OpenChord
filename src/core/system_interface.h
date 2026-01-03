@@ -12,6 +12,8 @@ class IO;
 
 namespace OpenChord {
 
+class OctaveShift;
+
 /**
  * Main system interface for OpenChord
  */
@@ -25,7 +27,7 @@ public:
 
     // System lifecycle
     void Init();
-    void Process(float* in, float* out, size_t size);
+    void Process(const float* const* in, float* const* out, size_t size);
     void Update();
 
     // Track management
@@ -41,12 +43,11 @@ public:
     IPlayModePlugin* GetCurrentPlayMode() const;
     bool IsPlayModeActive() const;
 
-    // Volume management (global access)
-    IVolumeManager* GetVolumeManager() const;
-    const VolumeData& GetVolumeData() const;
-
-    // Audio engine access
-    AudioEngine* GetAudioEngine() const;
+    // Set system references (called from main.cpp)
+    void SetVolumeManager(IVolumeManager* volume_mgr) { volume_manager_ = volume_mgr; }
+    IVolumeManager* GetVolumeManager() const { return volume_manager_; }
+    void SetOctaveShift(OctaveShift* octave_shift);
+    OctaveShift* GetOctaveShift() const { return octave_shift_; }
 
     // UI and control handling
     void UpdateUI();
@@ -76,10 +77,9 @@ public:
     size_t GetBufferSize() const;
 
 private:
-    // Core systems
-    std::unique_ptr<IO> io_;
-    std::unique_ptr<IVolumeManager> volume_manager_;
-    std::unique_ptr<AudioEngine> audio_engine_;
+    // System references (set from main.cpp)
+    IVolumeManager* volume_manager_;
+    OctaveShift* octave_shift_;
     
     // Tracks
     std::vector<std::unique_ptr<Track>> tracks_;
@@ -100,7 +100,7 @@ private:
     uint32_t sample_clock_;
 
     // Internal methods
-    void ProcessTracks(float* in, float* out, size_t size);
+    void ProcessTracks(const float* const* in, float* const* out, size_t size);
     void UpdateSampleClock();
 };
 

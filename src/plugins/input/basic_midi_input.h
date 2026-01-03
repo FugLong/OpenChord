@@ -16,7 +16,7 @@ public:
 
     // IPlugin interface
     void Init() override;
-    void Process(float* in, float* out, size_t size) override;
+    void Process(const float* const* in, float* const* out, size_t size) override;
     void Update() override;
     void UpdateUI() override;
     void HandleEncoder(int encoder, float delta) override;

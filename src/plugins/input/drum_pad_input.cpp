@@ -31,9 +31,12 @@ void DrumPadInput::Init() {
     pending_write_pos_ = 0;
 }
 
-void DrumPadInput::Process(float* in, float* out, size_t size) {
+void DrumPadInput::Process(const float* const* in, float* const* out, size_t size) {
     // This plugin doesn't process audio directly
     // It only generates MIDI events
+    (void)in;
+    (void)out;
+    (void)size;
 }
 
 void DrumPadInput::Update() {
@@ -188,6 +191,7 @@ std::vector<uint8_t> DrumPadInput::GetActiveNotes() const {
 }
 
 } // namespace OpenChord
+
 
 
 

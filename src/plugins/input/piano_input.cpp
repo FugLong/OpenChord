@@ -60,8 +60,11 @@ void PianoInput::Init() {
     SetPlayMode(PlayMode::SCALE);
 }
 
-void PianoInput::Process(float* in, float* out, size_t size) {
+void PianoInput::Process(const float* const* in, float* const* out, size_t size) {
     // No audio processing
+    (void)in;
+    (void)out;
+    (void)size;
 }
 
 void PianoInput::Update() {

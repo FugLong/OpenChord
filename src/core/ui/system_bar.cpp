@@ -81,17 +81,19 @@ void SystemBar::Render() {
 void SystemBar::UpdateBattery() {
     if (!io_manager_) return;
     
-    // Update battery percentage periodically (every second)
-    // This is called from Update(), which runs at 1kHz, so check every 1000 calls
+    auto* analog_mgr = io_manager_->GetAnalog();
+    if (!analog_mgr) return;
+    
+    // Update immediately on first call (last_battery_update_ == 0)
+    // Then use a call counter for periodic updates (simpler than time-based for this use case)
     static uint32_t update_counter = 0;
-    if (++update_counter >= BATTERY_UPDATE_INTERVAL_MS) {
+    
+    // Always update on first call, then update periodically
+    if (last_battery_update_ == 0 || ++update_counter >= 1000) {
         update_counter = 0;
-        
-        auto* analog_mgr = io_manager_->GetAnalog();
-        if (analog_mgr) {
-            battery_percentage_ = analog_mgr->GetBatteryPercentage();
-            battery_charging_ = analog_mgr->IsBatteryCharging();
-        }
+        battery_percentage_ = analog_mgr->GetBatteryPercentage();
+        battery_charging_ = analog_mgr->IsBatteryCharging();
+        last_battery_update_ = 1;  // Mark as updated (use 1 instead of 0 to indicate updated)
     }
 }
 

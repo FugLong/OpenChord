@@ -17,9 +17,12 @@ void BasicMidiInput::Init() {
     buffer_write_pos_ = 0;
 }
 
-void BasicMidiInput::Process(float* in, float* out, size_t size) {
+void BasicMidiInput::Process(const float* const* in, float* const* out, size_t size) {
     // This plugin doesn't process audio directly
     // It only handles MIDI events
+    (void)in;
+    (void)out;
+    (void)size;
 }
 
 void BasicMidiInput::Update() {

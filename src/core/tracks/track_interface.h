@@ -8,6 +8,8 @@
 
 namespace OpenChord {
 
+class OctaveShift;
+
 /**
  * Track context - shared data accessible to all plugins
  */
@@ -34,7 +36,7 @@ public:
 
     // Track lifecycle
     void Init();
-    void Process(float* in, float* out, size_t size);
+    void Process(const float* const* in, float* const* out, size_t size);
     void Update();
 
     // Input Stack management
@@ -50,6 +52,8 @@ public:
     // Instrument management
     void SetInstrument(std::unique_ptr<IInstrumentPlugin> instrument);
     IInstrumentPlugin* GetInstrument() const;
+    void SetInstrumentEnabled(bool enabled);
+    bool IsInstrumentEnabled() const;
 
     // Effects management
     void AddEffect(std::unique_ptr<IEffectPlugin> effect);
@@ -82,6 +86,9 @@ public:
     MusicalKey GetKey() const;
     const TrackContext& GetContext() const { return context_; }
 
+    // Octave shift
+    void SetOctaveShift(OctaveShift* octave_shift) { octave_shift_ = octave_shift; }
+
     // Scene management
     void SaveScene(int scene_index);
     void LoadScene(int scene_index);
@@ -101,10 +108,14 @@ private:
     Focus focus_;
     bool muted_;
     bool soloed_;
+    bool instrument_enabled_;
     char name_[32];
     
     // Track context (key, BPM, etc.)
     TrackContext context_;
+    
+    // Octave shift (global per track)
+    OctaveShift* octave_shift_;
     
     // MIDI processing
     std::vector<MidiEvent> midi_buffer_;

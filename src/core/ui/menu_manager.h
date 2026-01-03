@@ -154,6 +154,12 @@ public:
     // Health check
     bool IsHealthy() const { return display_ != nullptr && display_->IsHealthy(); }
     
+    // Menu toggle mode (for advanced hold behavior)
+    bool IsInToggleMode() const { return menu_toggle_mode_; }
+    void SetToggleMode(bool toggle) { menu_toggle_mode_ = toggle; }
+    void SetMenuOpenTime(uint32_t time) { menu_open_time_ = time; }
+    uint32_t GetMenuOpenTime() const { return menu_open_time_; }
+    
 private:
     DisplayManager* display_;
     InputManager* input_manager_;
@@ -168,8 +174,17 @@ private:
     int selected_indices_[MAX_MENU_DEPTH];  // Selected index at each level
     
     IPluginWithSettings* current_settings_plugin_;
+    const char* current_settings_name_;  // Name of current settings plugin (for display)
+    
+    // Per-menu-type state storage (for preserving settings when reopening same menu type)
+    IPluginWithSettings* saved_settings_plugin_[6];  // One per MenuType enum value
+    const char* saved_settings_name_[6];  // Names for saved settings plugins
     
     bool needs_refresh_;  // Flag to request immediate UI refresh
+    
+    // Menu toggle mode state (for advanced hold behavior)
+    bool menu_toggle_mode_;  // True if menu is in toggle mode (stays open after quick release)
+    uint32_t menu_open_time_;  // Timestamp when menu was opened (for toggle mode timing)
     
     // Menu generation
     void GenerateMainMenu();

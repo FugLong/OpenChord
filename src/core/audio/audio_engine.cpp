@@ -1,13 +1,17 @@
 #include "audio_engine.h"
+#include "../system_interface.h"
 #include <cmath>
 
 namespace OpenChord {
 
 AudioEngine::AudioEngine() 
-    : hw_(nullptr), volume_manager_(nullptr),
-      current_freq_(440.0f), gate_signal_(false), 
-      input_source_(AudioInputSource::LINE_IN), audio_input_processing_enabled_(false),
-      initialized_(false) {
+    : hw_(nullptr)
+    , volume_manager_(nullptr)
+    , system_(nullptr)
+    , initialized_(false)
+    , input_source_(AudioInputSource::LINE_IN)
+    , audio_input_processing_enabled_(false)
+{
 }
 
 AudioEngine::~AudioEngine() {
@@ -15,184 +19,102 @@ AudioEngine::~AudioEngine() {
 
 void AudioEngine::Init(daisy::DaisySeed* hw) {
     hw_ = hw;
-    
-    // Initialize test oscillator
-    test_osc_.Init(hw->AudioSampleRate());
-    test_osc_.SetWaveform(daisysp::Oscillator::WAVE_SAW);
-    test_osc_.SetFreq(current_freq_);  // A4 note
-    test_osc_.SetAmp(1.0f);     // Full amplitude (volume controlled by volume manager)
-    
-    // Initialize ADSR envelope with piano-like settings
-    envelope_.Init(hw->AudioSampleRate());
-    envelope_.SetAttackTime(0.01f);   // 10ms attack (smooth fade-in)
-    envelope_.SetDecayTime(0.1f);     // 100ms decay
-    envelope_.SetSustainLevel(0.7f);  // 70% sustain
-    envelope_.SetReleaseTime(0.1f);   // 100ms release
-    
-    // Start with gate closed (no sound until MIDI note on)
-    gate_signal_ = false;
-    
     initialized_ = true;
-}
-
-void AudioEngine::ProcessMidi() {
-    if (!initialized_) return;
-    
-    // Get all MIDI events from the hub (USB + TRS + generated)
-    const std::vector<MidiHubEvent>& events = Midi::GetCombinedEvents();
-    
-    // Debug: Print number of events being processed
-    static uint32_t debug_counter = 0;
-    if (++debug_counter % 1000 == 0 && !events.empty()) {  // Every 1000 calls (~1 second)
-    }
-    
-    // Process each MIDI event
-    for (const MidiHubEvent& event : events) {
-        switch (event.type) {
-            case daisy::MidiMessageType::NoteOn:
-                if (event.data[1] > 0) {  // Velocity > 0
-                    float freq = mtof(event.data[0]);
-                    SetFrequency(freq);
-                    NoteOn();
-                } else {  // Velocity = 0 (Note Off)
-                    NoteOff();
-                }
-                break;
-                
-            case daisy::MidiMessageType::NoteOff:
-                NoteOff();
-                break;
-                
-            case daisy::MidiMessageType::ControlChange:
-                if (event.data[0] == 1) {  // Mod wheel
-                    // Could be used for vibrato or other modulation
-                    // SetModulation(event.data[1] / 127.0f);
-                }
-                break;
-                
-            default:
-                break;
-        }
-    }
-    
-    // Clear all events after processing to prevent accumulation
-    Midi::ClearAllEvents();
 }
 
 void AudioEngine::ProcessAudio(const float* const* in, float* const* out, size_t size) {
     if (!initialized_) {
         // Output silence if not ready
         for (size_t i = 0; i < size; i++) {
-            out[0][i] = 0.0f;     // Left channel
-            out[1][i] = 0.0f;     // Right channel
+            out[0][i] = 0.0f;
+            out[1][i] = 0.0f;
         }
         return;
     }
 
     // Process audio input only if processing is enabled and source is selected
-    // Non-selected source is never processed
     if (audio_input_processing_enabled_) {
         if (input_source_ == AudioInputSource::MICROPHONE) {
-    // Microphone passthrough mode (for wiring test)
-    // NOTE: Using ADC for audio is not ideal, but we're pin-limited
-    // Reading ADC twice per block to get ~24kHz effective rate (instead of 12kHz)
-    // This improves quality but still has some bitcrushing
-        // Get current volume data from volume manager
-        const VolumeData& volume_data = volume_manager_->GetVolumeData();
-        
-        // ADC parameters - MAX9814 outputs centered at ~0.38 (1.25V/3.3V)
-        static float mic_bias = 0.38f;  // Center bias for MAX9814
-        static float mic_scale = 3.0f;   // Scale factor for full audio range
-        
-        // Read ADC at start of block
-        float mic_adc_start = hw_->adc.GetFloat(1);
-        float mic_start = (mic_adc_start - mic_bias) * mic_scale;
-        
-        // Process first half of block
-        size_t midpoint = size / 2;
-        for (size_t i = 0; i < midpoint; i++) {
-            float mic_output = mic_start * volume_data.line_level;
+            // Microphone passthrough mode (for wiring test)
+            // NOTE: Using ADC for audio is not ideal, but we're pin-limited
+            // Reading ADC twice per block to get ~24kHz effective rate (instead of 12kHz)
+            const VolumeData& volume_data = volume_manager_->GetVolumeData();
             
-            // Soft clipping
-            if (mic_output > 1.0f) mic_output = 1.0f;
-            if (mic_output < -1.0f) mic_output = -1.0f;
+            // ADC parameters - MAX9814 outputs centered at ~0.38 (1.25V/3.3V)
+            static float mic_bias = 0.38f;
+            static float mic_scale = 3.0f;
             
-            out[0][i] = mic_output;
-            out[1][i] = mic_output;
-        }
-        
-        // Read ADC again at midpoint for 24kHz effective rate
-        float mic_adc_mid = hw_->adc.GetFloat(1);
-        float mic_mid = (mic_adc_mid - mic_bias) * mic_scale;
-        
-        // Linear interpolation for second half
-        float mic_step = (mic_mid - mic_start) / static_cast<float>(size - midpoint);
-        float mic_value = mic_start + (mic_step * static_cast<float>(midpoint));
-        
-        // Process second half of block with interpolation
-        for (size_t i = midpoint; i < size; i++) {
-            mic_value += mic_step;
-            float mic_output = mic_value * volume_data.line_level;
+            // Read ADC at start of block
+            float mic_adc_start = hw_->adc.GetFloat(1);
+            float mic_start = (mic_adc_start - mic_bias) * mic_scale;
             
-            // Soft clipping
-            if (mic_output > 1.0f) mic_output = 1.0f;
-            if (mic_output < -1.0f) mic_output = -1.0f;
+            // Process first half of block
+            size_t midpoint = size / 2;
+            for (size_t i = 0; i < midpoint; i++) {
+                float mic_output = mic_start * volume_data.line_level;
+                if (mic_output > 1.0f) mic_output = 1.0f;
+                if (mic_output < -1.0f) mic_output = -1.0f;
+                out[0][i] = mic_output;
+                out[1][i] = mic_output;
+            }
             
-            out[0][i] = mic_output;
-            out[1][i] = mic_output;
-        }
-        
-        return;
+            // Read ADC again at midpoint for 24kHz effective rate
+            float mic_adc_mid = hw_->adc.GetFloat(1);
+            float mic_mid = (mic_adc_mid - mic_bias) * mic_scale;
+            
+            // Linear interpolation for second half
+            float mic_step = (mic_mid - mic_start) / static_cast<float>(size - midpoint);
+            float mic_value = mic_start + (mic_step * static_cast<float>(midpoint));
+            
+            // Process second half with interpolation
+            for (size_t i = midpoint; i < size; i++) {
+                mic_value += mic_step;
+                float mic_output = mic_value * volume_data.line_level;
+                if (mic_output > 1.0f) mic_output = 1.0f;
+                if (mic_output < -1.0f) mic_output = -1.0f;
+                out[0][i] = mic_output;
+                out[1][i] = mic_output;
+            }
+            
+            return;  // Skip track processing when in mic passthrough mode
         } else if (input_source_ == AudioInputSource::LINE_IN && in != nullptr) {
             // Line input mode - process audio from audio jack (stereo line in)
-    // Get current volume data from volume manager
             const VolumeData& volume_data = volume_manager_->GetVolumeData();
             
             // Process line input with volume control
             for (size_t i = 0; i < size; i++) {
-                // Mix both input channels and apply volume
                 float line_input = (in[0][i] + in[1][i]) * 0.5f;  // Average stereo to mono
                 line_input *= volume_data.line_level;
                 
-                // Soft clipping
                 if (line_input > 1.0f) line_input = 1.0f;
                 if (line_input < -1.0f) line_input = -1.0f;
                 
                 out[0][i] = line_input;
                 out[1][i] = line_input;
             }
-            return;
+            
+            return;  // Skip track processing when in line input passthrough mode
         }
     }
-    // If processing is disabled or source not selected, fall through to synth output
-
-    // Get current volume data from volume manager (for synth output)
-    const VolumeData& volume_data = volume_manager_->GetVolumeData();
     
-    // Debug: Check if we're getting reasonable volume values
-    static uint32_t audio_debug_counter = 0;
-    if (++audio_debug_counter % 1000 == 0) {
-        // We can't safely print from audio callback, but we can verify the values are reasonable
-        // If volume_data.amplitude and line_level are both 0, that would explain no audio
+    // Normal mode: Route audio through system (tracks)
+    if (system_) {
+        system_->Process(in, out, size);
+    } else {
+        // No system - output silence
+        for (size_t i = 0; i < size; i++) {
+            out[0][i] = 0.0f;
+            out[1][i] = 0.0f;
+        }
     }
     
-    // Process the ADSR envelope
-    float env_value = envelope_.Process(gate_signal_);
-    
-    // Apply coordinated volume control (our working method)
-    // Set oscillator amplitude for fine low-end control
-    test_osc_.SetAmp(volume_data.amplitude);
-    
-    // Generate audio with volume control and envelope
-    for (size_t i = 0; i < size; i++) {
-        float sample = test_osc_.Process();
-        
-        // Apply line level scaling and envelope
-        sample *= volume_data.line_level * env_value;
-        
-        // Output to both channels (stereo)
-        out[0][i] = sample;     // Left channel
-        out[1][i] = sample;     // Right channel
+    // Apply volume control to final output
+    if (volume_manager_) {
+        const VolumeData& volume_data = volume_manager_->GetVolumeData();
+        for (size_t i = 0; i < size; i++) {
+            out[0][i] *= volume_data.line_level;
+            out[1][i] *= volume_data.line_level;
+        }
     }
 }
 
@@ -200,89 +122,18 @@ void AudioEngine::SetVolumeManager(IVolumeManager* volume_manager) {
     volume_manager_ = volume_manager;
 }
 
-void AudioEngine::SetTestFrequency(float frequency) {
-    if (initialized_) {
-        current_freq_ = frequency;
-        test_osc_.SetFreq(frequency);
-    }
-}
-
-void AudioEngine::SetTestWaveform(uint8_t waveform) {
-    if (initialized_) {
-        test_osc_.SetWaveform(waveform);
-    }
-}
-
-// MIDI note control methods
-void AudioEngine::SetFrequency(float freq) {
-    if (initialized_) {
-        current_freq_ = freq;
-        test_osc_.SetFreq(freq);
-    }
-}
-
-void AudioEngine::NoteOn() {
-    if (initialized_) {
-        gate_signal_ = true;
-        envelope_.Retrigger(false); // Soft retrigger to avoid clicks
-    }
-}
-
-void AudioEngine::NoteOff() {
-    if (initialized_) {
-        gate_signal_ = false;
-    }
-}
-
-bool AudioEngine::IsNoteOn() const {
-    return gate_signal_;
-}
-
-float AudioEngine::GetCurrentFreq() const {
-    return current_freq_;
-}
-
-// ADSR envelope adjustment methods
-void AudioEngine::SetAttackTime(float attack_ms) {
-    if (initialized_) {
-        envelope_.SetAttackTime(attack_ms / 1000.0f);
-    }
-}
-
-void AudioEngine::SetDecayTime(float decay_ms) {
-    if (initialized_) {
-        envelope_.SetDecayTime(decay_ms / 1000.0f);
-    }
-}
-
-void AudioEngine::SetSustainLevel(float sustain_percent) {
-    if (initialized_) {
-        envelope_.SetSustainLevel(sustain_percent / 100.0f);
-    }
-}
-
-void AudioEngine::SetReleaseTime(float release_ms) {
-    if (initialized_) {
-        envelope_.SetReleaseTime(release_ms / 1000.0f);
-    }
-}
-
-float AudioEngine::mtof(uint8_t note) const {
-    return 440.0f * powf(2.0f, (note - 69) / 12.0f);
-}
-
-// Audio input source methods
 void AudioEngine::SetInputSource(AudioInputSource source) {
     input_source_ = source;
-    // Note: Changing source doesn't enable/disable processing
-    // Processing must be explicitly enabled/disabled separately
 }
 
 void AudioEngine::SetAudioInputProcessingEnabled(bool enabled) {
     audio_input_processing_enabled_ = enabled;
-    // When processing is disabled, no audio input is processed (power savings)
-    // When enabled, only the selected source is processed
-    // Note: Mic ADC enable/disable is coordinated in main.cpp via AnalogManager
+}
+
+bool AudioEngine::IsNoteOn() const {
+    // Query system for active notes (future enhancement)
+    // For now, return false as we don't have a way to query this yet
+    return false;
 }
 
 } // namespace OpenChord

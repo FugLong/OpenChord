@@ -193,7 +193,7 @@ void RenderAudioStatus(DisplayManager* display, AudioEngine* audio_engine, Volum
         disp->WriteString(buffer, Font_6x8, true);
         y += 8;
         
-        snprintf(buffer, sizeof(buffer), "Freq: %.1f Hz", audio_engine->GetCurrentFreq());
+        snprintf(buffer, sizeof(buffer), "Freq: N/A");
         disp->SetCursor(0, y);
         disp->WriteString(buffer, Font_6x8, true);
         y += 8;

@@ -12,6 +12,7 @@
 // This defines a different MidiEvent than midi_interface.h
 // We'll use the track system's MidiEvent (from midi_types.h) via the Track interface
 #include "core/tracks/track_interface.h"
+#include "core/system_interface.h"
 #include "core/ui/main_ui.h"
 #include "core/ui/ui_manager.h"
 #include "core/ui/splash_screen.h"
@@ -26,6 +27,8 @@
 #include "plugins/input/chord_mapping_input.h"
 #include "plugins/input/piano_input.h"
 #include "plugins/input/drum_pad_input.h"
+#include "plugins/instruments/subtractive_synth.h"
+#include "plugins/fx/delay_fx.h"
 #if DEBUG_SCREEN_ENABLED
 #include "core/ui/debug_screen.h"
 #include "core/ui/debug_views.h"
@@ -59,8 +62,8 @@ TrackSettings track_settings;
 // Transport control
 TransportControl transport_control;
 
-// Track system
-Track main_track;
+// System (multi-track manager)
+OpenChordSystem openchord_system;
 ChordMappingInput* chord_plugin_ptr = nullptr;  // Keep reference for UI
 PianoInput* piano_plugin_ptr = nullptr;  // Keep reference for UI
 
@@ -194,47 +197,66 @@ int main(void) {
     transport_control.Init(&midi_handler, &global_settings);
     ExternalLog::PrintLine("Transport control initialized");
     
-    // Initialize track system
-    main_track.Init();
-    main_track.SetName("Track 1");
+    // Initialize system (multi-track manager)
+    openchord_system.Init();
+    openchord_system.SetSampleRate(hw.AudioSampleRate());
+    openchord_system.SetBufferSize(4);  // Match audio block size
+    openchord_system.SetVolumeManager(&volume_mgr);
+    openchord_system.SetOctaveShift(&octave_shift);
+    openchord_system.SetActiveTrack(0);  // Start with track 1
     
-    // Set input modes for chord mapping
-    input_manager.SetButtonInputMode(InputMode::MIDI_NOTES);
-    input_manager.SetJoystickMode(JoystickMode::CHORD_MAPPING);
-    
-    // Add piano input plugin first (highest priority, default exclusive plugin)
-    // This is the default input mode and appears at the top of the menu
-    auto piano_plugin = std::make_unique<PianoInput>();
-    piano_plugin_ptr = piano_plugin.get();
-    piano_plugin->SetInputManager(&input_manager);
-    piano_plugin->SetOctaveShift(&octave_shift);
-    piano_plugin->SetTrack(&main_track);  // Allow it to check for other active plugins and ensure default activation
-    piano_plugin->Init();
-    // Add Piano first, then explicitly activate it to deactivate other exclusive plugins
-    main_track.AddInputPlugin(std::move(piano_plugin));
-    // Piano is already active by default, but ensure it deactivates others
-    if (piano_plugin_ptr) {
-        main_track.SetInputPluginActive(piano_plugin_ptr, true);
+    // Get first track for setup
+    Track* track1 = openchord_system.GetTrack(0);
+    if (track1) {
+        track1->SetName("Track 1");
+        
+        // Set input modes for chord mapping
+        input_manager.SetButtonInputMode(InputMode::MIDI_NOTES);
+        input_manager.SetJoystickMode(JoystickMode::CHORD_MAPPING);
+        
+        // Add piano input plugin first (highest priority, default exclusive plugin)
+        auto piano_plugin = std::make_unique<PianoInput>();
+        piano_plugin_ptr = piano_plugin.get();
+        piano_plugin->SetInputManager(&input_manager);
+        piano_plugin->SetOctaveShift(&octave_shift);
+        piano_plugin->SetTrack(track1);
+        piano_plugin->Init();
+        track1->AddInputPlugin(std::move(piano_plugin));
+        if (piano_plugin_ptr) {
+            track1->SetInputPluginActive(piano_plugin_ptr, true);
+        }
+        
+        // Add chord mapping plugin
+        auto chord_plugin = std::make_unique<ChordMappingInput>();
+        chord_plugin_ptr = chord_plugin.get();
+        chord_plugin->SetInputManager(&input_manager);
+        chord_plugin->SetTrack(track1);
+        chord_plugin->Init();
+        track1->AddInputPlugin(std::move(chord_plugin));
+        
+        // Add drum pad plugin
+        auto drum_pad_plugin = std::make_unique<DrumPadInput>();
+        drum_pad_plugin->SetInputManager(&input_manager);
+        drum_pad_plugin->Init();
+        track1->AddInputPlugin(std::move(drum_pad_plugin));
+        
+        // Add subtractive synth instrument
+        auto synth = std::make_unique<SubtractiveSynth>();
+        synth->SetSampleRate(hw.AudioSampleRate());
+        synth->Init();
+        track1->SetInstrument(std::move(synth));
+        
+        // Add delay FX
+        auto delay = std::make_unique<DelayFX>();
+        delay->SetSampleRate(hw.AudioSampleRate());
+        delay->Init();
+        track1->AddEffect(std::move(delay));
     }
     
-    // Create and add chord mapping plugin
-    // Add chord mapping plugin (medium priority)
-    auto chord_plugin = std::make_unique<ChordMappingInput>();
-    chord_plugin_ptr = chord_plugin.get();  // Keep reference for UI
-    chord_plugin->SetInputManager(&input_manager);
-    chord_plugin->SetTrack(&main_track);  // Allow it to access track-level key
-    // Pass function to check if octave UI is active (so chord mapping doesn't process joystick when octave UI is active)
-    // Note: This will be set after UI Manager is initialized
-    chord_plugin->Init();
-    main_track.AddInputPlugin(std::move(chord_plugin));
+    // Wire audio engine to system
+    audio_engine.SetSystem(&openchord_system);
     
-    // Add drum pad plugin (exclusive, medium priority)
-    auto drum_pad_plugin = std::make_unique<DrumPadInput>();
-    drum_pad_plugin->SetInputManager(&input_manager);
-    drum_pad_plugin->Init();
-    main_track.AddInputPlugin(std::move(drum_pad_plugin));
-    
-    ExternalLog::PrintLine("Track system initialized with piano, chord mapping, and drum pad input");
+    ExternalLog::PrintLine("System initialized with tracks, plugins, instrument, and FX");
     
     ExternalLog::PrintLine("Managers initialized");
     
@@ -242,7 +264,7 @@ int main(void) {
     if (display && display->IsHealthy()) {
             // Initialize UI Manager (centralized UI coordinator)
             ui_manager.Init(display, &input_manager, &io_manager);
-            ui_manager.SetTrack(&main_track);
+            ui_manager.SetTrack(openchord_system.GetTrack(0));  // Set active track
             ui_manager.SetOctaveShift(&octave_shift);  // Provide octave shift for octave UI
             ui_manager.SetContext(nullptr);  // Normal mode
             ui_manager.SetPowerManager(&power_mgr);  // Enable power-aware display refresh
@@ -257,7 +279,7 @@ int main(void) {
             
             // Initialize main UI (default view)
             main_ui.Init(display, &input_manager);
-            main_ui.SetTrack(&main_track);
+            main_ui.SetTrack(openchord_system.GetTrack(0));  // Set active track
             main_ui.SetChordPlugin(chord_plugin_ptr);
             main_ui.SetPianoPlugin(piano_plugin_ptr);
             
@@ -323,15 +345,14 @@ int main(void) {
         
         volume_mgr.Update();          // Update volume manager to get latest ADC values
         
-        // Update track system (processes input plugins and generates MIDI)
-        main_track.Update();
+        // Update system (updates all tracks)
+        openchord_system.Update();
         
-        // Get joystick position and route to track
-        // Note: Joystick movement activity is already tracked above via GetDeltaX/Y check
+        // Get joystick position and route to active track
         JoystickInputHandler& joystick = input_manager.GetJoystick();
         float joystick_x, joystick_y;
         joystick.GetPosition(&joystick_x, &joystick_y);
-        main_track.HandleJoystick(joystick_x, joystick_y);
+        openchord_system.HandleJoystick(joystick_x, joystick_y);
         
         // Update splash screen
         splash_screen.Update();
@@ -407,15 +428,33 @@ int main(void) {
                     if (input_pressed) {
                         if (input_hold_start_time == 0) {
                             input_hold_start_time = hw.system.GetNow();
+                            
+                            // If menu is in toggle mode, this is a press to close it
+                            if (menu_mgr && menu_mgr->IsOpen() && menu_mgr->GetCurrentMenuType() == MenuManager::MenuType::INPUT_STACK && 
+                                menu_mgr->IsInToggleMode()) {
+                                // Menu is in toggle mode, user pressed button to close
+                                // Track for tap/hold - will handle on release
+                            }
                         } else {
                             uint32_t hold_duration = hw.system.GetNow() - input_hold_start_time;
-                            if (hold_duration >= BUTTON_HOLD_THRESHOLD_MS && !input_menu_open) {
+                            
+                            // Check if menu is in toggle mode (button pressed to close)
+                            if (menu_mgr && menu_mgr->IsOpen() && menu_mgr->GetCurrentMenuType() == MenuManager::MenuType::INPUT_STACK && 
+                                menu_mgr->IsInToggleMode()) {
+                                // Menu is in toggle mode, user is holding to close
+                                // Close menu when hold threshold is reached (or on release if tap)
+                                // We'll handle on release to allow tap-to-close
+                            } else if (hold_duration >= BUTTON_HOLD_THRESHOLD_MS && !input_menu_open) {
                                 // INPUT held - open Input Stack menu
+                                // OpenInputStackMenu() will close any existing menu (including toggle mode)
                                 if (menu_mgr) {
+                                    // Close any other open menus by resetting their flags
+                                    record_menu_open = false;
+                                    instrument_menu_open = false;
+                                    fx_menu_open = false;
+                                    
                                     menu_mgr->OpenInputStackMenu();
-                                    if (settings_mgr && settings_mgr->GetPlugin()) {
-                                        menu_mgr->SetCurrentSettingsPlugin(settings_mgr->GetPlugin());
-                                    }
+                                    menu_mgr->SetMenuOpenTime(hw.system.GetNow());
                                 }
                                 input_menu_open = true;
                             }
@@ -424,21 +463,48 @@ int main(void) {
                         // INPUT button released
                         if (input_hold_start_time > 0) {
                             uint32_t press_duration = hw.system.GetNow() - input_hold_start_time;
+                            uint32_t current_time = hw.system.GetNow();
                             
-                            // Close menu if it was open
-                            if (input_menu_open && menu_mgr && menu_mgr->GetCurrentMenuType() == MenuManager::MenuType::INPUT_STACK) {
-                                menu_mgr->CloseMenu();
+                            bool menu_was_open = (input_menu_open && menu_mgr && 
+                                                  menu_mgr->GetCurrentMenuType() == MenuManager::MenuType::INPUT_STACK);
+                            bool was_in_toggle_mode = (menu_was_open && menu_mgr->IsInToggleMode());
+                            
+                            if (was_in_toggle_mode) {
+                                // Menu was in toggle mode, user pressed button to close
+                                // Close menu (tap or hold, doesn't matter)
+                                if (menu_mgr) {
+                                    menu_mgr->CloseMenu();
+                                }
+                                input_menu_open = false;
+                                // Don't trigger transport controls when closing toggle menu
+                            } else if (menu_was_open) {
+                                // Menu was just opened, check if we should toggle
+                                uint32_t menu_open_time = menu_mgr->GetMenuOpenTime();
+                                uint32_t time_since_open = current_time - menu_open_time;
+                                
+                                if (time_since_open < 1000) {
+                                    // Released within 1 second - enter toggle mode (menu stays open)
+                                    menu_mgr->SetToggleMode(true);
+                                    // Menu stays open
+                                } else {
+                                    // Held past 1 second - close menu (current behavior)
+                                    menu_mgr->CloseMenu();
+                                    input_menu_open = false;
+                                }
+                                // Don't trigger transport controls when menu was open
+                            } else {
+                                // Menu wasn't open - normal tap/hold behavior
+                                bool was_tap = (press_duration < BUTTON_HOLD_THRESHOLD_MS);
+                                
+                                // Trigger play/pause only if it was a tap (not a hold)
+                                if (was_tap) {
+                                    transport_control.HandleCombo(0);  // 0 = Play/Pause
+                                }
                             }
                             
-                            // Only trigger transport if it was a tap (released before hold threshold)
-                            // Store the duration check result before resetting the timer
-                            bool was_tap = (press_duration < BUTTON_HOLD_THRESHOLD_MS);
                             input_hold_start_time = 0;
-                            input_menu_open = false;
-                            
-                            // Trigger play/pause only if it was a tap (not a hold)
-                            if (was_tap) {
-                                transport_control.HandleCombo(0);  // 0 = Play/Pause
+                            if (!was_in_toggle_mode && !menu_was_open) {
+                                input_menu_open = false;
                             }
                         }
                     }
@@ -447,12 +513,31 @@ int main(void) {
                     if (record_pressed) {
                         if (record_hold_start_time == 0) {
                             record_hold_start_time = hw.system.GetNow();
+                            
+                            // If menu is in toggle mode, this is a press to close it
+                            if (menu_mgr && menu_mgr->IsOpen() && menu_mgr->GetCurrentMenuType() == MenuManager::MenuType::GLOBAL_SETTINGS && 
+                                menu_mgr->IsInToggleMode()) {
+                                // Menu is in toggle mode, user pressed button to close
+                            }
                         } else {
                             uint32_t hold_duration = hw.system.GetNow() - record_hold_start_time;
-                            if (hold_duration >= BUTTON_HOLD_THRESHOLD_MS && !record_menu_open) {
+                            
+                            // Check if menu is in toggle mode (button pressed to close)
+                            if (menu_mgr && menu_mgr->IsOpen() && menu_mgr->GetCurrentMenuType() == MenuManager::MenuType::GLOBAL_SETTINGS && 
+                                menu_mgr->IsInToggleMode()) {
+                                // Menu is in toggle mode, user is holding to close
+                                // Handle on release
+                            } else if (hold_duration >= BUTTON_HOLD_THRESHOLD_MS && !record_menu_open) {
                                 // RECORD held - open Global Settings menu
+                                // OpenGlobalSettingsMenu() will close any existing menu (including toggle mode)
                                 if (menu_mgr) {
+                                    // Close any other open menus by resetting their flags
+                                    input_menu_open = false;
+                                    instrument_menu_open = false;
+                                    fx_menu_open = false;
+                                    
                                     menu_mgr->OpenGlobalSettingsMenu();
+                                    menu_mgr->SetMenuOpenTime(hw.system.GetNow());
                                     if (settings_mgr) {
                                         IPluginWithSettings* plugin = menu_mgr->GetCurrentSettingsPlugin();
                                         if (plugin) {
@@ -467,23 +552,53 @@ int main(void) {
                         // RECORD button released
                         if (record_hold_start_time > 0) {
                             uint32_t press_duration = hw.system.GetNow() - record_hold_start_time;
+                            uint32_t current_time = hw.system.GetNow();
                             
-                            // Close menu if it was open
-                            if (record_menu_open && menu_mgr && menu_mgr->GetCurrentMenuType() == MenuManager::MenuType::GLOBAL_SETTINGS) {
-                                menu_mgr->CloseMenu();
+                            bool menu_was_open = (record_menu_open && menu_mgr && 
+                                                  menu_mgr->GetCurrentMenuType() == MenuManager::MenuType::GLOBAL_SETTINGS);
+                            bool was_in_toggle_mode = (menu_was_open && menu_mgr->IsInToggleMode());
+                            
+                            if (was_in_toggle_mode) {
+                                // Menu was in toggle mode, user pressed button to close
+                                if (menu_mgr) {
+                                    menu_mgr->CloseMenu();
+                                }
                                 if (settings_mgr) {
                                     settings_mgr->SetPlugin(nullptr);
                                 }
+                                record_menu_open = false;
+                                // Don't trigger transport controls when closing toggle menu
+                            } else if (menu_was_open) {
+                                // Menu was just opened, check if we should toggle
+                                uint32_t menu_open_time = menu_mgr->GetMenuOpenTime();
+                                uint32_t time_since_open = current_time - menu_open_time;
+                                
+                                if (time_since_open < 1000) {
+                                    // Released within 1 second - enter toggle mode (menu stays open)
+                                    menu_mgr->SetToggleMode(true);
+                                    // Menu stays open
+                                } else {
+                                    // Held past 1 second - close menu (current behavior)
+                                    menu_mgr->CloseMenu();
+                                    if (settings_mgr) {
+                                        settings_mgr->SetPlugin(nullptr);
+                                    }
+                                    record_menu_open = false;
+                                }
+                                // Don't trigger transport controls when menu was open
+                            } else {
+                                // Menu wasn't open - normal tap/hold behavior
+                                bool was_tap = (press_duration < BUTTON_HOLD_THRESHOLD_MS);
+                                
+                                // Trigger record only if it was a tap (not a hold)
+                                if (was_tap) {
+                                    transport_control.HandleCombo(1);  // 1 = Record toggle
+                                }
                             }
                             
-                            // Only trigger transport if it was a tap (released before hold threshold)
-                            bool was_tap = (press_duration < BUTTON_HOLD_THRESHOLD_MS);
                             record_hold_start_time = 0;
-                            record_menu_open = false;
-                            
-                            // Trigger record only if it was a tap (not a hold)
-                            if (was_tap) {
-                                transport_control.HandleCombo(1);  // 1 = Record toggle
+                            if (!was_in_toggle_mode && !menu_was_open) {
+                                record_menu_open = false;
                             }
                         }
                     }
@@ -492,46 +607,142 @@ int main(void) {
                     if (instrument_pressed) {
                         if (instrument_hold_start_time == 0) {
                             instrument_hold_start_time = hw.system.GetNow();
+                            
+                            // If menu is in toggle mode, this is a press to close it
+                            if (menu_mgr && menu_mgr->IsOpen() && menu_mgr->GetCurrentMenuType() == MenuManager::MenuType::INSTRUMENT && 
+                                menu_mgr->IsInToggleMode()) {
+                                // Menu is in toggle mode, user pressed button to close
+                            }
                         } else {
                             uint32_t hold_duration = hw.system.GetNow() - instrument_hold_start_time;
-                            if (hold_duration >= BUTTON_HOLD_THRESHOLD_MS && !instrument_menu_open) {
+                            
+                            // Check if menu is in toggle mode (button pressed to close)
+                            if (menu_mgr && menu_mgr->IsOpen() && menu_mgr->GetCurrentMenuType() == MenuManager::MenuType::INSTRUMENT && 
+                                menu_mgr->IsInToggleMode()) {
+                                // Menu is in toggle mode, user is holding to close
+                                // Handle on release
+                            } else if (hold_duration >= BUTTON_HOLD_THRESHOLD_MS && !instrument_menu_open) {
                                 // INSTRUMENT held - open Instrument menu
+                                // OpenInstrumentMenu() will close any existing menu (including toggle mode)
                                 if (menu_mgr) {
+                                    // Close any other open menus by resetting their flags
+                                    input_menu_open = false;
+                                    record_menu_open = false;
+                                    fx_menu_open = false;
+                                    
                                     menu_mgr->OpenInstrumentMenu();
+                                    menu_mgr->SetMenuOpenTime(hw.system.GetNow());
                                 }
                                 instrument_menu_open = true;
                             }
                         }
                     } else {
-                        // INSTRUMENT button released - close menu if it was open
-                        if (instrument_menu_open && menu_mgr && menu_mgr->GetCurrentMenuType() == MenuManager::MenuType::INSTRUMENT) {
-                            menu_mgr->CloseMenu();
+                        // INSTRUMENT button released
+                        if (instrument_hold_start_time > 0) {
+                            uint32_t press_duration = hw.system.GetNow() - instrument_hold_start_time;
+                            uint32_t current_time = hw.system.GetNow();
+                            
+                            bool menu_was_open = (instrument_menu_open && menu_mgr && 
+                                                  menu_mgr->GetCurrentMenuType() == MenuManager::MenuType::INSTRUMENT);
+                            bool was_in_toggle_mode = (menu_was_open && menu_mgr->IsInToggleMode());
+                            
+                            if (was_in_toggle_mode) {
+                                // Menu was in toggle mode, user pressed button to close
+                                if (menu_mgr) {
+                                    menu_mgr->CloseMenu();
+                                }
+                                instrument_menu_open = false;
+                            } else if (menu_was_open) {
+                                // Menu was just opened, check if we should toggle
+                                uint32_t menu_open_time = menu_mgr->GetMenuOpenTime();
+                                uint32_t time_since_open = current_time - menu_open_time;
+                                
+                                if (time_since_open < 1000) {
+                                    // Released within 1 second - enter toggle mode (menu stays open)
+                                    menu_mgr->SetToggleMode(true);
+                                } else {
+                                    // Held past 1 second - close menu (current behavior)
+                                    menu_mgr->CloseMenu();
+                                    instrument_menu_open = false;
+                                }
+                            }
+                            
+                            instrument_hold_start_time = 0;
+                            if (!was_in_toggle_mode && !menu_was_open) {
+                                instrument_menu_open = false;
+                            }
                         }
-                        instrument_hold_start_time = 0;
-                        instrument_menu_open = false;
                     }
                     
                     // FX button hold detection
                     if (fx_pressed) {
                         if (fx_hold_start_time == 0) {
                             fx_hold_start_time = hw.system.GetNow();
+                            
+                            // If menu is in toggle mode, this is a press to close it
+                            if (menu_mgr && menu_mgr->IsOpen() && menu_mgr->GetCurrentMenuType() == MenuManager::MenuType::FX && 
+                                menu_mgr->IsInToggleMode()) {
+                                // Menu is in toggle mode, user pressed button to close
+                            }
                         } else {
                             uint32_t hold_duration = hw.system.GetNow() - fx_hold_start_time;
-                            if (hold_duration >= BUTTON_HOLD_THRESHOLD_MS && !fx_menu_open) {
+                            
+                            // Check if menu is in toggle mode (button pressed to close)
+                            if (menu_mgr && menu_mgr->IsOpen() && menu_mgr->GetCurrentMenuType() == MenuManager::MenuType::FX && 
+                                menu_mgr->IsInToggleMode()) {
+                                // Menu is in toggle mode, user is holding to close
+                                // Handle on release
+                            } else if (hold_duration >= BUTTON_HOLD_THRESHOLD_MS && !fx_menu_open) {
                                 // FX held - open FX menu
+                                // OpenFXMenu() will close any existing menu (including toggle mode)
                                 if (menu_mgr) {
+                                    // Close any other open menus by resetting their flags
+                                    input_menu_open = false;
+                                    record_menu_open = false;
+                                    instrument_menu_open = false;
+                                    
                                     menu_mgr->OpenFXMenu();
+                                    menu_mgr->SetMenuOpenTime(hw.system.GetNow());
                                 }
                                 fx_menu_open = true;
                             }
                         }
                     } else {
-                        // FX button released - close menu if it was open
-                        if (fx_menu_open && menu_mgr && menu_mgr->GetCurrentMenuType() == MenuManager::MenuType::FX) {
-                            menu_mgr->CloseMenu();
+                        // FX button released
+                        if (fx_hold_start_time > 0) {
+                            uint32_t press_duration = hw.system.GetNow() - fx_hold_start_time;
+                            uint32_t current_time = hw.system.GetNow();
+                            
+                            bool menu_was_open = (fx_menu_open && menu_mgr && 
+                                                  menu_mgr->GetCurrentMenuType() == MenuManager::MenuType::FX);
+                            bool was_in_toggle_mode = (menu_was_open && menu_mgr->IsInToggleMode());
+                            
+                            if (was_in_toggle_mode) {
+                                // Menu was in toggle mode, user pressed button to close
+                                if (menu_mgr) {
+                                    menu_mgr->CloseMenu();
+                                }
+                                fx_menu_open = false;
+                            } else if (menu_was_open) {
+                                // Menu was just opened, check if we should toggle
+                                uint32_t menu_open_time = menu_mgr->GetMenuOpenTime();
+                                uint32_t time_since_open = current_time - menu_open_time;
+                                
+                                if (time_since_open < 1000) {
+                                    // Released within 1 second - enter toggle mode (menu stays open)
+                                    menu_mgr->SetToggleMode(true);
+                                } else {
+                                    // Held past 1 second - close menu (current behavior)
+                                    menu_mgr->CloseMenu();
+                                    fx_menu_open = false;
+                                }
+                            }
+                            
+                            fx_hold_start_time = 0;
+                            if (!was_in_toggle_mode && !menu_was_open) {
+                                fx_menu_open = false;
+                            }
                         }
-                        fx_hold_start_time = 0;
-                        fx_menu_open = false;
                     }
                 } else {
                     // Debug mode - reset all hold timers and close menus
@@ -610,45 +821,43 @@ int main(void) {
         }
         
         // Process incoming MIDI events at 1kHz for responsive timing
-        midi_handler.ProcessMidi(&audio_engine);
+        midi_handler.ProcessMidi();
+        // TODO: Route external MIDI input to tracks via system
         
-        // Generate MIDI from track's input stack and send to MIDI outputs
-        // Track uses MidiEvent from midi_types.h (via plugin_interface.h)
-        // Note: This is different from MidiHubEvent in midi_interface.h
-        // Use fully qualified name to avoid ambiguity with daisy::MidiEvent
-        ::OpenChord::MidiEvent midi_events[64];
-        size_t midi_event_count = 0;
-        main_track.GenerateMIDI(midi_events, &midi_event_count, 64);
-        
-        // Send generated MIDI events to USB and TRS MIDI outputs
-        // Apply octave shift and convert from plugin system's MidiEvent (midi_types.h) to handler
-        for (size_t i = 0; i < midi_event_count; i++) {
-            ::OpenChord::MidiEvent event = midi_events[i];  // Copy to apply shift
+        // Generate MIDI from active track's input stack and send to MIDI outputs
+        Track* active_track = openchord_system.GetTrack(openchord_system.GetActiveTrack());
+        if (active_track) {
+            ::OpenChord::MidiEvent midi_events[64];
+            size_t midi_event_count = 0;
+            active_track->GenerateMIDI(midi_events, &midi_event_count, 64);
             
-            // Apply octave shift to note messages
-            if (event.type == static_cast<uint8_t>(::OpenChord::MidiEvent::Type::NOTE_ON) ||
-                event.type == static_cast<uint8_t>(::OpenChord::MidiEvent::Type::NOTE_OFF)) {
-                event.data1 = octave_shift.ApplyShift(event.data1);
+            // Send generated MIDI events to USB and TRS MIDI outputs
+            // Apply octave shift and convert from plugin system's MidiEvent to handler
+            for (size_t i = 0; i < midi_event_count; i++) {
+                ::OpenChord::MidiEvent event = midi_events[i];
+                
+                // Apply octave shift to note messages
+                if (event.type == static_cast<uint8_t>(::OpenChord::MidiEvent::Type::NOTE_ON) ||
+                    event.type == static_cast<uint8_t>(::OpenChord::MidiEvent::Type::NOTE_OFF)) {
+                    event.data1 = octave_shift.ApplyShift(event.data1);
+                }
+                
+                // Convert MidiEvent::Type to daisy::MidiMessageType
+                daisy::MidiMessageType msg_type;
+                if (event.type == static_cast<uint8_t>(::OpenChord::MidiEvent::Type::NOTE_ON)) {
+                    msg_type = daisy::MidiMessageType::NoteOn;
+                } else if (event.type == static_cast<uint8_t>(::OpenChord::MidiEvent::Type::NOTE_OFF)) {
+                    msg_type = daisy::MidiMessageType::NoteOff;
+                } else if (event.type == static_cast<uint8_t>(::OpenChord::MidiEvent::Type::PITCH_BEND)) {
+                    msg_type = daisy::MidiMessageType::PitchBend;
+                } else if (event.type == static_cast<uint8_t>(::OpenChord::MidiEvent::Type::CONTROL_CHANGE)) {
+                    msg_type = daisy::MidiMessageType::ControlChange;
+                } else {
+                    msg_type = static_cast<daisy::MidiMessageType>(event.type);
+                }
+                midi_handler.SendMidi(msg_type, event.channel, event.data1, event.data2);
             }
-            
-            // Convert MidiEvent::Type (from midi_types.h) to daisy::MidiMessageType
-            // midi_types.h uses: NOTE_ON = 0x90, NOTE_OFF = 0x80, PITCH_BEND = 0xE0, CONTROL_CHANGE = 0xB0
-            daisy::MidiMessageType msg_type;
-            if (event.type == static_cast<uint8_t>(::OpenChord::MidiEvent::Type::NOTE_ON)) {
-                msg_type = daisy::MidiMessageType::NoteOn;
-            } else if (event.type == static_cast<uint8_t>(::OpenChord::MidiEvent::Type::NOTE_OFF)) {
-                msg_type = daisy::MidiMessageType::NoteOff;
-            } else if (event.type == static_cast<uint8_t>(::OpenChord::MidiEvent::Type::PITCH_BEND)) {
-                msg_type = daisy::MidiMessageType::PitchBend;
-            } else if (event.type == static_cast<uint8_t>(::OpenChord::MidiEvent::Type::CONTROL_CHANGE)) {
-                msg_type = daisy::MidiMessageType::ControlChange;
-            } else {
-                msg_type = static_cast<daisy::MidiMessageType>(event.type);
-            }
-            midi_handler.SendMidi(msg_type, event.channel, event.data1, event.data2);
         }
-        
-        audio_engine.ProcessMidi();
         
         // Print MIDI enabled status once after initialization (reduced logging for power)
         static bool midi_enabled_printed = false;
@@ -662,10 +871,9 @@ int main(void) {
             midi_enabled_printed = true;
         }
         
-        // Report audio activity for power management (if note is playing)
-        if (audio_engine.IsNoteOn()) {
-            power_mgr.ReportAudioActivity();
-        }
+        // Report audio activity for power management
+        // (AudioEngine.IsNoteOn() always returns false now - TODO: query system/tracks for active notes)
+        // For now, we assume audio activity when system is running
         
         if (volume_mgr.HasVolumeChanged()) {
             volume_mgr.ClearChangeFlag();
@@ -687,10 +895,6 @@ int main(void) {
         // 2. Reduced display refresh (1-20 Hz adaptive, power optimized)
         // 3. Disabled mic ADC when not needed (disabled by default)
         // 4. Disabled audio input processing by default (power savings)
-        // 5. Adaptive loop frequency (100 Hz-1 kHz based on activity)
-        // 
-        // Note: Sleep mode (WFI) removed - too finicky and can cause hangs.
-        // The above optimizations provide significant power savings without the complexity.
         hw.DelayMs(loop_delay);
     }
 } 

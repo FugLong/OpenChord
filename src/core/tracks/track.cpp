@@ -1,9 +1,10 @@
 #include "track_interface.h"
+#include "../midi/octave_shift.h"
 #include <cstring>
 
 namespace OpenChord {
 
-Track::Track() : focus_(Focus::INPUT), muted_(false), soloed_(false) {
+Track::Track() : focus_(Focus::INPUT), muted_(false), soloed_(false), instrument_enabled_(true), octave_shift_(nullptr) {
     std::strcpy(name_, "Track");
 }
 
@@ -15,6 +16,7 @@ void Track::Init() {
     focus_ = Focus::INPUT;
     muted_ = false;
     soloed_ = false;
+    instrument_enabled_ = true;
     
     // Initialize track context (key, BPM, etc.)
     context_.key = MusicalKey(0, MusicalMode::IONIAN);  // Default: C Major
@@ -27,26 +29,56 @@ void Track::Init() {
     scenes_.resize(8);  // MAX_SCENES
 }
 
-void Track::Process(float* in, float* out, size_t size) {
-    // Skip processing if muted
-    if (muted_) return;
+void Track::Process(const float* const* in, float* const* out, size_t size) {
+    // Skip processing if muted - clear output
+    if (muted_) {
+        for (size_t i = 0; i < size; i++) {
+            out[0][i] = 0.0f;
+            out[1][i] = 0.0f;
+        }
+        return;
+    }
     
     // Generate MIDI from input stack (use member buffer to avoid stack allocation)
     size_t event_count = 0;
     GenerateMIDI(midi_event_buffer_, &event_count, 64);
     
-    // Process MIDI through instrument
-    if (instrument_) {
+    // Process MIDI through instrument (only if enabled)
+    if (instrument_ && instrument_enabled_) {
         for (size_t i = 0; i < event_count; i++) {
-            if (midi_event_buffer_[i].type == static_cast<uint8_t>(MidiEvent::Type::NOTE_ON)) {
-                instrument_->NoteOn(midi_event_buffer_[i].data1, midi_event_buffer_[i].data2 / 127.0f);
-            } else if (midi_event_buffer_[i].type == static_cast<uint8_t>(MidiEvent::Type::NOTE_OFF)) {
-                instrument_->NoteOff(midi_event_buffer_[i].data1);
+            const MidiEvent& event = midi_event_buffer_[i];
+            
+            if (event.type == static_cast<uint8_t>(MidiEvent::Type::NOTE_ON)) {
+                uint8_t note = event.data1;
+                // Apply octave shift if available
+                if (octave_shift_) {
+                    note = octave_shift_->ApplyShift(note);
+                }
+                instrument_->NoteOn(note, event.data2 / 127.0f);
+            } else if (event.type == static_cast<uint8_t>(MidiEvent::Type::NOTE_OFF)) {
+                uint8_t note = event.data1;
+                // Apply octave shift if available
+                if (octave_shift_) {
+                    note = octave_shift_->ApplyShift(note);
+                }
+                instrument_->NoteOff(note);
+            } else if (event.type == static_cast<uint8_t>(MidiEvent::Type::PITCH_BEND)) {
+                // Convert MIDI pitch bend (14-bit: 0-16383, center 8192) to semitones
+                // Standard MIDI pitch bend is ±2 semitones
+                int16_t pitch_bend_value = (static_cast<int16_t>(event.data2) << 7) | event.data1;
+                float semitones = ((static_cast<float>(pitch_bend_value) - 8192.0f) / 8192.0f) * 2.0f;
+                instrument_->SetPitchBend(semitones);
             }
         }
         
-        // Process instrument audio
+        // Process instrument audio (instruments generate from silence, so in can be nullptr)
         instrument_->Process(in, out, size);
+    } else {
+        // No instrument - clear output
+        for (size_t i = 0; i < size; i++) {
+            out[0][i] = 0.0f;
+            out[1][i] = 0.0f;
+        }
     }
     
     // Process effects chain
@@ -155,6 +187,14 @@ void Track::SetInstrument(std::unique_ptr<IInstrumentPlugin> instrument) {
 
 IInstrumentPlugin* Track::GetInstrument() const {
     return instrument_.get();
+}
+
+void Track::SetInstrumentEnabled(bool enabled) {
+    instrument_enabled_ = enabled;
+}
+
+bool Track::IsInstrumentEnabled() const {
+    return instrument_enabled_;
 }
 
 void Track::AddEffect(std::unique_ptr<IEffectPlugin> effect) {

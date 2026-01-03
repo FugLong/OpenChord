@@ -15,7 +15,7 @@ public:
 
     // Core lifecycle
     virtual void Init() = 0;
-    virtual void Process(float* in, float* out, size_t size) = 0;
+    virtual void Process(const float* const* in, float* const* out, size_t size) = 0;
     virtual void Update() = 0;  // Called every audio block for non-audio processing
 
     // UI and control handling

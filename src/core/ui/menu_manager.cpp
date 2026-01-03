@@ -7,6 +7,8 @@
 #include "../io/io_manager.h"
 #include "../../plugins/input/chord_mapping_input.h"  // For ChordMappingInput cast
 #include "../../plugins/input/piano_input.h"  // For PianoInput cast
+#include "../../plugins/instruments/subtractive_synth.h"  // For SubtractiveSynth cast
+#include "../../plugins/fx/delay_fx.h"  // For DelayFX cast
 #include "daisy_seed.h"  // For Font_6x8
 #include <cstring>
 #include <cstdio>
@@ -49,14 +51,22 @@ MenuManager::MenuManager()
     , track_settings_(nullptr)
     , current_menu_type_(MenuType::NONE)
     , current_menu_stack_depth_(0)
-    , current_settings_plugin_(nullptr)
+    ,     current_settings_plugin_(nullptr)
+    , current_settings_name_(nullptr)
     , needs_refresh_(false)
     , temp_menu_count_(0)
+    , menu_toggle_mode_(false)
+    , menu_open_time_(0)
 {
     // Initialize menu stack
     for (int i = 0; i < MAX_MENU_DEPTH; i++) {
         menu_stack_[i] = nullptr;
         selected_indices_[i] = 0;
+    }
+    
+    // Initialize saved settings plugins
+    for (int i = 0; i < 6; i++) {
+        saved_settings_plugin_[i] = nullptr;
     }
 }
 
@@ -72,6 +82,15 @@ void MenuManager::Init(DisplayManager* display, InputManager* input_manager) {
     current_settings_plugin_ = nullptr;
     needs_refresh_ = false;
     
+    // Initialize saved settings plugins
+    for (int i = 0; i < 6; i++) {
+        saved_settings_plugin_[i] = nullptr;
+        saved_settings_name_[i] = nullptr;
+    }
+    current_settings_name_ = nullptr;
+    menu_toggle_mode_ = false;
+    menu_open_time_ = 0;
+    
     // Initialize static main menu if not already done
     if (!menus_initialized_) {
         // Main menu items will be generated dynamically
@@ -80,9 +99,21 @@ void MenuManager::Init(DisplayManager* display, InputManager* input_manager) {
 }
 
 void MenuManager::CloseMenu() {
+    // Save current settings plugin state for the current menu type before closing
+    if (current_menu_type_ != MenuType::NONE) {
+        int menu_type_index = static_cast<int>(current_menu_type_);
+        if (menu_type_index >= 0 && menu_type_index < 6) {
+            saved_settings_plugin_[menu_type_index] = current_settings_plugin_;
+            saved_settings_name_[menu_type_index] = current_settings_name_;
+        }
+    }
+    
     current_menu_type_ = MenuType::NONE;
     current_menu_stack_depth_ = 0;
     current_settings_plugin_ = nullptr;
+    current_settings_name_ = nullptr;
+    menu_toggle_mode_ = false;
+    menu_open_time_ = 0;
     
     // Clear menu stack
     for (int i = 0; i < MAX_MENU_DEPTH; i++) {
@@ -92,30 +123,60 @@ void MenuManager::CloseMenu() {
 }
 
 void MenuManager::OpenInputStackMenu() {
-    // Close any existing menu and open input stack menu
-    // Note: We DON'T preserve current_settings_plugin_ here - let it be restored externally
-    // if needed (from settings manager state)
+    // Close any existing menu (saves state for old menu type)
+    // This handles both normal menus and toggle mode menus
     CloseMenu();
+    
     current_menu_type_ = MenuType::INPUT_STACK;
     GenerateInputStackMenu();
+    menu_toggle_mode_ = false;  // Will be set to true if released within 1 second
+    // menu_open_time_ will be set by caller via SetMenuOpenTime()
+    
+    // Restore saved state for this menu type
+    int menu_type_index = static_cast<int>(MenuType::INPUT_STACK);
+    if (menu_type_index >= 0 && menu_type_index < 6) {
+        current_settings_plugin_ = saved_settings_plugin_[menu_type_index];
+        current_settings_name_ = saved_settings_name_[menu_type_index];
+    }
+    
     if (current_menu_stack_depth_ > 0) {
         selected_indices_[0] = 0;
     }
 }
 
 void MenuManager::OpenInstrumentMenu() {
-    // Close any existing menu and open instrument menu
+    // Close any existing menu (saves state for old menu type)
     CloseMenu();
+    
     current_menu_type_ = MenuType::INSTRUMENT;
     GenerateInstrumentMenu();
-    // Instrument menu directly enters settings if available
+    menu_toggle_mode_ = false;  // Will be set to true if released within 1 second
+    // menu_open_time_ will be set by caller via SetMenuOpenTime()
+    
+    // Restore saved state for this menu type
+    int menu_type_index = static_cast<int>(MenuType::INSTRUMENT);
+    if (menu_type_index >= 0 && menu_type_index < 6) {
+        current_settings_plugin_ = saved_settings_plugin_[menu_type_index];
+        current_settings_name_ = saved_settings_name_[menu_type_index];
+    }
 }
 
 void MenuManager::OpenFXMenu() {
-    // Close any existing menu and open FX menu
+    // Close any existing menu (saves state for old menu type)
     CloseMenu();
+    
     current_menu_type_ = MenuType::FX;
     GenerateFXMenu();
+    menu_toggle_mode_ = false;  // Will be set to true if released within 1 second
+    // menu_open_time_ will be set by caller via SetMenuOpenTime()
+    
+    // Restore saved state for this menu type
+    int menu_type_index = static_cast<int>(MenuType::FX);
+    if (menu_type_index >= 0 && menu_type_index < 6) {
+        current_settings_plugin_ = saved_settings_plugin_[menu_type_index];
+        current_settings_name_ = saved_settings_name_[menu_type_index];
+    }
+    
     if (current_menu_stack_depth_ > 0) {
         selected_indices_[0] = 0;
     }
@@ -134,10 +195,19 @@ void MenuManager::OpenMainMenu() {
 void MenuManager::OpenGlobalSettingsMenu() {
     // Close any existing menu and open global settings menu
     CloseMenu();
-    // Ensure settings plugin is cleared (CloseMenu does this, but be explicit)
-    current_settings_plugin_ = nullptr;
+    
     current_menu_type_ = MenuType::GLOBAL_SETTINGS;
     GenerateSystemMenu();  // GenerateSystemMenu creates the global settings menu
+    menu_toggle_mode_ = false;  // Will be set to true if released within 1 second
+    // menu_open_time_ will be set by caller via SetMenuOpenTime()
+    
+    // Restore saved state for this menu type (or set to global settings)
+    int menu_type_index = static_cast<int>(MenuType::GLOBAL_SETTINGS);
+    if (menu_type_index >= 0 && menu_type_index < 6) {
+        current_settings_plugin_ = saved_settings_plugin_[menu_type_index];
+        current_settings_name_ = saved_settings_name_[menu_type_index];
+    }
+    
     if (current_menu_stack_depth_ > 0) {
         selected_indices_[0] = 0;
     }
@@ -212,6 +282,22 @@ void MenuManager::NavigateEnter() {
                 // Just cast it back - the pointer offset should be correct since we cast it
                 // through ChordMappingInput* when creating the menu item
                 current_settings_plugin_ = static_cast<IPluginWithSettings*>(item->context);
+                
+                // Set display name: "Global" for global settings, plugin name for plugins
+                if (current_settings_plugin_ == global_settings_) {
+                    current_settings_name_ = "Global";
+                } else {
+                    current_settings_name_ = item->label;  // Store plugin name for display
+                }
+                
+                // Save state for this menu type
+                if (current_menu_type_ != MenuType::NONE) {
+                    int menu_type_index = static_cast<int>(current_menu_type_);
+                    if (menu_type_index >= 0 && menu_type_index < 6) {
+                        saved_settings_plugin_[menu_type_index] = current_settings_plugin_;
+                        saved_settings_name_[menu_type_index] = current_settings_name_;
+                    }
+                }
             }
             // If context is nullptr, plugin doesn't have settings - do nothing (can't enter settings)
             break;
@@ -282,8 +368,21 @@ void MenuManager::ToggleCurrentItem() {
                     IEffectPlugin* effect_plugin = effect.get();
                     if (effect_plugin) {
                         effect_plugin->SetBypass(!effect_plugin->IsBypassed());
+                        needs_refresh_ = true;
                         return;
                     }
+                }
+            }
+            
+            // If not found in effects, try instrument (only if we're in instrument menu)
+            if (current_menu_type_ == MenuType::INSTRUMENT && current_track_) {
+                auto* instrument = current_track_->GetInstrument();
+                if (instrument && instrument->GetName() && strcmp(instrument->GetName(), plugin_name) == 0) {
+                    // Toggle instrument enabled state
+                    bool new_state = !current_track_->IsInstrumentEnabled();
+                    current_track_->SetInstrumentEnabled(new_state);
+                    needs_refresh_ = true;
+                    return;
                 }
             }
             
@@ -296,9 +395,18 @@ void MenuManager::ToggleCurrentItem() {
 void MenuManager::NavigateBack() {
     if (!IsOpen()) return;
     
-    // If we're in settings, exit settings first
+    // If we're in settings, exit settings first (but save state for this menu type)
     if (current_settings_plugin_) {
+        // Save state before clearing
+        if (current_menu_type_ != MenuType::NONE) {
+            int menu_type_index = static_cast<int>(current_menu_type_);
+            if (menu_type_index >= 0 && menu_type_index < 6) {
+                saved_settings_plugin_[menu_type_index] = current_settings_plugin_;
+                saved_settings_name_[menu_type_index] = current_settings_name_;
+            }
+        }
         current_settings_plugin_ = nullptr;
+        current_settings_name_ = nullptr;
         // Stay in the menu list (don't close menu, just exit settings view)
         // The menu is still open, we're just exiting settings to show the menu list
         return;
@@ -334,8 +442,12 @@ bool MenuManager::UpdateMenuInput(SettingsManager* settings_mgr, IOManager* io_m
     // This ensures that when menus are opened/closed, the settings manager reflects the current state
     if (settings_mgr) {
         IPluginWithSettings* menu_plugin = GetCurrentSettingsPlugin();
-        if (menu_plugin != settings_mgr->GetPlugin()) {
-            settings_mgr->SetPlugin(menu_plugin);  // Sync settings manager to menu state
+        IPluginWithSettings* settings_plugin = settings_mgr->GetPlugin();
+        
+        // Always sync settings manager to match menu state
+        // This prevents cross-contamination when switching menu types
+        if (menu_plugin != settings_plugin) {
+            settings_mgr->SetPlugin(menu_plugin);
         }
     }
     
@@ -544,6 +656,15 @@ void MenuManager::Render() {
                     }
                 }
             }
+            
+            // If not found in effects, try instrument (only if we're in instrument menu)
+            if (status_suffix[0] == '\0' && current_menu_type_ == MenuType::INSTRUMENT) {
+                auto* instrument = current_track_->GetInstrument();
+                if (instrument && instrument->GetName() && strcmp(instrument->GetName(), plugin_name) == 0) {
+                    snprintf(status_suffix, sizeof(status_suffix), " [%s]", 
+                            current_track_->IsInstrumentEnabled() ? "ON" : "OFF");
+                }
+            }
         }
         
         // Build the label with submenu indicator
@@ -721,10 +842,21 @@ void MenuManager::GenerateInstrumentMenu() {
     if (!instrument) return;
     
     // Check if instrument supports settings
-    IPluginWithSettings* settings_plugin = reinterpret_cast<IPluginWithSettings*>(instrument);
+    // Need to cast through concrete type due to multiple inheritance pointer offset
+    IPluginWithSettings* settings_plugin = nullptr;
+    const char* name = instrument->GetName();
+    if (name) {
+        if (strcmp(name, "Subtractive") == 0) {
+            // This is SubtractiveSynth - cast to the actual object type first
+            SubtractiveSynth* synth_plugin = static_cast<SubtractiveSynth*>(instrument);
+            settings_plugin = static_cast<IPluginWithSettings*>(synth_plugin);
+        }
+    }
+    
     if (settings_plugin) {
         temp_items_[0] = CreatePluginSettingsItem(instrument->GetName(), settings_plugin);
-        temp_menus_[2].Init("Instruments", temp_items_, 1);
+        // No title - system bar already shows "Instruments"
+        temp_menus_[2].Init(nullptr, temp_items_, 1);
         PushMenu(&temp_menus_[2]);
     }
 }
@@ -740,15 +872,26 @@ void MenuManager::GenerateFXMenu() {
         auto* effect = effects[i].get();
         
         // Check if effect supports settings
-        // Note: Can't use dynamic_cast due to -fno-rtti
-        // We'll try to use it as IPluginWithSettings and SettingsManager will validate
-        IPluginWithSettings* settings_plugin = reinterpret_cast<IPluginWithSettings*>(effect);
-        temp_items_[item_count++] = CreatePluginSettingsItem(
-            effect->GetName(), settings_plugin);
+        // Need to cast through concrete type due to multiple inheritance pointer offset
+        IPluginWithSettings* settings_plugin = nullptr;
+        const char* name = effect->GetName();
+        if (name) {
+            if (strcmp(name, "Delay") == 0) {
+                // This is DelayFX - cast to the actual object type first
+                DelayFX* delay_plugin = static_cast<DelayFX*>(effect);
+                settings_plugin = static_cast<IPluginWithSettings*>(delay_plugin);
+            }
+        }
+        
+        if (settings_plugin) {
+            temp_items_[item_count++] = CreatePluginSettingsItem(
+                effect->GetName(), settings_plugin);
+        }
     }
     
     if (item_count > 0) {
-        temp_menus_[1].Init("Effects", temp_items_, item_count);
+        // No title - system bar already shows "FX"
+        temp_menus_[1].Init(nullptr, temp_items_, item_count);
         PushMenu(&temp_menus_[1]);
     }
 }
@@ -864,7 +1007,15 @@ int MenuManager::GetCurrentSelectedIndex() const {
 
 const char* MenuManager::GetContextName() const {
     if (current_settings_plugin_) {
-        return "Settings";
+        // Return plugin name if available
+        if (current_settings_name_) {
+            return current_settings_name_;
+        }
+        // Fallback: check if it's global settings
+        if (current_settings_plugin_ == global_settings_) {
+            return "Global";
+        }
+        return "Settings";  // Fallback
     }
     
     switch (current_menu_type_) {

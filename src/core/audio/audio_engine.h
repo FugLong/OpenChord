@@ -3,17 +3,17 @@
 #include "daisy_seed.h"
 #include "daisysp.h"
 #include "volume_interface.h"
-#include "../midi/midi_interface.h"
 
 namespace OpenChord {
 
+// Forward declaration
+class OpenChordSystem;
+
 /**
- * Simple audio engine for testing volume control
- * TODO: This will become a full-featured audio engine with:
- * - Multiple oscillators and synthesis engines
- * - Effects processing
- * - Audio routing and mixing
- * - Plugin system integration
+ * AudioEngine - Audio routing and mixing manager
+ * 
+ * Routes audio through the OpenChordSystem (tracks) and handles
+ * volume management and audio input processing.
  */
 class AudioEngine {
 public:
@@ -23,31 +23,14 @@ public:
     // Initialization
     void Init(daisy::DaisySeed* hw);
     
-    // Audio processing (called by system)
+    // Audio processing (called by Daisy audio callback)
     void ProcessAudio(const float* const* in, float* const* out, size_t size);
-    
-    // MIDI processing (called by system)
-    void ProcessMidi();
     
     // Volume control integration
     void SetVolumeManager(IVolumeManager* volume_manager);
     
-    // Test oscillator control
-    void SetTestFrequency(float frequency);
-    void SetTestWaveform(uint8_t waveform);
-    
-    // MIDI note control
-    void SetFrequency(float freq);
-    void NoteOn();
-    void NoteOff();
-    bool IsNoteOn() const;
-    float GetCurrentFreq() const;
-    
-    // ADSR envelope adjustment methods
-    void SetAttackTime(float attack_ms);
-    void SetDecayTime(float decay_ms);
-    void SetSustainLevel(float sustain_percent);
-    void SetReleaseTime(float release_ms);
+    // System integration
+    void SetSystem(OpenChordSystem* system) { system_ = system; }
     
     // Audio input source control
     enum class AudioInputSource {
@@ -74,22 +57,21 @@ public:
         return input_source_ == AudioInputSource::MICROPHONE && audio_input_processing_enabled_;
     }
     
+    // Query if any audio is playing (for power management)
+    bool IsNoteOn() const;
+    
 private:
-    // MIDI note to frequency conversion
-    float mtof(uint8_t note) const;
     daisy::DaisySeed* hw_;
     IVolumeManager* volume_manager_;
-    
-    // Test oscillator with Daisy ADSR envelope
-    daisysp::Oscillator test_osc_;
-    daisysp::Adsr envelope_;
-    float current_freq_;
-    bool gate_signal_;
+    OpenChordSystem* system_;
     
     // Audio processing state
     bool initialized_;
     AudioInputSource input_source_;  // Selected audio input source
     bool audio_input_processing_enabled_;  // Enable/disable processing of selected source
+    
+    // Temporary buffers for track mixing
+    float track_output_buffer_[2][64];  // Max 64 samples per block
 };
 
 } // namespace OpenChord
