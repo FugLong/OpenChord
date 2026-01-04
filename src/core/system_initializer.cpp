@@ -23,6 +23,15 @@
 #include "../plugins/input/basic_midi_input.h"
 #include "../plugins/instruments/subtractive_synth.h"
 #include "../plugins/fx/delay_fx.h"
+#include "../plugins/fx/chorus_fx.h"
+#include "../plugins/fx/flanger_fx.h"
+#include "../plugins/fx/reverb_fx.h"
+#include "../plugins/fx/tremolo_fx.h"
+#include "../plugins/fx/overdrive_fx.h"
+#include "../plugins/fx/phaser_fx.h"
+#include "../plugins/fx/bitcrusher_fx.h"
+#include "../plugins/fx/autowah_fx.h"
+#include "../plugins/fx/wavefolder_fx.h"
 #include "io/button_input_handler.h"
 #include "io/joystick_input_handler.h"
 #ifdef DEBUG_SCREEN_ENABLED
@@ -85,6 +94,15 @@ bool SystemInitializer::Initialize(const InitParams& params) {
     // 12) Setup default track with plugins
     SetupDefaultTrack(params.system, params.input_manager, params.octave_shift, params.hw,
                      params.chord_plugin_ptr, params.piano_plugin_ptr);
+    
+    // 13) Add all FX plugins to track 1 only (all bypassed/off by default)
+    // Do this after SetupDefaultTrack to ensure audio is fully initialized
+    // Plugins are created but NOT initialized until enabled (saves memory)
+    // TODO: Add to other tracks when memory allows
+    Track* track1 = params.system->GetTrack(0);
+    if (track1) {
+        AddAllFXPluginsToTrack(track1, params.hw);
+    }
     
     // 13) Wire audio engine to system
     params.audio_engine->SetSystem(params.system);
@@ -295,12 +313,70 @@ void SystemInitializer::SetupDefaultTrack(OpenChordSystem* system, InputManager*
     synth->SetSampleRate(hw->AudioSampleRate());
     synth->Init();
     track1->SetInstrument(std::move(synth));
+}
+
+void SystemInitializer::AddAllFXPluginsToTrack(Track* track, daisy::DaisySeed* hw) {
+    if (!track || !hw) return;
     
-    // Add delay FX
+    float sample_rate = hw->AudioSampleRate();
+    
+    // Add all FX plugins in musically logical signal chain order
+    // All bypassed/off by default - don't call Init() until enabled (saves memory)
+    // Signal chain order: Distortion -> Filter -> Modulation -> Time-based
+    
+    // 1. Distortion/Gain (early in chain)
+    auto overdrive = std::make_unique<OverdriveFX>();
+    overdrive->SetSampleRate(sample_rate);
+    overdrive->SetBypass(true);
+    track->AddEffect(std::move(overdrive));
+    
+    auto bitcrusher = std::make_unique<BitcrusherFX>();
+    bitcrusher->SetSampleRate(sample_rate);
+    bitcrusher->SetBypass(true);
+    track->AddEffect(std::move(bitcrusher));
+    
+    auto wavefolder = std::make_unique<WavefolderFX>();
+    wavefolder->SetSampleRate(sample_rate);
+    wavefolder->SetBypass(true);
+    track->AddEffect(std::move(wavefolder));
+    
+    // 2. Filter
+    auto autowah = std::make_unique<AutowahFX>();
+    autowah->SetSampleRate(sample_rate);
+    autowah->SetBypass(true);
+    track->AddEffect(std::move(autowah));
+    
+    // 3. Modulation (in order: phaser, flanger, chorus, tremolo)
+    auto phaser = std::make_unique<PhaserFX>();
+    phaser->SetSampleRate(sample_rate);
+    phaser->SetBypass(true);
+    track->AddEffect(std::move(phaser));
+    
+    auto flanger = std::make_unique<FlangerFX>();
+    flanger->SetSampleRate(sample_rate);
+    flanger->SetBypass(true);
+    track->AddEffect(std::move(flanger));
+    
+    auto chorus = std::make_unique<ChorusFX>();
+    chorus->SetSampleRate(sample_rate);
+    chorus->SetBypass(true);
+    track->AddEffect(std::move(chorus));
+    
+    auto tremolo = std::make_unique<TremoloFX>();
+    tremolo->SetSampleRate(sample_rate);
+    tremolo->SetBypass(true);
+    track->AddEffect(std::move(tremolo));
+    
+    // 4. Time-based (delay before reverb)
     auto delay = std::make_unique<DelayFX>();
-    delay->SetSampleRate(hw->AudioSampleRate());
-    delay->Init();
-    track1->AddEffect(std::move(delay));
+    delay->SetSampleRate(sample_rate);
+    delay->SetBypass(true);
+    track->AddEffect(std::move(delay));
+    
+    auto reverb = std::make_unique<ReverbFX>();
+    reverb->SetSampleRate(sample_rate);
+    reverb->SetBypass(true);
+    track->AddEffect(std::move(reverb));
 }
 
 void SystemInitializer::InitUI(UIManager* ui_manager, MainUI* main_ui, OpenChordSystem* system,

@@ -1,39 +1,48 @@
-#include "delay_fx.h"
+#include "reverb_fx.h"
 #include <cmath>
 #include <cstring>
 
 namespace OpenChord {
 
-DelayFX::DelayFX()
+ReverbFX::ReverbFX()
     : sample_rate_(48000.0f)
-    , delay_time_(500.0f)  // 500ms default (musical delay time)
-    , feedback_(0.3f)      // 30% feedback (good for clean repeats)
-    , wet_dry_(0.4f)       // 40% wet (subtle, musical mix)
+    , room_size_(0.5f)      // Default medium room
+    , damping_(0.5f)       // Default 50% damping (balanced)
+    , wet_dry_(0.3f)       // Default 30% wet (subtle reverb)
     , bypassed_(true)      // Start bypassed (off by default)
-    , delay_time_setting_value_(500.0f)
-    , feedback_setting_value_(0.3f)
-    , wet_dry_setting_value_(0.4f)
+    , room_size_setting_value_(0.5f)
+    , damping_setting_value_(0.5f)
+    , wet_dry_setting_value_(0.3f)
     , bypassed_setting_value_(true)  // Start bypassed (off by default)
     , initialized_(false)
 {
+    // Initialize delay times (prime numbers for better diffusion)
+    // Using 2 delay lines now (reduced from 4 to save memory)
+    delay_times_[0] = 0.0297f * 48000.0f;  // ~29.7ms
+    delay_times_[1] = 0.0371f * 48000.0f;  // ~37.1ms
+    // Removed delay_times_[2] and delay_times_[3] to save memory
+    
     InitializeSettings();
 }
 
-DelayFX::~DelayFX() {
+ReverbFX::~ReverbFX() {
 }
 
-void DelayFX::Init() {
+void ReverbFX::Init() {
     if (sample_rate_ <= 0.0f) {
         sample_rate_ = 48000.0f;
     }
     
-    delay_line_.Init();
-    UpdateDelayParams();
+    // Initialize all delay lines
+    for (size_t i = 0; i < kNumDelays; i++) {
+        delay_lines_[i].Init();
+    }
     
-    initialized_ = true;
+    initialized_ = true;  // Set before UpdateReverbParams so it can run
+    UpdateReverbParams();
 }
 
-void DelayFX::Process(const float* const* in, float* const* out, size_t size) {
+void ReverbFX::Process(const float* const* in, float* const* out, size_t size) {
     if (!initialized_ || bypassed_) {
         // Bypass: copy input to output
         for (size_t i = 0; i < size; i++) {
@@ -48,17 +57,20 @@ void DelayFX::Process(const float* const* in, float* const* out, size_t size) {
         // Get input sample (mono from stereo)
         float in_sample = (in[0][i] + in[1][i]) * 0.5f;
         
-        // Read delayed sample
-        float delayed = delay_line_.Read();
+        // Process through multiple delay lines (simple reverb)
+        float reverb_sum = 0.0f;
+        for (size_t j = 0; j < kNumDelays; j++) {
+            float delayed = delay_lines_[j].Read();
+            float feedback = delayed * feedback_gains_[j];
+            delay_lines_[j].Write(in_sample + feedback);
+            reverb_sum += delayed;
+        }
         
-        // Mix input with feedback
-        float delayed_input = in_sample + delayed * feedback_;
-        
-        // Write to delay line
-        delay_line_.Write(delayed_input);
+        // Normalize and apply damping
+        reverb_sum = reverb_sum / static_cast<float>(kNumDelays) * (1.0f - damping_);
         
         // Mix wet/dry
-        float wet = delayed * wet_dry_;
+        float wet = reverb_sum * wet_dry_;
         float dry = in_sample * (1.0f - wet_dry_);
         float output = wet + dry;
         
@@ -68,37 +80,37 @@ void DelayFX::Process(const float* const* in, float* const* out, size_t size) {
     }
 }
 
-void DelayFX::Update() {
-    UpdateDelayParams();
+void ReverbFX::Update() {
+    UpdateReverbParams();
 }
 
-void DelayFX::UpdateUI() {
+void ReverbFX::UpdateUI() {
     // UI handled by settings system
 }
 
-void DelayFX::HandleEncoder(int encoder, float delta) {
+void ReverbFX::HandleEncoder(int encoder, float delta) {
     (void)encoder;
     (void)delta;
 }
 
-void DelayFX::HandleButton(int button, bool pressed) {
+void ReverbFX::HandleButton(int button, bool pressed) {
     (void)button;
     (void)pressed;
 }
 
-void DelayFX::HandleJoystick(float x, float y) {
+void ReverbFX::HandleJoystick(float x, float y) {
     (void)x;
     (void)y;
 }
 
-void DelayFX::SetSampleRate(float sample_rate) {
+void ReverbFX::SetSampleRate(float sample_rate) {
     sample_rate_ = sample_rate;
     if (initialized_) {
         Init();
     }
 }
 
-void DelayFX::SetBypass(bool bypass) {
+void ReverbFX::SetBypass(bool bypass) {
     bypassed_ = bypass;
     bypassed_setting_value_ = bypass;
     
@@ -108,29 +120,29 @@ void DelayFX::SetBypass(bool bypass) {
     }
 }
 
-void DelayFX::SetWetDry(float wet_dry) {
+void ReverbFX::SetWetDry(float wet_dry) {
     wet_dry_ = wet_dry;
     if (wet_dry_ < 0.0f) wet_dry_ = 0.0f;
     if (wet_dry_ > 1.0f) wet_dry_ = 1.0f;
     wet_dry_setting_value_ = wet_dry_;
 }
 
-void DelayFX::InitializeSettings() {
-    // Delay Time (float ms)
-    settings_[0].name = "Delay Time";
+void ReverbFX::InitializeSettings() {
+    // Room Size (float 0-1)
+    settings_[0].name = "Room Size";
     settings_[0].type = SettingType::FLOAT;
-    settings_[0].value_ptr = &delay_time_setting_value_;
+    settings_[0].value_ptr = &room_size_setting_value_;
     settings_[0].min_value = 0.0f;
-    settings_[0].max_value = 1000.0f;
-    settings_[0].step_size = 1.0f;
+    settings_[0].max_value = 1.0f;
+    settings_[0].step_size = 0.01f;
     settings_[0].enum_options = nullptr;
     settings_[0].enum_count = 0;
     settings_[0].on_change_callback = nullptr;
     
-    // Feedback (float 0-1)
-    settings_[1].name = "Feedback";
+    // Damping (float 0-1)
+    settings_[1].name = "Damping";
     settings_[1].type = SettingType::FLOAT;
-    settings_[1].value_ptr = &feedback_setting_value_;
+    settings_[1].value_ptr = &damping_setting_value_;
     settings_[1].min_value = 0.0f;
     settings_[1].max_value = 1.0f;
     settings_[1].step_size = 0.01f;
@@ -161,50 +173,59 @@ void DelayFX::InitializeSettings() {
     settings_[3].on_change_callback = nullptr;
 }
 
-int DelayFX::GetSettingCount() const {
+int ReverbFX::GetSettingCount() const {
     return 4;
 }
 
-const PluginSetting* DelayFX::GetSetting(int index) const {
+const PluginSetting* ReverbFX::GetSetting(int index) const {
     if (index >= 0 && index < GetSettingCount()) {
         return &settings_[index];
     }
     return nullptr;
 }
 
-void DelayFX::OnSettingChanged(int setting_index) {
-    delay_time_ = delay_time_setting_value_;
-    feedback_ = feedback_setting_value_;
+void ReverbFX::OnSettingChanged(int setting_index) {
+    room_size_ = room_size_setting_value_;
+    damping_ = damping_setting_value_;
     wet_dry_ = wet_dry_setting_value_;
     bypassed_ = bypassed_setting_value_;
     
-    UpdateDelayParams();
+    UpdateReverbParams();
 }
 
-void DelayFX::UpdateDelayParams() {
+void ReverbFX::UpdateReverbParams() {
     if (!initialized_) return;
     
-    // Convert delay time from ms to samples (use float for smooth interpolation)
-    float delay_samples = (delay_time_ / 1000.0f) * sample_rate_;
-    if (delay_samples < 1.0f) delay_samples = 1.0f;
-    if (delay_samples > 48000.0f) delay_samples = 48000.0f;
+    // Update delay times based on room size
+    float base_delay_scale = 0.5f + room_size_ * 1.5f;  // 0.5x to 2.0x
     
-    delay_line_.SetDelay(delay_samples);  // DelayLine supports float for interpolation
+    for (size_t i = 0; i < kNumDelays; i++) {
+        float delay_samples = delay_times_[i] * base_delay_scale;
+        if (delay_samples < 1.0f) delay_samples = 1.0f;
+        if (delay_samples > static_cast<float>(kMaxDelaySamples)) {
+            delay_samples = static_cast<float>(kMaxDelaySamples);
+        }
+        delay_lines_[i].SetDelay(delay_samples);
+        
+        // Feedback gain based on room size and damping
+        feedback_gains_[i] = (0.3f + room_size_ * 0.4f) * (1.0f - damping_ * 0.5f);
+        if (feedback_gains_[i] > 0.95f) feedback_gains_[i] = 0.95f;  // Prevent instability
+    }
 }
 
-void DelayFX::SaveState(void* buffer, size_t* size) const {
+void ReverbFX::SaveState(void* buffer, size_t* size) const {
     if (!buffer || !size) return;
     
     struct State {
-        float delay_time;
-        float feedback;
+        float room_size;
+        float damping;
         float wet_dry;
         bool bypassed;
     };
     
     State state;
-    state.delay_time = delay_time_;
-    state.feedback = feedback_;
+    state.room_size = room_size_;
+    state.damping = damping_;
     state.wet_dry = wet_dry_;
     state.bypassed = bypassed_;
     
@@ -212,35 +233,35 @@ void DelayFX::SaveState(void* buffer, size_t* size) const {
     *size = sizeof(State);
 }
 
-void DelayFX::LoadState(const void* buffer, size_t size) {
+void ReverbFX::LoadState(const void* buffer, size_t size) {
     if (!buffer || size < sizeof(float) * 3 + sizeof(bool)) return;
     
     struct State {
-        float delay_time;
-        float feedback;
+        float room_size;
+        float damping;
         float wet_dry;
         bool bypassed;
     };
     
     const State* state = reinterpret_cast<const State*>(buffer);
-    delay_time_ = state->delay_time;
-    feedback_ = state->feedback;
+    room_size_ = state->room_size;
+    damping_ = state->damping;
     wet_dry_ = state->wet_dry;
     bypassed_ = state->bypassed;
     
     // Update setting values
-    delay_time_setting_value_ = delay_time_;
-    feedback_setting_value_ = feedback_;
+    room_size_setting_value_ = room_size_;
+    damping_setting_value_ = damping_;
     wet_dry_setting_value_ = wet_dry_;
     bypassed_setting_value_ = bypassed_;
     
     // Update effect parameters
     if (initialized_) {
-        UpdateDelayParams();
+        UpdateReverbParams();
     }
 }
 
-size_t DelayFX::GetStateSize() const {
+size_t ReverbFX::GetStateSize() const {
     return sizeof(float) * 3 + sizeof(bool);
 }
 

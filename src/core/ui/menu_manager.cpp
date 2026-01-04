@@ -9,6 +9,15 @@
 #include "../../plugins/input/piano_input.h"  // For PianoInput cast
 #include "../../plugins/instruments/subtractive_synth.h"  // For SubtractiveSynth cast
 #include "../../plugins/fx/delay_fx.h"  // For DelayFX cast
+#include "../../plugins/fx/chorus_fx.h"  // For ChorusFX cast
+#include "../../plugins/fx/flanger_fx.h"  // For FlangerFX cast
+#include "../../plugins/fx/reverb_fx.h"  // For ReverbFX cast - FIXED
+#include "../../plugins/fx/tremolo_fx.h"  // For TremoloFX cast
+#include "../../plugins/fx/overdrive_fx.h"  // For OverdriveFX cast
+#include "../../plugins/fx/phaser_fx.h"  // For PhaserFX cast - FIXED
+#include "../../plugins/fx/bitcrusher_fx.h"  // For BitcrusherFX cast
+#include "../../plugins/fx/autowah_fx.h"  // For AutowahFX cast
+#include "../../plugins/fx/wavefolder_fx.h"  // For WavefolderFX cast
 #include "daisy_seed.h"  // For Font_6x8
 #include <cstring>
 #include <cstdio>
@@ -601,6 +610,41 @@ void MenuManager::Render() {
         end_index = menu->GetItemCount();
     }
     
+    // Calculate content area bounds for scrollbar
+    const int content_start_y = y;  // After title (or 10 if no title)
+    const int content_height = 64 - content_start_y;  // Screen height (64) minus content start
+    const int scrollbar_x = 126;  // Right edge (2 pixels wide: 126 and 127)
+    
+    // Render scrollbar if needed
+    int total_items = menu->GetItemCount();
+    if (total_items > max_visible_lines) {
+        // Calculate scrollbar thumb position and size
+        float scrollbar_track_height = static_cast<float>(content_height);
+        float visible_ratio = static_cast<float>(max_visible_lines) / static_cast<float>(total_items);
+        float thumb_height = scrollbar_track_height * visible_ratio;
+        if (thumb_height < 4.0f) thumb_height = 4.0f;  // Minimum thumb size
+        
+        float scroll_ratio = static_cast<float>(start_index) / static_cast<float>(total_items - max_visible_lines);
+        if (total_items <= max_visible_lines) scroll_ratio = 0.0f;
+        
+        int thumb_start_y = content_start_y + static_cast<int>(scroll_ratio * (scrollbar_track_height - thumb_height));
+        int thumb_end_y = thumb_start_y + static_cast<int>(thumb_height);
+        if (thumb_end_y > 64) thumb_end_y = 64;
+        if (thumb_start_y < content_start_y) thumb_start_y = content_start_y;
+        
+        // Draw scrollbar track (subtle - just outline edges)
+        disp->DrawPixel(scrollbar_x, content_start_y, true);  // Top edge
+        disp->DrawPixel(scrollbar_x + 1, content_start_y, true);
+        disp->DrawPixel(scrollbar_x, 63, true);  // Bottom edge (64-1)
+        disp->DrawPixel(scrollbar_x + 1, 63, true);
+        
+        // Draw scrollbar thumb (solid filled rectangle - this is what shows position)
+        for (int sy = thumb_start_y; sy < thumb_end_y; sy++) {
+            disp->DrawPixel(scrollbar_x, sy, true);
+            disp->DrawPixel(scrollbar_x + 1, sy, true);
+        }
+    }
+    
     for (int i = start_index; i < end_index; i++) {
         const MenuItem* item = menu->GetItem(i);
         if (!item) continue;
@@ -880,7 +924,35 @@ void MenuManager::GenerateFXMenu() {
                 // This is DelayFX - cast to the actual object type first
                 DelayFX* delay_plugin = static_cast<DelayFX*>(effect);
                 settings_plugin = static_cast<IPluginWithSettings*>(delay_plugin);
+            } else if (strcmp(name, "Chorus") == 0) {
+                ChorusFX* chorus_plugin = static_cast<ChorusFX*>(effect);
+                settings_plugin = static_cast<IPluginWithSettings*>(chorus_plugin);
+            } else if (strcmp(name, "Flanger") == 0) {
+                FlangerFX* flanger_plugin = static_cast<FlangerFX*>(effect);
+                settings_plugin = static_cast<IPluginWithSettings*>(flanger_plugin);
+            } else if (strcmp(name, "Tremolo") == 0) {
+                TremoloFX* tremolo_plugin = static_cast<TremoloFX*>(effect);
+                settings_plugin = static_cast<IPluginWithSettings*>(tremolo_plugin);
+            } else if (strcmp(name, "Overdrive") == 0) {
+                OverdriveFX* overdrive_plugin = static_cast<OverdriveFX*>(effect);
+                settings_plugin = static_cast<IPluginWithSettings*>(overdrive_plugin);
+            } else if (strcmp(name, "Reverb") == 0) {
+                ReverbFX* reverb_plugin = static_cast<ReverbFX*>(effect);
+                settings_plugin = static_cast<IPluginWithSettings*>(reverb_plugin);
+            } else if (strcmp(name, "Phaser") == 0) {
+                PhaserFX* phaser_plugin = static_cast<PhaserFX*>(effect);
+                settings_plugin = static_cast<IPluginWithSettings*>(phaser_plugin);
+            } else if (strcmp(name, "Bitcrusher") == 0) {
+                BitcrusherFX* bitcrusher_plugin = static_cast<BitcrusherFX*>(effect);
+                settings_plugin = static_cast<IPluginWithSettings*>(bitcrusher_plugin);
+            } else if (strcmp(name, "Autowah") == 0) {
+                AutowahFX* autowah_plugin = static_cast<AutowahFX*>(effect);
+                settings_plugin = static_cast<IPluginWithSettings*>(autowah_plugin);
+            } else if (strcmp(name, "Wavefolder") == 0) {
+                WavefolderFX* wavefolder_plugin = static_cast<WavefolderFX*>(effect);
+                settings_plugin = static_cast<IPluginWithSettings*>(wavefolder_plugin);
             }
+            // Reverb disabled - causes crash
         }
         
         if (settings_plugin) {

@@ -102,6 +102,7 @@ private:
                           OctaveShift* octave_shift, daisy::DaisySeed* hw,
                           ChordMappingInput** chord_plugin_ptr,
                           PianoInput** piano_plugin_ptr);
+    void AddAllFXPluginsToTrack(Track* track, daisy::DaisySeed* hw);
     void InitUI(UIManager* ui_manager, MainUI* main_ui, OpenChordSystem* system,
                InputManager* input_manager, IOManager* io_manager,
                GlobalSettings* global_settings, TrackSettings* track_settings,
