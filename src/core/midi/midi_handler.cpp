@@ -56,10 +56,14 @@ void OpenChordMidiHandler::ProcessUsbMidi() {
     // Keep MIDI listening active
     usb_midi_.Listen();
     
-    // Process any incoming MIDI events
-    while (usb_midi_.HasEvents()) {
+    // Process any incoming MIDI events with safety limit
+    size_t event_count = 0;
+    const size_t MAX_EVENTS_PER_CALL = 64;  // Prevent infinite loops
+    
+    while (usb_midi_.HasEvents() && event_count < MAX_EVENTS_PER_CALL) {
         daisy::MidiEvent event = usb_midi_.PopEvent();
         AddToMidiHub(event, MidiHubEvent::Source::USB);
+        event_count++;
     }
 }
 
@@ -67,12 +71,19 @@ void OpenChordMidiHandler::ProcessTrsMidi() {
     if (!trs_midi_initialized_) return;
     
     // Process MIDI in the background (official Daisy Seed example pattern)
+    // Guard against freeze when TRS MIDI cable is plugged/unplugged
+    // Limit processing to prevent infinite loops if UART is in bad state
     trs_midi_.Listen();
     
-    // Loop through any MIDI Events
-    while (trs_midi_.HasEvents()) {
+    // Loop through any MIDI Events with safety limit
+    // This prevents freeze if TRS MIDI UART gets stuck
+    size_t event_count = 0;
+    const size_t MAX_EVENTS_PER_CALL = 64;  // Prevent infinite loops
+    
+    while (trs_midi_.HasEvents() && event_count < MAX_EVENTS_PER_CALL) {
         daisy::MidiEvent event = trs_midi_.PopEvent();
         AddToMidiHub(event, MidiHubEvent::Source::TRS_IN);
+        event_count++;
     }
 }
 

@@ -324,10 +324,45 @@ void Track::GenerateMIDI(MidiEvent* events, size_t* count, size_t max_events) {
     *count = 0;
     
     // Generate MIDI from input plugins
+    // Priority: Check BasicMidiInput (external MIDI) first if present, then other plugins
+    // This allows external MIDI to play the instrument while built-in keys can still generate MIDI for output
+    // Process plugins in order, but prioritize BasicMidiInput (priority 100)
+    
+    // First pass: Look for BasicMidiInput (external MIDI passthrough)
+    IInputPlugin* basic_midi_plugin = nullptr;
+    for (auto& plugin : input_plugins_) {
+        if (plugin && plugin->IsActive()) {
+            const char* name = plugin->GetName();
+            if (name && strcmp(name, "MIDI Input") == 0) {
+                basic_midi_plugin = plugin.get();
+                break;
+            }
+        }
+    }
+    
+    // If BasicMidiInput is active, check it first for external MIDI
+    if (basic_midi_plugin && basic_midi_plugin->IsActive()) {
+        size_t plugin_count = 0;
+        basic_midi_plugin->GenerateMIDI(events + *count, &plugin_count, max_events - *count);
+        
+        if (plugin_count > 0) {
+            // External MIDI found - use it for instrument playback
+            *count += plugin_count;
+            return;
+        }
+    }
+    
+    // Second pass: Check other plugins (built-in keys, etc.)
     // Process plugins in order, but stop after first plugin generates MIDI
     // This ensures only one input mode (chord mapping OR chromatic) generates MIDI at a time
     for (auto& plugin : input_plugins_) {
         if (plugin && plugin->IsActive()) {
+            // Skip BasicMidiInput - already checked above
+            const char* name = plugin->GetName();
+            if (name && strcmp(name, "MIDI Input") == 0) {
+                continue;
+            }
+            
             size_t plugin_count = 0;
             plugin->GenerateMIDI(events + *count, &plugin_count, max_events - *count);
             
