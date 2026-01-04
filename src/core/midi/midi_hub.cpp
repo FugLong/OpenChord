@@ -107,6 +107,12 @@ void MidiHub::ClearGeneratedEvents() {
     generated_events_.clear();
 }
 
+void MidiHub::ConsumeGeneratedEvents(std::vector<MidiHubEvent>& out_events) {
+    // Move all generated events to output vector and clear
+    out_events = std::move(generated_events_);
+    generated_events_.clear();
+}
+
 void MidiHub::UpdateCombinedEvents() {
     combined_events_.clear();
     
@@ -179,6 +185,23 @@ const std::vector<MidiHubEvent>& GetGeneratedEvents() {
         return hub->GetGeneratedEvents();
     }
     return kEmptyMidiEvents;
+}
+
+const std::vector<MidiHubEvent>& PeekGeneratedEvents() {
+    MidiHub* hub = MidiHub::GetInstance();
+    if (hub) {
+        return hub->PeekGeneratedEvents();
+    }
+    return kEmptyMidiEvents;
+}
+
+void ConsumeGeneratedEvents(std::vector<MidiHubEvent>& out_events) {
+    MidiHub* hub = MidiHub::GetInstance();
+    if (hub) {
+        hub->ConsumeGeneratedEvents(out_events);
+    } else {
+        out_events.clear();
+    }
 }
 
 const std::vector<MidiHubEvent>& GetCombinedEvents() {

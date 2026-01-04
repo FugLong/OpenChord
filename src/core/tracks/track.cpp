@@ -1,4 +1,5 @@
 #include "track_interface.h"
+#include "../midi/midi_interface.h"
 #include "../midi/octave_shift.h"
 #include <cstring>
 
@@ -347,6 +348,7 @@ void Track::GenerateMIDI(MidiEvent* events, size_t* count, size_t max_events) {
         
         if (plugin_count > 0) {
             // External MIDI found - use it for instrument playback
+            // Don't add external MIDI to hub (we don't want to echo it back out)
             *count += plugin_count;
             return;
         }
@@ -367,6 +369,26 @@ void Track::GenerateMIDI(MidiEvent* events, size_t* count, size_t max_events) {
             plugin->GenerateMIDI(events + *count, &plugin_count, max_events - *count);
             
             if (plugin_count > 0) {
+                // Add generated events to MIDI hub (for MIDI output routing)
+                // This allows RouteGeneratedMIDI to read the same events without consuming
+                for (size_t i = 0; i < plugin_count; i++) {
+                    const MidiEvent& event = events[*count + i];
+                    // Convert track event to hub event and add to hub
+                    daisy::MidiMessageType msg_type;
+                    if (event.type == static_cast<uint8_t>(MidiEvent::Type::NOTE_ON)) {
+                        msg_type = daisy::MidiMessageType::NoteOn;
+                    } else if (event.type == static_cast<uint8_t>(MidiEvent::Type::NOTE_OFF)) {
+                        msg_type = daisy::MidiMessageType::NoteOff;
+                    } else if (event.type == static_cast<uint8_t>(MidiEvent::Type::CONTROL_CHANGE)) {
+                        msg_type = daisy::MidiMessageType::ControlChange;
+                    } else if (event.type == static_cast<uint8_t>(MidiEvent::Type::PITCH_BEND)) {
+                        msg_type = daisy::MidiMessageType::PitchBend;
+                    } else {
+                        continue;  // Skip unsupported types
+                    }
+                    Midi::AddGeneratedEvent(msg_type, event.channel, event.data1, event.data2);
+                }
+                
                 // This plugin generated MIDI, stop processing other plugins
                 *count += plugin_count;
                 break;

@@ -90,6 +90,13 @@ public:
     void ClearGeneratedEvents();
     const std::vector<MidiHubEvent>& GetGeneratedEvents() const { return generated_events_; }
     
+    // Non-consuming read for generated events (for MIDI output)
+    // Returns events without removing them, so both audio and MIDI output can read
+    const std::vector<MidiHubEvent>& PeekGeneratedEvents() const { return generated_events_; }
+    
+    // Consuming read - removes and returns events (for audio engine)
+    void ConsumeGeneratedEvents(std::vector<MidiHubEvent>& out_events);
+    
     // Combined MIDI access
     void UpdateCombinedEvents();
     const std::vector<MidiHubEvent>& GetCombinedEvents() const { return combined_events_; }
@@ -181,6 +188,12 @@ namespace Midi {
     const std::vector<MidiHubEvent>& GetTrsInputEvents();
     const std::vector<MidiHubEvent>& GetTrsOutputBuffer();
     const std::vector<MidiHubEvent>& GetGeneratedEvents();
+    
+    // Non-consuming read for generated events (for MIDI output)
+    const std::vector<MidiHubEvent>& PeekGeneratedEvents();
+    
+    // Consuming read for generated events (for audio engine)
+    void ConsumeGeneratedEvents(std::vector<MidiHubEvent>& out_events);
     const std::vector<MidiHubEvent>& GetCombinedEvents();
     
     // MIDI timing

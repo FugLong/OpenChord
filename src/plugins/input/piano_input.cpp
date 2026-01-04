@@ -237,7 +237,7 @@ void PianoInput::ProcessButtons() {
                     MidiEvent& event = pending_events_[pending_write_pos_];
                     event.type = static_cast<uint8_t>(MidiEvent::Type::NOTE_ON);
                     event.channel = 0;
-                    event.data1 = midi_note;  // Base note (octave shift applied in main.cpp)
+                    event.data1 = midi_note;  // Base note (octave shift applied later)
                     event.data2 = 100;  // Default velocity
                     event.timestamp = 0;
                     
@@ -252,7 +252,7 @@ void PianoInput::ProcessButtons() {
                     MidiEvent& event = pending_events_[pending_write_pos_];
                     event.type = static_cast<uint8_t>(MidiEvent::Type::NOTE_OFF);
                     event.channel = 0;
-                    event.data1 = midi_note;  // Base note (octave shift applied in main.cpp)
+                    event.data1 = midi_note;  // Base note (octave shift applied later)
                     event.data2 = 0;
                     event.timestamp = 0;
                     
