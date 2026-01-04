@@ -77,6 +77,7 @@ private:
     void UpdateOscillatorParams();
     void UpdateFilterParams();
     void UpdateEnvelopeParams();
+    void ResetVoice(Voice* voice);
     Voice* FindFreeVoice();
     Voice* FindVoiceByNote(int note);
     

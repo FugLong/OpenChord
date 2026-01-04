@@ -19,7 +19,7 @@ static const char* waveform_names[] = {
 SubtractiveSynth::SubtractiveSynth()
     : sample_rate_(48000.0f)
     , waveform_(0)  // Saw
-    , osc_level_(0.8f)
+    , osc_level_(1.0f)  // Normalized - scaling happens in processing
     , filter_cutoff_(0.5f)
     , filter_resonance_(0.3f)
     , envelope_attack_(10.0f)
@@ -28,7 +28,7 @@ SubtractiveSynth::SubtractiveSynth()
     , envelope_release_(300.0f)
     , master_level_(0.8f)
     , waveform_setting_value_(0)
-    , osc_level_setting_value_(0.8f)
+    , osc_level_setting_value_(1.0f)
     , filter_cutoff_setting_value_(0.5f)
     , filter_resonance_setting_value_(0.3f)
     , envelope_attack_setting_value_(10.0f)
@@ -68,7 +68,7 @@ void SubtractiveSynth::Init() {
             default: waveform_val = daisysp::Oscillator::WAVE_SAW; break;
         }
         voice.osc.SetWaveform(waveform_val);
-        voice.osc.SetAmp(osc_level_);
+        voice.osc.SetAmp(1.0f);  // Normalized amplitude - scaling done in processing
         
         voice.filter.SetFreq(filter_cutoff_ * 8000.0f + 100.0f);  // 100-8100 Hz
         voice.filter.SetRes(filter_resonance_);
@@ -112,20 +112,33 @@ void SubtractiveSynth::Process(const float* const* in, float* const* out, size_t
         
         // Process each voice
         for (auto& voice : voices_) {
-            if (!voice.active) continue;
+            // Only process voices that have been assigned a note
+            if (voice.note == 0) continue;
             
-            // Process envelope
+            // Process envelope (gate = true when note is actively held)
             float env = voice.envelope.Process(voice.active);
             
-            // Process oscillator
+            // If envelope is idle (release phase complete), clean up the voice
+            if (!voice.envelope.IsRunning()) {
+                voice.note = 0;
+                voice.velocity = 0.0f;
+                voice.active = false;
+                continue;
+            }
+            
+            // Clamp envelope to prevent distortion (should be 0-1, but be safe)
+            if (env > 1.0f) env = 1.0f;
+            if (env < 0.0f) env = 0.0f;
+            
+            // Process oscillator (amplitude should be normalized, scaling done in processing)
             float osc_out = voice.osc.Process();
             
             // Process filter (Svf processes input and outputs via getters)
             voice.filter.Process(osc_out);
             float filtered = voice.filter.Low();  // Use low-pass output
             
-            // Apply envelope and master level
-            sample += filtered * env * master_level_;
+            // Apply oscillator level, envelope, velocity, and master level
+            sample += filtered * osc_level_ * env * voice.velocity * master_level_;
         }
         
         // Soft clipping
@@ -171,17 +184,47 @@ void SubtractiveSynth::HandleJoystick(float x, float y) {
 void SubtractiveSynth::NoteOn(int note, float velocity) {
     if (!initialized_) return;
     
+    // Check if this note is already playing - if so, retrigger that voice
+    Voice* voice = FindVoiceByNote(note);
+    if (voice) {
+        // Note already playing - retrigger the same voice
+        voice->velocity = velocity;
+        voice->active = true;
+        voice->pitch_bend = pitch_bend_;
+        
+        // Calculate frequency with pitch bend
+        float freq = mtof(note) * powf(2.0f, pitch_bend_ / 12.0f);
+        voice->osc.SetFreq(freq);
+        voice->osc.SetAmp(1.0f);  // Normalized amplitude - scaling done in processing
+        
+        // Ensure envelope parameters are up to date before retriggering
+        voice->envelope.SetAttackTime(envelope_attack_ / 1000.0f);
+        voice->envelope.SetDecayTime(envelope_decay_ / 1000.0f);
+        voice->envelope.SetSustainLevel(envelope_sustain_);
+        voice->envelope.SetReleaseTime(envelope_release_ / 1000.0f);
+        
+        // Retrigger envelope (hard = true resets history, false keeps history - use true for clean attack)
+        voice->envelope.Retrigger(true);
+        return;
+    }
+    
     // Find free voice
-    Voice* voice = FindFreeVoice();
+    voice = FindFreeVoice();
     if (!voice) {
-        // All voices busy - steal oldest voice (simple round-robin)
+        // All voices busy - steal oldest voice (first voice index, simple but effective)
+        // Find the voice with the lowest index that's not actively being held (priority for release)
         voice = &voices_[0];
-        for (auto& v : voices_) {
-            if (v.note < voice->note) {
-                voice = &v;
+        for (size_t i = 0; i < voices_.size(); i++) {
+            if (!voices_[i].active) {
+                voice = &voices_[i];
+                break;
             }
         }
+        // If all are active, just use the first one
     }
+    
+    // Reset the voice to clean state before reuse
+    ResetVoice(voice);
     
     // Set up voice
     voice->note = note;
@@ -192,10 +235,16 @@ void SubtractiveSynth::NoteOn(int note, float velocity) {
     // Calculate frequency with pitch bend
     float freq = mtof(note) * powf(2.0f, pitch_bend_ / 12.0f);
     voice->osc.SetFreq(freq);
-    voice->osc.SetAmp(osc_level_ * velocity);
+    voice->osc.SetAmp(1.0f);  // Normalized amplitude - scaling done in processing
     
-    // Retrigger envelope
-    voice->envelope.Retrigger(false);
+    // Ensure envelope parameters are up to date before retriggering
+    voice->envelope.SetAttackTime(envelope_attack_ / 1000.0f);
+    voice->envelope.SetDecayTime(envelope_decay_ / 1000.0f);
+    voice->envelope.SetSustainLevel(envelope_sustain_);
+    voice->envelope.SetReleaseTime(envelope_release_ / 1000.0f);
+    
+    // Retrigger envelope (hard = true resets history, false keeps history - use true for clean attack)
+    voice->envelope.Retrigger(true);
 }
 
 void SubtractiveSynth::NoteOff(int note) {
@@ -250,17 +299,74 @@ void SubtractiveSynth::SetSampleRate(float sample_rate) {
 }
 
 SubtractiveSynth::Voice* SubtractiveSynth::FindFreeVoice() {
+    // Find a voice that's not assigned (note == 0) or has envelope in idle state
     for (auto& voice : voices_) {
-        if (!voice.active) {
+        if (voice.note == 0) {
+            return &voice;
+        }
+        if (!voice.envelope.IsRunning() && !voice.active) {
             return &voice;
         }
     }
     return nullptr;
 }
 
+void SubtractiveSynth::ResetVoice(Voice* voice) {
+    if (!voice || !initialized_) return;
+    
+    // Reinitialize filter, oscillator, and envelope to reset their internal state
+    // This prevents clicks/distortion when reusing voices
+    voice->filter.Init(sample_rate_);
+    voice->osc.Init(sample_rate_);
+    voice->envelope.Init(sample_rate_);
+    
+    // Reset filter parameters
+    float cutoff_hz = filter_cutoff_ * 8000.0f + 100.0f;
+    voice->filter.SetFreq(cutoff_hz);
+    voice->filter.SetRes(filter_resonance_);
+    voice->filter.SetDrive(0.0f);
+    
+    // Settle filter state by processing a few zero samples
+    // This prevents crackling from uninitialized filter state
+    for (int i = 0; i < 8; i++) {
+        voice->filter.Process(0.0f);
+    }
+    
+    // Reset oscillator parameters
+    uint8_t waveform_val = 0;
+    switch(waveform_) {
+        case 0: waveform_val = daisysp::Oscillator::WAVE_SAW; break;
+        case 1: waveform_val = daisysp::Oscillator::WAVE_SQUARE; break;
+        case 2: waveform_val = daisysp::Oscillator::WAVE_TRI; break;
+        case 3: waveform_val = daisysp::Oscillator::WAVE_SIN; break;
+        default: waveform_val = daisysp::Oscillator::WAVE_SAW; break;
+    }
+    voice->osc.SetWaveform(waveform_val);
+    voice->osc.SetAmp(1.0f);  // Normalized amplitude - scaling done in processing
+    
+    // Reset envelope parameters (will be set properly in NoteOn before Retrigger)
+    voice->envelope.SetAttackTime(envelope_attack_ / 1000.0f);
+    voice->envelope.SetDecayTime(envelope_decay_ / 1000.0f);
+    voice->envelope.SetSustainLevel(envelope_sustain_);
+    voice->envelope.SetReleaseTime(envelope_release_ / 1000.0f);
+    
+    // Clean up voice state
+    voice->note = 0;
+    voice->velocity = 0.0f;
+    voice->active = false;
+    voice->pitch_bend = 0.0f;
+}
+
 SubtractiveSynth::Voice* SubtractiveSynth::FindVoiceByNote(int note) {
+    // First try to find an active voice playing this note
     for (auto& voice : voices_) {
         if (voice.active && voice.note == note) {
+            return &voice;
+        }
+    }
+    // Also check voices in release phase (envelope still running)
+    for (auto& voice : voices_) {
+        if (voice.note == note && voice.envelope.IsRunning()) {
             return &voice;
         }
     }
@@ -282,9 +388,7 @@ void SubtractiveSynth::UpdateOscillatorParams() {
     
     for (auto& voice : voices_) {
         voice.osc.SetWaveform(waveform_val);
-        if (voice.active) {
-            voice.osc.SetAmp(osc_level_ * voice.velocity);
-        }
+        voice.osc.SetAmp(1.0f);  // Normalized amplitude - scaling done in processing
     }
 }
 
@@ -302,6 +406,10 @@ void SubtractiveSynth::UpdateFilterParams() {
 void SubtractiveSynth::UpdateEnvelopeParams() {
     if (!initialized_) return;
     
+    // Update envelope parameters for all voices
+    // DaisySP Adsr applies these parameters immediately
+    // Note: Parameters may only affect future phases of active envelopes,
+    // but this is the correct behavior to avoid audio glitches
     for (auto& voice : voices_) {
         voice.envelope.SetAttackTime(envelope_attack_ / 1000.0f);
         voice.envelope.SetDecayTime(envelope_decay_ / 1000.0f);
@@ -424,20 +532,33 @@ const PluginSetting* SubtractiveSynth::GetSetting(int index) const {
 
 void SubtractiveSynth::OnSettingChanged(int setting_index) {
     // Update actual parameter values from setting values
-    waveform_ = waveform_setting_value_;
-    osc_level_ = osc_level_setting_value_;
-    filter_cutoff_ = filter_cutoff_setting_value_;
-    filter_resonance_ = filter_resonance_setting_value_;
-    envelope_attack_ = envelope_attack_setting_value_;
-    envelope_decay_ = envelope_decay_setting_value_;
-    envelope_sustain_ = envelope_sustain_setting_value_;
-    envelope_release_ = envelope_release_setting_value_;
-    master_level_ = master_level_setting_value_;
-    
-    // Update synthesis parameters
-    UpdateOscillatorParams();
-    UpdateFilterParams();
-    UpdateEnvelopeParams();
+    // Only update the parameter that changed (for efficiency)
+    switch (setting_index) {
+        case 0: waveform_ = waveform_setting_value_; UpdateOscillatorParams(); break;
+        case 1: osc_level_ = osc_level_setting_value_; UpdateOscillatorParams(); break;
+        case 2: filter_cutoff_ = filter_cutoff_setting_value_; UpdateFilterParams(); break;
+        case 3: filter_resonance_ = filter_resonance_setting_value_; UpdateFilterParams(); break;
+        case 4: envelope_attack_ = envelope_attack_setting_value_; UpdateEnvelopeParams(); break;
+        case 5: envelope_decay_ = envelope_decay_setting_value_; UpdateEnvelopeParams(); break;
+        case 6: envelope_sustain_ = envelope_sustain_setting_value_; UpdateEnvelopeParams(); break;
+        case 7: envelope_release_ = envelope_release_setting_value_; UpdateEnvelopeParams(); break;
+        case 8: master_level_ = master_level_setting_value_; break;
+        default:
+            // Fallback: update all parameters (for safety)
+            waveform_ = waveform_setting_value_;
+            osc_level_ = osc_level_setting_value_;
+            filter_cutoff_ = filter_cutoff_setting_value_;
+            filter_resonance_ = filter_resonance_setting_value_;
+            envelope_attack_ = envelope_attack_setting_value_;
+            envelope_decay_ = envelope_decay_setting_value_;
+            envelope_sustain_ = envelope_sustain_setting_value_;
+            envelope_release_ = envelope_release_setting_value_;
+            master_level_ = master_level_setting_value_;
+            UpdateOscillatorParams();
+            UpdateFilterParams();
+            UpdateEnvelopeParams();
+            break;
+    }
 }
 
 void SubtractiveSynth::SaveState(void* buffer, size_t* size) const {
