@@ -493,6 +493,46 @@ bool MenuManager::UpdateMenuInput(SettingsManager* settings_mgr, IOManager* io_m
     }
     prev_joystick_button_menu = joystick_button;
     
+    // Note: Encoder button is not physically connected in current hardware design
+    // Alternative: Use encoder rotation in menu mode to toggle plugins
+    // In menu mode (not settings), encoder rotation toggles the selected plugin
+    bool actually_in_settings = (current_settings_plugin_ != nullptr);
+    if (!actually_in_settings && IsOpen()) {
+        // In menu mode: encoder rotation toggles plugins
+        float encoder_delta = input_manager_->GetEncoder().GetDelta();
+        static float encoder_accumulator = 0.0f;
+        static uint32_t last_encoder_reset = current_time_ms;
+        
+        // Accumulate encoder movement
+        if (std::abs(encoder_delta) > 0.01f) {
+            encoder_accumulator += encoder_delta;
+            last_encoder_reset = current_time_ms;
+        }
+        
+        // If encoder moved 1+ step, toggle plugin
+        // This allows toggling by rotating encoder in menu mode
+        if (std::abs(encoder_accumulator) >= 1.0f) {
+            ToggleCurrentItem();
+            state_changed = true;
+            encoder_accumulator = 0.0f;  // Reset after toggle
+        }
+        
+        // Reset accumulator if no movement for 500ms
+        if (current_time_ms - last_encoder_reset > 500) {
+            encoder_accumulator = 0.0f;
+        }
+    }
+    
+    // Keep encoder button check for future hardware support (when button is connected)
+    static bool prev_encoder_button_menu = false;
+    bool encoder_button = input_manager_->GetEncoder().WasButtonPressed();
+    bool encoder_button_edge = encoder_button && !prev_encoder_button_menu;
+    if (encoder_button_edge && !actually_in_settings && IsOpen()) {
+        ToggleCurrentItem();
+        state_changed = true;
+    }
+    prev_encoder_button_menu = encoder_button;
+    
     // Debounce navigation (every 200ms)
     if (current_time_ms - last_nav_time > 200) {
         IPluginWithSettings* settings_plugin = settings_mgr ? settings_mgr->GetPlugin() : nullptr;

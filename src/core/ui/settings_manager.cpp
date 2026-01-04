@@ -72,6 +72,38 @@ void SettingsManager::ChangeValue(float delta) {
         return;
     }
     
+    // Normal scrolling: 1 tick = 1 step (delta ~1.0, no scaling)
+    // Fast scrolling: apply range-based acceleration multiplier on top of velocity acceleration
+    // This allows large ranges to accelerate more when scrolling fast
+    float abs_delta = std::abs(delta);
+    
+    // Check if this is fast scrolling (velocity acceleration already applied by encoder handler)
+    // Normal scrolling: abs_delta ~1.0, fast scrolling: abs_delta >= 1.5 (velocity multiplier applied)
+    // Use threshold of 1.5 to clearly distinguish fast scrolling from normal
+    if (abs_delta >= 1.5f) {
+        // Fast scrolling detected - apply range-based acceleration multiplier
+        float range = setting->max_value - setting->min_value;
+        if (range > 0.0f) {
+            // Calculate range-based acceleration multiplier
+            // For small ranges (0-1): multiplier stays close to 1.0 (minimal extra boost)
+            // For large ranges (0-5000): multiplier can go up to ~5x
+            // Formula: 1.0 + (range / 2000.0) gives:
+            // - Range 0-1: multiplier = 1.0 (no extra boost)
+            // - Range 0-5000: multiplier = 3.5 (significant boost for large ranges)
+            float range_multiplier = 1.0f + (range / 2000.0f);
+            if (range_multiplier > 5.0f) range_multiplier = 5.0f;  // Cap at 5x
+            
+            // Apply range-based acceleration on top of velocity acceleration
+            // Preserve direction
+            if (delta > 0.0f) {
+                delta = abs_delta * range_multiplier;
+            } else {
+                delta = -abs_delta * range_multiplier;
+            }
+        }
+    }
+    // For normal scrolling (abs_delta < 1.5), use as-is (1:1 mapping, no range scaling)
+    
     UpdateValue(selected_index_, delta);
 }
 

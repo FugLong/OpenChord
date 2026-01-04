@@ -76,23 +76,58 @@ void EncoderInputHandler::ProcessEncoder() {
     // Update value
     if (raw_value != prev_value_) {
         int delta = raw_value - prev_value_;
+        uint32_t current_time = digital_manager_->GetCurrentTime();
         
-        // Apply acceleration if enabled
-        if (acceleration_enabled_ && abs(delta) >= acceleration_threshold_) {
-            // Track consecutive rotations
-            if (delta > 0 && rotation_steps_ >= 0) {
-                rotation_steps_++;
-            } else if (delta < 0 && rotation_steps_ <= 0) {
-                rotation_steps_--;
-            } else {
-                rotation_steps_ = delta; // Direction changed, reset
+        // Time-based velocity detection for acceleration
+        if (acceleration_enabled_) {
+            uint32_t time_delta = 0;
+            if (last_rotation_time_ > 0) {
+                time_delta = current_time - last_rotation_time_;
             }
             
-            float acceleration = CalculateAcceleration(abs(rotation_steps_));
-            current_delta_ = static_cast<float>(delta) * acceleration;
+            // If rotation direction matches, calculate velocity
+            bool direction_match = (delta > 0 && rotation_steps_ >= 0) || 
+                                  (delta < 0 && rotation_steps_ <= 0);
+            
+            if (direction_match && time_delta > 0 && time_delta < 150) {
+                // Fast rotation detected (time_delta < 150ms)
+                // Calculate velocity: faster rotation = smaller time_delta = larger multiplier
+                // Normalize: 150ms = 1x, 75ms = 2x, 50ms = 3x, 30ms = 5x (capped)
+                // Use a more gradual curve for better control
+                float velocity_multiplier = 1.0f;
+                if (time_delta < 30) {
+                    velocity_multiplier = 5.0f;  // Very fast: 5x
+                } else if (time_delta < 50) {
+                    velocity_multiplier = 3.0f;  // Fast: 3x
+                } else if (time_delta < 75) {
+                    velocity_multiplier = 2.0f;  // Medium-fast: 2x
+                } else if (time_delta < 100) {
+                    velocity_multiplier = 1.5f;  // Slightly fast: 1.5x
+                } else {
+                    velocity_multiplier = 1.0f;  // Normal: 1x
+                }
+                
+                // Apply velocity-based acceleration
+                current_delta_ = static_cast<float>(delta) * velocity_multiplier;
+                
+                // Track rotation steps for direction consistency
+                if (delta > 0) {
+                    rotation_steps_ = (rotation_steps_ < 0) ? 1 : rotation_steps_ + 1;
+                } else {
+                    rotation_steps_ = (rotation_steps_ > 0) ? -1 : rotation_steps_ - 1;
+                }
+            } else {
+                // Slow rotation or direction changed - no acceleration
+                current_delta_ = static_cast<float>(delta);
+                rotation_steps_ = (delta > 0) ? 1 : -1;
+            }
+            
+            last_rotation_time_ = current_time;
         } else {
+            // Acceleration disabled - use raw delta
             current_delta_ = static_cast<float>(delta);
             rotation_steps_ = 0;
+            last_rotation_time_ = current_time;
         }
         
         current_value_ = raw_value;
@@ -102,13 +137,20 @@ void EncoderInputHandler::ProcessEncoder() {
         event.type = EncoderEventType::ROTATED;
         event.delta = delta;
         event.value = current_value_;
-        event.timestamp = 0; // TODO: Get actual timestamp if needed
+        event.timestamp = current_time;
         QueueEvent(event);
         
         prev_value_ = current_value_;
     } else {
         current_delta_ = 0.0f;
         current_direction_ = EncoderDirection::NONE;
+        
+        // Reset rotation tracking if no movement for a while
+        uint32_t current_time = digital_manager_->GetCurrentTime();
+        if (last_rotation_time_ > 0 && (current_time - last_rotation_time_) > 500) {
+            rotation_steps_ = 0;
+            last_rotation_time_ = 0;
+        }
     }
 }
 
@@ -226,6 +268,7 @@ void EncoderInputHandler::Reset(int value) {
     current_delta_ = 0.0f;
     current_direction_ = EncoderDirection::NONE;
     rotation_steps_ = 0;
+    last_rotation_time_ = 0;
     
     if (digital_manager_) {
         digital_manager_->ResetEncoder(value);

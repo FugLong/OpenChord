@@ -167,6 +167,11 @@ void DigitalManager::SetButtonHoldThreshold(uint32_t ms) {
     hold_threshold_ms_ = ms;
 }
 
+uint32_t DigitalManager::GetCurrentTime() const {
+    if (!hw_) return 0;
+    return hw_->system.GetNow();
+}
+
 // Private methods
 // Simple microsecond delay using busy-wait loop
 // Daisy Seed runs at 480MHz, so we need approximately 480 cycles per microsecond

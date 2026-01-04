@@ -92,6 +92,7 @@ public:
     void ResetEncoder(int value = 0);
     void SetKeyMatrixDebounceTime(uint32_t ms);
     void SetButtonHoldThreshold(uint32_t ms);
+    uint32_t GetCurrentTime() const;  // Get current system time in ms
 
 private:
     // Hardware reference
