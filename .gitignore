@@ -32,13 +32,19 @@ Thumbs.db
 *.log
 
 # Dependencies - Submodule content (references tracked, content ignored)
-# Keep .git directories but ignore all content
-lib/libDaisy/
-!lib/libDaisy/.git
-!lib/libDaisy/.gitmodules
-lib/DaisySP/
-!lib/DaisySP/.git
-!lib/DaisySP/.gitmodules
+archive/s1-daisy/lib/libDaisy/
+!archive/s1-daisy/lib/libDaisy/.git
+!archive/s1-daisy/lib/libDaisy/.gitmodules
+archive/s1-daisy/lib/DaisySP/
+!archive/s1-daisy/lib/DaisySP/.git
+!archive/s1-daisy/lib/DaisySP/.gitmodules
+
+# Daisy Seed prototype build output (leave at repo root if present)
+build/
+
+# M1 firmware build output
+m1/.pio/
+m1/build/
 
 # Hardware design files (optional - uncomment if you want to ignore)
 # *.f3d
@@ -95,7 +101,8 @@ coverage/
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
-Makefile
+# Do not ignore the archived Daisy Makefile
+!archive/s1-daisy/Makefile
 
 # Compiled Object files
 *.slo

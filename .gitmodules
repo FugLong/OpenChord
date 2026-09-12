@@ -1,6 +1,9 @@
-[submodule "lib/libDaisy"]
-	path = lib/libDaisy
+[submodule "archive/s1-daisy/lib/libDaisy"]
+	path = archive/s1-daisy/lib/libDaisy
 	url = https://github.com/electro-smith/libDaisy.git
-[submodule "lib/DaisySP"]
-	path = lib/DaisySP
+[submodule "archive/s1-daisy/lib/DaisySP"]
+	path = archive/s1-daisy/lib/DaisySP
 	url = https://github.com/electro-smith/DaisySP.git
+[submodule "archive/s1-daisy/lib/cJSON"]
+	path = archive/s1-daisy/lib/cJSON
+	url = https://github.com/DaveGamble/cJSON.git

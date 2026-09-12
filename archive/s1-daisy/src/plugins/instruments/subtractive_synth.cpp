@@ -141,7 +141,7 @@ void SubtractiveSynth::Process(const float* const* in, float* const* out, size_t
             sample += filtered * osc_level_ * env * voice.velocity * master_level_;
         }
         
-        // Soft clipping
+        // Soft clipping (shouldn't be needed now with voice scaling, but keep as safety)
         if (sample > 1.0f) sample = 1.0f;
         if (sample < -1.0f) sample = -1.0f;
         
@@ -325,12 +325,6 @@ void SubtractiveSynth::ResetVoice(Voice* voice) {
     voice->filter.SetFreq(cutoff_hz);
     voice->filter.SetRes(filter_resonance_);
     voice->filter.SetDrive(0.0f);
-    
-    // Settle filter state by processing a few zero samples
-    // This prevents crackling from uninitialized filter state
-    for (int i = 0; i < 8; i++) {
-        voice->filter.Process(0.0f);
-    }
     
     // Reset oscillator parameters
     uint8_t waveform_val = 0;
