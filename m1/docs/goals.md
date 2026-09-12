@@ -1,6 +1,6 @@
 # OpenChord M1 — goals and plan
 
-Written September 2026 so we do not lose the decisions that led here. This is the product spec for v1, not firmware.
+Written September 2026 so we do not lose the decisions that led here. This is the product spec for v1. Firmware lives under `m1/`. Do not edit `archive/s1-daisy/`.
 
 **Working name:** OpenChord M1 (`OPENCHORD / m1`)
 
@@ -37,13 +37,15 @@ A **man-in-the-middle MIDI enhancer**. Feed it MIDI from a real keyboard or the 
 
 One-line pitch: *sits between your keys and Ableton and makes you sound like you know theory.*
 
+Ambition: the most helpful chord/MIDI device we have used. Not a quality roulette. It should voice well, stay in key, and later help with **where to go next** (progressions, ideas). Voicing that never sounds stupid is v1. Progression-smart is the north star; do not fake it with random borrowed chords. Write the model in [chord-engine.md](chord-engine.md).
+
 ---
 
 ## What M1 is not
 
 - Not a synth, sampler, looper, or drum machine.
 - Not the 11-key standalone piano from the Seed proto.
-- Not a Daisy project and not a Pi/CM5 project.
+- Not a Daisy **product** and not a Pi/CM5 project. The old Seed box is a temporary M1 testbed only. See [testbed.md](testbed.md).
 - Not USB MIDI host (no “plug a controller into M1 with no computer” as a v1 requirement).
 - Not a settings app, a plugin UI, or the old OpenChord menu system.
 - Not Orchid / ORC-1. Orchid is a battery synth with speakers. MIDI in is a side door. M1 is the opposite: **great at the MIDI path**, no sound of its own.
@@ -82,14 +84,23 @@ Hold type + extension. Combinable. **Maj means maj.** The Seed joystick failed b
 
 Buttons never get clever. They are the reliable layer.
 
-### One fluid control is the algorithm
+### Stick is the algorithm (quantize to 8)
 
-Either:
+Product stick: Alps **RKJXV1220001** (LCSC **C219778**). Analog hardware, **8 seats in firmware**. Middle of the throw is dead. Cardinals = one axis. Corners = both. Center rest = home voicing.
 
-- **Encoder (safer to sell):** voicing / spread / inversion.
-- **Stick (OpenChord DNA):** X = bass / inversion (wide zones: root, 1st, 2nd). Y = tension 0–1 through a scale-aware table. Diagonals mix both. They are not a third identity. No eight pie slices.
+```
+        more tension
+   7         8         9
+inv  4     HOME      6   inv
+   1         2         3
+        tighter / lower
+```
 
-Split: **buttons = chord identity, stick or knob = color and voice leading.**
+Those seats are **voicings**, never chord types. No eight-slice quality roulette. That was the old mapper.
+
+No encoder on v1. No 8-way HVAC switch. A D-pad is a later maybe; the proto already has analog.
+
+Split: **8 Gateron keys = chord identity. Stick = color and voice leading. 2 tactiles = Key + Shift.**
 
 The algorithm:
 
@@ -107,8 +118,8 @@ We want as little screen as we can get away with. We still need to know **key** 
 
 - Prefer a tiny OLED that only shows something like `Cmaj7` and `C major`.
 - Or four LEDs plus that. A $2 OLED is not a jambox.
-- Key override: hold Key + incoming note.
-- Deeper settings: long-press + the voicing knob, or MIDI CC.
+- Key override: hold **Key** + incoming note.
+- Shift: thru / replace / panic and anything that is not a chord button.
 - No companion app required for v1.
 - No OpenChord-style hierarchical menu.
 
@@ -120,18 +131,19 @@ Zero screen is allowed only if we accept “what key am I in?” as the first su
 
 | Piece | Plan |
 |-------|------|
-| MCU | ESP32-S3 (USB MIDI device via TinyUSB, UART for TRS MIDI) |
-| USB | USB-C, device only, also power |
+| MCU | **RP2040** on our PCB (TinyUSB MIDI device, UART TRS). Not ESP32. Not a Pico glued to a carrier. |
+| USB | USB-C on the **edge of our board**, device only, also power |
 | MIDI | TRS in, TRS out; USB MIDI in/out |
-| Front | 8 chord buttons + 1 voicing encoder and/or analog stick |
-| Display | Optional 0.91" I2C OLED |
+| Front | 8× Gateron low-profile (type + extension), Alps RKJXV1220001, 2 cheap tactiles (Key, Shift) |
+| Display | Cheap 0.91" I2C SSD1306 from LCSC, not Adafruit |
 | Audio | None |
 | Battery | None |
 | Host USB | None |
+| Price | Under **$100** to the customer, with margin, after the first messy run |
 
-Custom PCB. Reproducible. No Adafruit-breakout nest.
+One custom PCB. SMT chip + flash + crystal + USB-C. Through-hole for stick, TRS, switches as needed. Reproducible. No breakout nest.
 
-**Prove the brain before the board.** An S3 devkit (or even a Pi 5) plus a MIDI keyboard is enough to know if “I played C–Am–F–G and it voiced itself and never sounded stupid” is real. If that is not magic, the enclosure will not save it.
+**Prove the engine before that board.** Portable logic first (host tests). Hands-on feel on the **old Seed prototype** without editing the archive. RP2040 product firmware last. See [testbed.md](testbed.md).
 
 ---
 
@@ -144,7 +156,7 @@ The archived Seed mapper (`archive/s1-daisy` chord engine + joystick presets) ha
 - No memory of the previous chord, no voice leading. Closed root-position stacks every time.
 - Presets were the same eight qualities shuffled.
 
-M1’s engine should make it **almost impossible to sound bad** and **still surprising**. That is the product. Do not port the old preset tables as the v1 model.
+M1’s engine should make it **almost impossible to sound bad** and **still surprising**, then get good at **progressions**. That is the product. Do not port the old preset tables as the v1 model. Design it in [chord-engine.md](chord-engine.md) — that file is next.
 
 Useful scraps in the archive: scale/mode tables, interval lists, enclosure photos, “chord as an input plugin” as a concept. Not the 8-way quality map.
 
@@ -159,7 +171,7 @@ Useful scraps in the archive: scale/mode tables, interval lists, enclosure photo
 | Scaler / Captain / ChordAXE | Software. We are hardware in the hands. |
 | Old OpenChord proto | Jambox. That is S1. |
 
-Sell path we liked: a board we can spin, assemble, and price in the studio-tool range (thinking ~$149–199), not a synth price.
+Sell path: a board we can spin and price **under $100**, not a synth price. MCU and radio were never going to be the margin. Enclosure, assembly, and not certifying Wi‑Fi are.
 
 ---
 
@@ -167,15 +179,26 @@ Sell path we liked: a board we can spin, assemble, and price in the studio-tool 
 
 - Family lives in this repo (`OpenChord`). No product branches.
 - M1 work stays under `m1/`.
-- `s1/` stays empty until the jambox is a real project.
-- Daisy proto stays in `archive/s1-daisy/`.
+- `s1/` stays empty until the jambox is a real project. **Do not dump M1 proto firmware there.**
+- `archive/s1-daisy/` is frozen. Read it. Do not edit it. Restore the OG box by rebuilding that tree.
+- Seed proto pins follow the archive **driver Init()** functions, not `pin_config.h` or `docs/hardware/pinout.md`. See [testbed.md](testbed.md) and `m1/proto-daisy/pin_map.h`.
+
+```
+m1/engine/          portable chord logic (no Daisy, no TinyUSB). This is the product.
+m1/proto-daisy/     throwaway Seed harness for the old box. Links engine. Does not live in archive.
+m1/firmware/        RP2040 product firmware (later)
+m1/hardware/        PCB / enclosure / KiCad libs
+m1/docs/            this file, testbed, chord-engine
+```
 
 Build order:
 
-1. Spec (this doc).
-2. Chord engine on a bench (devkit + MIDI keyboard).
-3. PCB: S3, USB-C, TRS, buttons, voicing control, optional OLED.
-4. Enclosure last.
+1. Spec (this doc) — in progress.
+2. Portable engine + host tests (`m1/engine`). No hardware required.
+3. Play it on the Seed proto (`m1/proto-daisy`). Restore archive firmware when done.
+4. Chord-engine design doc, then iterate 2–3 until it feels like the best mapper we have used.
+5. PCB: RP2040, USB-C on our edge, TRS, Gaterons, Alps, OLED.
+6. Enclosure last.
 
 ---
 
@@ -183,11 +206,12 @@ Build order:
 
 These are not forgotten. They are not locked.
 
-- Encoder vs stick vs both on the first PCB.
-- Exact OLED vs LED-only.
-- Whether “smart amount” is the same physical control as voicing.
 - MIDI channel split (chords / bass / thru) — Orchid does this; we may want it.
-- Thru vs replace vs merge behavior when a keyboard already sends chords.
+- Thru vs replace vs merge when a keyboard already sends chords.
+- Stick click for spice vs Shift-only.
+- How much “next chord” suggestion is v1 vs v1.1.
 - Trademark / `openchord.com` is someone else’s music-apps site. Product name is still OpenChord M1; do not assume the domain.
+
+Locked (do not reopen without updating this file): MCU RP2040; custom PCB with USB-C on the edge; no radio; Alps C219778 quantized to 8; 8 Gaterons + Key/Shift; cheap OLED; ~$99; engine portable; Seed proto as testbed; archive frozen.
 
 When one of these is decided, update this file. Do not start a second source of truth.

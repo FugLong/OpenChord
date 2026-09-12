@@ -6,7 +6,7 @@ A family of open hardware instruments for harmony and music-making.
 
 | Product | What it is | Status |
 |---------|------------|--------|
-| **[OpenChord M1](m1/)** | MIDI-only chord brain. Sits between a keyboard (or DAW) and the rest of the rig. No audio. | Active — design |
+| **[OpenChord M1](m1/)** | MIDI-only chord brain. RP2040, custom PCB, USB-C on our edge. Target under $100. | Active — engine / proto testbed |
 | **[OpenChord S1](s1/)** | Studio / portable jambox: synth, tracks, the original dream device. | Later |
 | M2 / S2 | Next generations of each line. | Not started |
 
@@ -28,7 +28,7 @@ The Daisy Seed project that used to live at the repo root is intact under [`arch
 
 ## Start with M1
 
-Read [`m1/docs/goals.md`](m1/docs/goals.md) for the full product plan: what it is, what it is not, hardware, chord engine, and why this exists instead of finishing the Seed box first.
+Read [`m1/docs/goals.md`](m1/docs/goals.md) for the product plan. Hands-on testing uses the frozen Seed box as a harness; that work lives in `m1/`, not in the archive.
 
 ## License
 
