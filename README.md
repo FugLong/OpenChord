@@ -28,7 +28,7 @@ The Daisy Seed project that used to live at the repo root is intact under [`arch
 
 ## Start with M1
 
-Read [`m1/docs/goals.md`](m1/docs/goals.md) for the product plan. Hands-on testing uses the frozen Seed box as a harness; that work lives in `m1/`, not in the archive.
+Read [`m1/docs/goals.md`](m1/docs/goals.md) for the product plan. Hands-on testing is [`m1/proto-rp2040`](m1/proto-rp2040/) (RP2040-Zero USB MIDI). The archived Seed box is parked. Do not edit the archive.
 
 ## License
 

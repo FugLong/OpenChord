@@ -1,6 +1,6 @@
 # M1 testbed
 
-How we prove the chord engine before the RP2040 board exists.
+How we prove the chord engine before the custom M1 PCB exists.
 
 **Do not edit [`archive/s1-daisy/`](../../archive/s1-daisy/).** That tree is the restore image for the original prototype. Never commit changes there.
 
@@ -8,18 +8,17 @@ How we prove the chord engine before the RP2040 board exists.
 
 ## What we are not doing
 
-- Not borrowing the Xbox RP2040 adapters unless the Seed box is dead. They have no stick, no keys, no screen.
-- Not waiting on mail to start. The engine does not need hardware.
+- Not the Seed enclosure USB for MIDI. That port is done. OG firmware is back on the box.
 - Not ESP32-C3. USB MIDI on C3 is a trap.
 - Not putting this in `s1/`. S1 is the future studio product.
 
 ## Order
 
 1. **`m1/engine`** — portable C. Host tests on a laptop. MIDI in/out can be fake. The logic is the product.
-2. **`m1/proto-daisy`** — thin Seed firmware that *only* talks to the old box (keys, stick, OLED, USB MIDI) and calls `m1/engine`. No synth, no tracks, no old menu OS.
+2. **`m1/proto-rp2040`** — Waveshare RP2040-Zero, PlatformIO. USB-C = MIDI device. Launchkey Mini MK4 pads/knobs fake the Orchid cluster and stick.
 3. Play until C–Am–F–G never sounds stupid and ideas start showing up.
-4. **`m1/firmware`** — same engine on RP2040 when the custom PCB is real.
-5. Reflash the OG box from `archive/s1-daisy` when we are done with the harness.
+4. **`m1/firmware`** — same engine on the custom PCB. USB device only. No host on the SKU.
+5. The Seed box stays on archived OG firmware unless we explicitly go back.
 
 If the engine is wrong on a laptop, the enclosure will not save it. If it is right on a laptop and wrong on the Seed, the harness is wrong, not the music.
 
@@ -55,6 +54,20 @@ Matrix is **3 rows × 4 cols** (11 keys). Row 0 = bottom, row 1 = middle (col 3 
 | Encoder, audio, battery | — | ignore |
 
 Do not port archive chord-mapping presets onto this map.
+
+## USB MIDI (RP2040-Zero)
+
+Native USB-C on the Zero is the MIDI **device**. Launchkey Mini MK4 pads (ch 10 CC 36–43) are types. Knobs CC 47/48 are the stick. Type is locked per key until that key is released.
+
+Build/flash: [`../proto-rp2040/README.md`](../proto-rp2040/README.md).
+
+Playtest routing:
+
+1. Zero USB-C into the Mac. Device name: **OpenChord M1**.
+2. Launchkey / DAW MIDI **into OpenChord** (do not also send those notes to the instrument).
+3. OpenChord MIDI **out to the instrument track**.
+
+No type at note-on = thru. Type held at note-on = that key becomes a chord until it is released. Later keys do not steal an already-held chord.
 
 ## Pins the harness must use
 

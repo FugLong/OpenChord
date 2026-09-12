@@ -67,26 +67,25 @@ The keyboard (or the DAW piano roll) is the keyboard. M1 is the left hand and th
 
 ### Incoming MIDI is the root
 
-Notes from TRS in or USB in choose the root (or the line being transformed). We do not put a chromatic mini-keyboard on the box for v1.
+USB (and later TRS) notes from the PC / keyboard choose the **root**. This device is a USB MIDI **device** on the box USB-C: PC sends notes in, chords come back out to the DAW.
 
-If we later want “no keyboard on the desk,” extra keys should be **scale degrees** (I–vii), not a tiny piano. That is v1.1 or a second SKU. Do not design the first PCB around it.
+No mini-piano on M1. Later we can try “smart Orchid” (type buttons follow the note / key). Not I–vii on these eight keys — that was the OG. See [chord-engine.md](chord-engine.md).
 
-### Buttons are the dictionary (hardcoded, trustworthy)
+### Buttons are Orchid + menu
 
-Steal Orchid’s grammar. It is already learned.
+Eight chord keys, Orchid grammar. Combinable. **Maj means maj.** Menu/options on the extra proto keys (Key, Shift). Dynamic-from-note is a later experiment, not the v0 proto.
 
-| Row | Buttons |
-|-----|---------|
-| Type | Dim, Min, Maj, Sus |
-| Extension | 6, m7, M7, 9 |
+| Type | Extension |
+|------|-----------|
+| Dim, Min, Maj, Sus | 6, m7, M7, 9 |
 
-Hold type + extension. Combinable. **Maj means maj.** The Seed joystick failed because it replaced diatonic function with a quality roulette (ii in C becoming Dmaj9, dim/aug on missed diagonals).
+OG I–vii is history. The stick is not a quality table.
 
-Buttons never get clever. They are the reliable layer.
+### Stick is color, not type
 
-### Stick is the algorithm (quantize to 8)
+Alps **RKJXV1220001** (LCSC **C219778**). Analog, 8 seats in firmware. **Spring-back to center.** Center = HOME. Lean is temporary.
 
-Product stick: Alps **RKJXV1220001** (LCSC **C219778**). Analog hardware, **8 seats in firmware**. Middle of the throw is dead. Cardinals = one axis. Corners = both. Center rest = home voicing.
+Seats: voicing / bass / **in-key** color. Not maj vs min. Not the archive preset table. Out of key only if the player tries (Orchid maj on a minor degree, spice later).
 
 ```
         more tension
@@ -96,19 +95,18 @@ inv  4     HOME      6   inv
         tighter / lower
 ```
 
-Those seats are **voicings**, never chord types. No eight-slice quality roulette. That was the old mapper.
+That diagram is a **candidate**, not a lock. Seats are voicings (or extra color), never chord types. HiChord-style quality roulette is a lab mode at most.
 
 No encoder on v1. No 8-way HVAC switch. A D-pad is a later maybe; the proto already has analog.
 
-Split: **8 Gateron keys = chord identity. Stick = color and voice leading. 2 tactiles = Key + Shift.**
+Split: **buttons pick the chord (Orchid), stick colors it (in key).** 2 tactiles = Key + Shift.
 
 The algorithm:
 
-- Remembers the last chord.
-- Voice-leads every change (common tones stay, other notes take the shortest path).
-- Stays in the current key unless a button forces borrowed color.
-- Picks among *legal* voicings so it stays surprising without sounding stupid. Surprise is “which good voicing,” not random diminished.
-- Key = auto from what you play, override with a Key hold + a note from the incoming keyboard.
+- Remembers the last chord and voice-leads.
+- Stick extras stay in key. Orchid type can leave the key on purpose (maj means maj).
+- Stick never changes type.
+- Key override: Key hold + incoming MIDI note.
 
 Optional later: a dedicated “spice” gesture (stick click or hard edge) for one borrowed chord from a mood table. Spice is a door the player opens, not the miss penalty.
 
@@ -143,7 +141,7 @@ Zero screen is allowed only if we accept “what key am I in?” as the first su
 
 One custom PCB. SMT chip + flash + crystal + USB-C. Through-hole for stick, TRS, switches as needed. Reproducible. No breakout nest.
 
-**Prove the engine before that board.** Portable logic first (host tests). Hands-on feel on the **old Seed prototype** without editing the archive. RP2040 product firmware last. See [testbed.md](testbed.md).
+**Prove the engine before that board.** Portable logic first. Hands-on feel on the **RP2040-Zero proto** (`m1/proto-rp2040`) with a Launchkey. Seed box is parked on archived OG firmware. See [testbed.md](testbed.md).
 
 ---
 
@@ -185,7 +183,8 @@ Sell path: a board we can spin and price **under $100**, not a synth price. MCU 
 
 ```
 m1/engine/          portable chord logic (no Daisy, no TinyUSB). This is the product.
-m1/proto-daisy/     throwaway Seed harness for the old box. Links engine. Does not live in archive.
+m1/proto-rp2040/    RP2040-Zero lab harness. USB-C MIDI device. Launchkey pads/knobs.
+m1/proto-daisy/     parked Seed harness. Restore OG from archive; do not edit archive.
 m1/firmware/        RP2040 product firmware (later)
 m1/hardware/        PCB / enclosure / KiCad libs
 m1/docs/            this file, testbed, chord-engine
@@ -194,9 +193,9 @@ m1/docs/            this file, testbed, chord-engine
 Build order:
 
 1. Spec (this doc) — in progress.
-2. Portable engine + host tests (`m1/engine`). No hardware required.
-3. Play it on the Seed proto (`m1/proto-daisy`). Restore archive firmware when done.
-4. Chord-engine design doc, then iterate 2–3 until it feels like the best mapper we have used.
+2. Portable engine (`m1/engine`).
+3. Play it on the RP2040-Zero proto (`m1/proto-rp2040`).
+4. Iterate engine + proto until C–Am–F–G never sounds stupid.
 5. PCB: RP2040, USB-C on our edge, TRS, Gaterons, Alps, OLED.
 6. Enclosure last.
 
@@ -209,9 +208,11 @@ These are not forgotten. They are not locked.
 - MIDI channel split (chords / bass / thru) — Orchid does this; we may want it.
 - Thru vs replace vs merge when a keyboard already sends chords.
 - Stick click for spice vs Shift-only.
+- Stick map (voicing vs leftover HiChord-style quality). Play it; do not lock in a meeting.
+- One-hand layout: 2×4 cluster + thumb stick vs stick-only vs buttons-only.
 - How much “next chord” suggestion is v1 vs v1.1.
 - Trademark / `openchord.com` is someone else’s music-apps site. Product name is still OpenChord M1; do not assume the domain.
 
-Locked (do not reopen without updating this file): MCU RP2040; custom PCB with USB-C on the edge; no radio; Alps C219778 quantized to 8; 8 Gaterons + Key/Shift; cheap OLED; ~$99; engine portable; Seed proto as testbed; archive frozen.
+Locked (do not reopen without updating this file): MCU RP2040; custom PCB with USB-C on the edge; no radio; Alps C219778 quantized to 8; 8 Gaterons + Key/Shift; cheap OLED; ~$99; engine portable; RP2040-Zero as current testbed; Seed proto parked; archive frozen.
 
 When one of these is decided, update this file. Do not start a second source of truth.

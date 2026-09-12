@@ -45,6 +45,8 @@ build/
 # M1 firmware build output
 m1/.pio/
 m1/build/
+m1/proto-daisy/build/
+m1/proto-rp2040/.pio/
 
 # Hardware design files (optional - uncomment if you want to ignore)
 # *.f3d

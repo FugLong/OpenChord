@@ -8,7 +8,7 @@ This is the first product in the OpenChord family. It does not make sound. The p
 
 ## Status
 
-Design + engine about to start. No RP2040 board yet. Feel-testing will use the old Seed prototype **without editing the archive**.
+Engine is in `m1/engine`. Feel-testing is **`m1/proto-rp2040`** (RP2040-Zero, PlatformIO, USB MIDI). The Seed proto is parked. Do not edit the archive.
 
 ## Tree
 
@@ -16,8 +16,9 @@ Design + engine about to start. No RP2040 board yet. Feel-testing will use the o
 m1/
   docs/           goals, testbed, chord-engine
   engine/         portable chord logic (the product)
-  proto-daisy/    Seed harness for the OG box (restore from archive)
-  firmware/       RP2040 (later)
+  proto-rp2040/   RP2040-Zero lab harness (USB-C MIDI, Launchkey pads/knobs)
+  proto-daisy/    Seed harness (parked; restore OG from archive)
+  firmware/       Product RP2040 (later)
   hardware/       PCB, enclosure, KiCad libs (C219778 stick already here)
 ```
 
