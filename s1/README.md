@@ -1,6 +1,8 @@
 # OpenChord S1
 
-Reserved for the portable jambox: synth, tracks, the original OpenChord dream.
+Reserved for the studio product: portable jambox, synth, tracks, the original OpenChord dream.
+
+S-series is **studio**. M-series is MIDI.
 
 This folder is empty on purpose. S1 is a later product. Do not build it here yet.
 

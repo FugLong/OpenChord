@@ -2,12 +2,12 @@
 
 A family of open hardware instruments for harmony and music-making.
 
-**M-series** is MIDI. **S-series** is sound. Numbers are generations.
+**M-series** is MIDI. **S-series** is studio. Numbers are generations.
 
 | Product | What it is | Status |
 |---------|------------|--------|
 | **[OpenChord M1](m1/)** | MIDI-only chord brain. Sits between a keyboard (or DAW) and the rest of the rig. No audio. | Active — design |
-| **[OpenChord S1](s1/)** | Portable jambox: synth, tracks, the original dream device. | Later |
+| **[OpenChord S1](s1/)** | Studio / portable jambox: synth, tracks, the original dream device. | Later |
 | M2 / S2 | Next generations of each line. | Not started |
 
 ```

@@ -4,7 +4,7 @@ Written September 2026 so we do not lose the decisions that led here. This is th
 
 **Working name:** OpenChord M1 (`OPENCHORD / m1`)
 
-**Family:** OpenChord. **M** = MIDI tools. **S** = things that make sound. Numbers are generations. The jambox, when it exists, is **S1**. Later we can do M2 / S2 without renaming anything.
+**Family:** OpenChord. **M** = MIDI tools. **S** = studio. Numbers are generations. The jambox, when it exists, is **S1**. Later we can do M2 / S2 without renaming anything.
 
 ---
 
