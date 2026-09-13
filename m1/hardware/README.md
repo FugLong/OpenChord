@@ -1,7 +1,21 @@
 # M1 hardware
 
-Custom PCB: RP2040 on the board, USB-C on our edge. Not a Pico carrier. No pots — extra settings live in the free plugin.
+RP2040 on our PCB, USB-C on the edge. Not a Pico carrier. **Hand-assemble only** (no paid PCBA). One board, no harnesses.
 
-KiCad library bits pulled from EasyEDA/LCSC:
+| Doc | What |
+|-----|------|
+| [bom.md](bom.md) | Parts + packages + buy list |
+| [switches.md](switches.md) | Gateron LP hotswap + 2×4 matrix |
+| [lib/OLED.md](lib/OLED.md) | OLED footprint / pinout / STEP |
 
-- Alps RKJXV1220001 stick — LCSC **C219778** — `lib/`
+Product locks: [`../docs/goals.md`](../docs/goals.md).
+
+## KiCad `lib/`
+
+| Path | Contents |
+|------|----------|
+| `3dshapes/` | Imported STEP models (drop new ones here) |
+| `oled.pretty/` | 0.91" OLED footprint |
+| `lcsc.*` | Alps stick C219778 |
+
+Gateron LP hotswap: external footprint until schematic (`switches.md`). Coupon before full fab.

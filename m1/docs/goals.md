@@ -228,7 +228,7 @@ Useful scraps in the archive: scale/mode tables, interval lists, enclosure photo
 | Paid software-only chord assistants | We ship a **free** plugin and a **hardware** left hand. |
 | Old OpenChord jambox proto | That is S1. |
 
-Sell path: a board we can spin and price **under $100**, not a synth price. Plugin is free on purpose. MCU and radio were never going to be the margin. Enclosure, assembly, and not certifying Wi‑Fi are.
+Sell path: a board we can spin and price **under $100**, not a synth price. Plugin is free on purpose. MCU and radio were never going to be the margin. Enclosure, assembly, and not certifying Wi‑Fi are. **Assembly time matters:** one main PCB, **no paid PCBA** (you hand-build), no wiring harnesses, OLED soldered on-board — finishing a unit is not hours of cables or factory fees.
 
 Name and domain: `openchord.com` is someone else’s music-apps site. Product name is still OpenChord M1; do not assume the domain. Do not put other companies’ product names on the hardware, plugin, store page, UI, or source comments.
 
@@ -259,7 +259,7 @@ Build order:
 3. Play it on the RP2040-Zero proto (`m1/proto-rp2040`).
 4. Iterate engine + proto until C–Am–F–G never sounds stupid.
 5. Plugin that links the same engine — Learn, extra settings, ugly UI. Faster to iterate than flashing, and the free SKU.
-6. PCB: RP2040, USB-C on our edge, TRS, Gaterons, Alps, OLED. No pots.
+6. PCB: RP2040, USB-C on our edge, TRS, Gaterons, Alps, OLED on the same board (no harness). No pots.
 7. Enclosure last.
 8. Pretty device GUI + SysEx editor once the hardware is real.
 
