@@ -31,8 +31,8 @@ A **man-in-the-middle MIDI enhancer**. Feed it MIDI from a real keyboard, a cont
 
 Two hosts, **one engine** (`m1/engine`):
 
-- **Hardware** — RP2040 box, USB-C MIDI device, later TRS. The thing you buy.
-- **Plugin** — free, MIT, AU MIDI FX + VST3. Same `oc::Render()`. MIDI Learn so any pads/stick/knobs can be the cluster.
+- **Hardware** — RP2040 box, USB-C MIDI device, later TRS. The thing you buy. USB name: `OpenChord M1`.
+- **Plugin** — **OpenChord M Core**, free, MIT, AU MIDI FX + VST3. Same `oc::Render()`. MIDI Learn so any pads/stick/knobs can be the cluster.
 
 - No audio (neither host).
 - No USB host on the box. The PC is the USB host. M1 hardware is a USB MIDI **device**.
@@ -159,7 +159,7 @@ One custom PCB. SMT chip + flash + crystal + USB-C. Through-hole for stick, TRS,
 
 ## Plugin (free)
 
-Same product, second host. Code: later `m1/plugin/`. Engine stays `m1/engine`.
+Same product, second host. Code: `m1/plugin/`. Engine stays `m1/engine`. v0 implementation brief: [plugin.md](plugin.md).
 
 **Sell:** the box. **Give away:** the plugin, MIT, like the rest of the repo.
 
@@ -245,7 +245,7 @@ Name and domain: `openchord.com` is someone else’s music-apps site. Product na
 m1/engine/          portable chord logic (no Daisy, no TinyUSB, no JUCE). This is the product.
 m1/proto-rp2040/    RP2040-Zero lab harness. USB-C MIDI device. Launchkey pads/knobs. Type mode.
 m1/proto-daisy/     parked Seed harness. Restore OG from archive; do not edit archive.
-m1/plugin/          AU MIDI FX + VST3 (later). Links m1/engine. Free.
+m1/plugin/          OpenChord M Core — AU MIDI FX + VST3. Links m1/engine. Free.
 m1/firmware/        RP2040 product firmware (later)
 m1/hardware/        PCB / enclosure / KiCad libs
 m1/docs/            this file, testbed, chord-engine

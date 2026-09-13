@@ -47,6 +47,15 @@ m1/.pio/
 m1/build/
 m1/proto-daisy/build/
 m1/proto-rp2040/.pio/
+m1/plugin/build/
+m1/plugin/JUCE/
+
+# Plugin binaries (do not commit)
+*.vst3/
+*.component/
+*.appex/
+*_artefacts/
+
 
 # Hardware design files (optional - uncomment if you want to ignore)
 # *.f3d

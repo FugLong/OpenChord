@@ -17,7 +17,7 @@ How we prove the chord engine before the custom M1 PCB exists.
 1. **`m1/engine`** — portable C. Host tests on a laptop. MIDI in/out can be fake. The logic is the product.
 2. **`m1/proto-rp2040`** — Waveshare RP2040-Zero, PlatformIO. USB-C = MIDI device. Launchkey Mini MK4 pads/knobs fake the Type cluster and stick.
 3. Play until C–Am–F–G never sounds stupid and ideas start showing up.
-4. **`m1/plugin`** — same engine in AU MIDI FX + VST3. Learn + extra settings. Skip voicing if a hardware M1 is present.
+4. **`m1/plugin`** — **OpenChord M Core**, same engine in AU MIDI FX + VST3. Learn + extra settings. Skip voicing if a hardware M1 is present.
 5. **`m1/firmware`** — same engine on the custom PCB. USB device only. No host on the SKU. No pots; tactiles for Key / Shift / mode.
 6. The Seed box stays on archived OG firmware unless we explicitly go back.
 

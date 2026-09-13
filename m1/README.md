@@ -1,14 +1,21 @@
 # OpenChord M1
 
-MIDI-only chord brain. Keyboard or DAW in, smarter chords out. Hardware you buy; plugin you get for free. Same engine.
+MIDI-only chord brain. Keyboard or DAW in, smarter chords out. **Hardware you buy is M1**; the free DAW plugin is **OpenChord M Core**. Same engine.
 
 This is the first product in the OpenChord family. It does not make sound. The portable synth/jambox is [S1](../s1/), later.
 
-**Read first:** [docs/goals.md](docs/goals.md). Then [docs/testbed.md](docs/testbed.md). Chord model: [docs/chord-engine.md](docs/chord-engine.md).
+**Read first:** [docs/goals.md](docs/goals.md). Then [docs/testbed.md](docs/testbed.md). Chord model: [docs/chord-engine.md](docs/chord-engine.md). Plugin v0: [docs/plugin.md](docs/plugin.md).
+
+## Naming
+
+| Name | What |
+|------|------|
+| **OpenChord M1** | Hardware (USB MIDI device). Repo folder `m1/`. |
+| **OpenChord M Core** | Free AU MIDI FX + VST3 in `m1/plugin/`. |
 
 ## Status
 
-Engine is in `m1/engine`. Feel-testing is **`m1/proto-rp2040`** (RP2040-Zero, PlatformIO, USB MIDI, Type mode). Plugin and product firmware are not started. The Seed proto is parked. Do not edit the archive.
+Engine is in `m1/engine` (including shared `session`). Feel-testing is **`m1/proto-rp2040`**. Plugin v0 lives in **`m1/plugin`** as **OpenChord M Core**. Product firmware is not started. The Seed proto is parked. Do not edit the archive.
 
 ## Tree
 
@@ -18,7 +25,7 @@ m1/
   engine/         portable chord logic (the product)
   proto-rp2040/   RP2040-Zero lab harness (USB-C MIDI, Launchkey pads/knobs)
   proto-daisy/    Seed harness (parked; restore OG from archive)
-  plugin/         AU MIDI FX + VST3 (later). Free. Links engine.
+  plugin/         OpenChord M Core — free AU MIDI FX + VST3. Same engine + session as M1 hardware.
   firmware/       Product RP2040 (later)
   hardware/       PCB, enclosure, KiCad libs (C219778 stick already here)
 ```
