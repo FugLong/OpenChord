@@ -39,6 +39,8 @@ Type is captured **when the piano key goes down**. That chord stays until you re
 | 42 | M7 |
 | 43 | 9 |
 
+36–39 are the triad. 40–43 only add color **with** a type (Maj + M7 = maj7). Extensions alone do not make a chord. Hold type + key, then tap an extra: the extra notes add in without retriggering the triad.
+
 Value ≥ 64 = held. Channel 10 notes are ignored (not roots).
 
 ### Knobs — stick
@@ -48,7 +50,7 @@ Value ≥ 64 = held. Channel 10 notes are ignored (not roots).
 | Ch 1 CC 47 | stick X |
 | Ch 1 CC 48 | stick Y |
 
-64 is center (HOME voicing). Away from center picks an 8-way seat (inversion / open).
+64 is center (HOME voicing). Knobs that sit at 0 are ignored until you sweep them through center once, then they track. Away from center picks an 8-way seat (inversion / open). Chords follow the octave you play.
 
 ## Build / flash (PlatformIO)
 

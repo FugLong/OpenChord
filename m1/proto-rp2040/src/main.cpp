@@ -57,6 +57,8 @@ static uint8_t type_stack_n = 0;
 static uint8_t pad_ext = 0;
 static float stick_x = 0.f;
 static float stick_y = 0.f;
+static bool stick_x_armed = false;
+static bool stick_y_armed = false;
 static oc::Seat last_seat = oc::Seat::Home;
 
 static oc::Type HeldType() {
@@ -106,17 +108,31 @@ static void VoicingOn(const oc::Voicing& v, uint8_t vel) {
     for (uint8_t i = 0; i < v.n; ++i) MidiSendOn(v.notes[i], vel);
 }
 
-static void ReplaceVoicing(oc::Voicing& cur, const oc::Voicing& next, uint8_t vel) {
+static bool VoicingHas(const oc::Voicing& v, uint8_t note) {
+    for (uint8_t i = 0; i < v.n; ++i) {
+        if (v.notes[i] == note) return true;
+    }
+    return false;
+}
+
+static void DiffVoicing(oc::Voicing& cur, const oc::Voicing& next, uint8_t vel) {
     bool same = (cur.n == next.n);
     if (same) {
         for (uint8_t i = 0; i < next.n; ++i) {
             if (cur.notes[i] != next.notes[i]) same = false;
         }
     }
-    if (same) return;
-    VoicingOff(cur);
+    if (same) {
+        cur = next;
+        return;
+    }
+    for (uint8_t i = 0; i < cur.n; ++i) {
+        if (!VoicingHas(next, cur.notes[i])) MidiSendOff(cur.notes[i]);
+    }
+    for (uint8_t i = 0; i < next.n; ++i) {
+        if (!VoicingHas(cur, next.notes[i])) MidiSendOn(next.notes[i], vel);
+    }
     cur = next;
-    VoicingOn(cur, vel);
 }
 
 static void RenderVoice(Voice& h) {
@@ -130,7 +146,12 @@ static void RenderVoice(Voice& h) {
     in.velocity = held_vel;
     oc::Voicing next{};
     oc::Render(in, h.v.n ? &h.v : nullptr, &next);
-    ReplaceVoicing(h.v, next, held_vel);
+    if (h.v.n == 0) {
+        h.v = next;
+        VoicingOn(h.v, held_vel);
+        return;
+    }
+    DiffVoicing(h.v, next, held_vel);
 }
 
 static Voice* FindVoice(int16_t root) {
@@ -152,6 +173,23 @@ static bool AnyChord() {
         if (voices[i].root >= 0 && voices[i].chord) return true;
     }
     return false;
+}
+
+static bool TypeStillHeld(oc::Type t) {
+    uint8_t want = static_cast<uint8_t>(t);
+    for (uint8_t i = 0; i < type_stack_n; ++i) {
+        if (type_stack[i] == want) return true;
+    }
+    return false;
+}
+
+static void RefreshHeldChordExts() {
+    for (int i = 0; i < kMaxVoices; ++i) {
+        if (voices[i].root < 0 || !voices[i].chord) continue;
+        if (!TypeStillHeld(voices[i].type)) continue;
+        voices[i].ext = pad_ext;
+        RenderVoice(voices[i]);
+    }
 }
 
 static void LedTask() {
@@ -204,11 +242,11 @@ static void ApplyPadCc(byte number, bool on) {
         default:
             break;
     }
+    if (number >= 40 && number <= 43) RefreshHeldChordExts();
 }
 
 static void HandleNote(byte channel, byte pitch, byte velocity, bool on) {
     if (channel == 10) return;
-    if (pitch >= 36 && pitch <= 43) return;
 
     MidiSaw();
     out_ch = channel;
@@ -255,6 +293,15 @@ static void OnNoteOff(byte channel, byte pitch, byte velocity) {
 
 static float CcToStick(byte value) { return (static_cast<float>(value) - 64.0f) / 64.0f; }
 
+// Knobs rest at 0. Ignore them until they pass near center once, then track.
+static void StickCc(bool* armed, float* axis, byte value) {
+    if (!*armed) {
+        if (value < 48 || value > 80) return;
+        *armed = true;
+    }
+    *axis = CcToStick(value);
+}
+
 static void OnCc(byte channel, byte number, byte value) {
     (void)channel;
     if (number >= 36 && number <= 43) {
@@ -262,8 +309,8 @@ static void OnCc(byte channel, byte number, byte value) {
         return;
     }
     MidiSaw();
-    if (number == 47) stick_x = CcToStick(value);
-    else if (number == 48) stick_y = CcToStick(value);
+    if (number == 47) StickCc(&stick_x_armed, &stick_x, value);
+    else if (number == 48) StickCc(&stick_y_armed, &stick_y, value);
 }
 
 void setup() {

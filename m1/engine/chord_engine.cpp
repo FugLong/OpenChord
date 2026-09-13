@@ -147,8 +147,8 @@ void Place(int8_t* ivs, int n, int inv, bool open, int root_midi, const Voicing*
     for (int i = 0; i < n; ++i) rot[i] = ivs[(i + inv) % n];
 
     int base = root_midi;
-    if (base < 48) base = 48;
-    if (base > 72) base = 60;
+    if (base < 0) base = 0;
+    if (base > 127) base = 127;
 
     for (int i = 0; i < n; ++i) {
         int pc = (root_midi + rot[i]) % 12;
@@ -156,7 +156,8 @@ void Place(int8_t* ivs, int n, int inv, bool open, int root_midi, const Voicing*
         while (midi < base) midi += 12;
         if (i > 0 && midi <= notes[i - 1]) midi += 12;
         if (open && i > 0 && i < n - 1) midi += 12;
-        while (midi > 96) midi -= 12;
+        while (midi > 127) midi -= 12;
+        while (midi < 0) midi += 12;
         notes[i] = static_cast<uint8_t>(midi);
     }
 
@@ -168,7 +169,7 @@ void Place(int8_t* ivs, int n, int inv, bool open, int root_midi, const Voicing*
         int best_d = 128;
         for (int k = -2; k <= 2; ++k) {
             int cand = static_cast<int>(notes[i]) + k * 12;
-            if (cand < 36 || cand > 96) continue;
+            if (cand < 0 || cand > 127) continue;
             for (uint8_t p = 0; p < prev->n; ++p) {
                 int d = cand - static_cast<int>(prev->notes[p]);
                 if (d < 0) d = -d;
@@ -192,8 +193,10 @@ void Place(int8_t* ivs, int n, int inv, bool open, int root_midi, const Voicing*
         }
     }
     for (int i = 1; i < n; ++i) {
-        while (notes[i] <= notes[i - 1]) notes[i] = static_cast<uint8_t>(notes[i] + 12);
-        while (notes[i] > 96) notes[i] = static_cast<uint8_t>(notes[i] - 12);
+        while (notes[i] <= notes[i - 1] && notes[i] <= 115) {
+            notes[i] = static_cast<uint8_t>(notes[i] + 12);
+        }
+        while (notes[i] > 127) notes[i] = static_cast<uint8_t>(notes[i] - 12);
     }
 }
 
