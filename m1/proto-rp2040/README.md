@@ -1,6 +1,6 @@
 # M1 RP2040-Zero proto
 
-USB-C on the Zero is a MIDI **device** named `OpenChord M1`. This harness is **Type** mode only. Launchkey Mini MK4 **keys** are roots. **Pads** are Type buttons (triad + extras). Two **knobs** are the stick. Degree mode is later (see `m1/docs`).
+USB-C on the Zero is a MIDI **device** named `OpenChord M1`. This harness is **Pro** mode only. Launchkey Mini MK4 **keys** are roots. **Pads** are chord-type buttons (triad + extras). Two **knobs** are the stick. **Smart** mode lives in M Core (and later product firmware); see `m1/docs`.
 
 USB-A / qwerty host is parked. Product M1 still has no USB host.
 

@@ -72,11 +72,10 @@ private:
     juce::Label title_;
     juce::Label preset_;
     juce::TextButton reset_map_{"Reset map"};
+    juce::TextButton mode_btn_{"Pro"};
     juce::Label key_label_;
     juce::Label chord_label_;
-    juce::Label mode_label_;
     juce::Label learn_hint_;
-    juce::Label degree_disabled_{"Degree (later)"};
 
     HoldButton dim_, min_, maj_, sus_;
     HoldButton e6_, em7_, eM7_, e9_;
@@ -86,6 +85,8 @@ private:
     juce::TextButton stick_y_learn_{"Stick Y"};
     juce::Slider stick_x_;
     juce::Slider stick_y_;
+
+    static const char* padLabel(oc::PlayMode mode, ocplug::ControlId id);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(OpenChordMCoreEditor)
 };

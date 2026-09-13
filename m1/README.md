@@ -12,10 +12,12 @@ This is the first product in the OpenChord family. It does not make sound. The p
 |------|------|
 | **OpenChord M1** | Hardware (USB MIDI device). Repo folder `m1/`. |
 | **OpenChord M Core** | Free AU MIDI FX + VST3 in `m1/plugin/`. |
+| **Pro** | Play mode: keyboard roots + chord-type pads |
+| **Smart** | Play mode: pads = I–vii + high I, hold to play |
 
 ## Status
 
-Engine is in `m1/engine` (including shared `session`). Feel-testing is **`m1/proto-rp2040`**. Plugin v0 lives in **`m1/plugin`** as **OpenChord M Core**. Product firmware is not started. The Seed proto is parked. Do not edit the archive.
+Engine is in `m1/engine` (including shared `session`). Feel-testing is **`m1/proto-rp2040`** (Pro). Plugin v0 lives in **`m1/plugin`** as **OpenChord M Core** (Pro + Smart). Product firmware is not started. The Seed proto is parked. Do not edit the archive.
 
 ## Tree
 

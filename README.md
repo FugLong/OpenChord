@@ -28,7 +28,7 @@ The Daisy Seed project that used to live at the repo root is intact under [`arch
 
 ## Start with M1
 
-Read [`m1/docs/goals.md`](m1/docs/goals.md) for the product plan (hardware + free plugin). Hands-on testing is [`m1/proto-rp2040`](m1/proto-rp2040/) (RP2040-Zero USB MIDI, Type mode). Plugin build: [`m1/plugin`](m1/plugin/) (**OpenChord M Core**). The archived Seed box is parked. Do not edit the archive.
+Read [`m1/docs/goals.md`](m1/docs/goals.md) for the product plan (hardware + free plugin). Hands-on testing is [`m1/proto-rp2040`](m1/proto-rp2040/) (RP2040-Zero USB MIDI, **Pro** mode). Plugin: [`m1/plugin`](m1/plugin/) (**OpenChord M Core**, Pro + Smart). The archived Seed box is parked. Do not edit the archive.
 
 ## License
 

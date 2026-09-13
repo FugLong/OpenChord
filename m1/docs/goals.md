@@ -53,9 +53,8 @@ Ambition: the most helpful chord/MIDI tool we have used. Not a quality roulette.
 - Not a Daisy **product** and not a Pi/CM5 project. The old Seed box is a temporary M1 testbed only. See [testbed.md](testbed.md).
 - Not USB MIDI host (no “plug a controller into M1 with no computer” as a v1 requirement).
 - Not the old OpenChord hierarchical menu on the box. Extra settings live in the **plugin**, not extra knobs on the enclosure.
-- Not Orchid / ORC-1. Orchid is a battery synth with speakers. MIDI in is a side door. Type-mode buttons are ordinary chord grammar (triad + extras), not their product. M1 is the opposite of Orchid: **great at the MIDI path**, no sound of its own.
-- Not HiChord. They are a synth with a specific slab. **Degree** mode takes the I–vii idea and voices it properly (coloring stick, not eight frozen qualities). Do not use their name, enclosure, or pad art in the UI or marketing.
-- Not Kordbot. We are not shipping a $350 cockpit.
+- Not a battery synth with speakers. We are a studio **MIDI** tool: great at the MIDI path, no sound of our own.
+- Not a clone of other chord pads or slab synths. **Smart** mode is I–vii with our coloring stick and voice leading — designed here, named here. Do not put other companies’ product names in the UI, marketing, or source comments.
 
 If a feature needs audio or a big on-device screen, it belongs on **S1**, not a “quick add” to M1. If it is a MIDI preference (channel split, voicing tightness, maps), it belongs in the plugin.
 
@@ -65,39 +64,41 @@ If a feature needs audio or a big on-device screen, it belongs on **S1**, not a 
 
 First user is us: MIDI or live instruments into a DAW. Second user is anyone who wants left-hand chord control without buying a synth they will not use. The plugin is how people try it with a Launchkey (or anything). The box is for people who want that control in their hands.
 
-The keyboard (or the DAW piano roll) is the keyboard in Type mode. In Degree mode the eight keys *are* the degrees and a keyboard is optional. Either way M1 is the left hand and the brain.
+The keyboard (or the DAW piano roll) is the keyboard in **Pro** mode. In **Smart** mode the eight keys *are* the degrees and a keyboard is optional. Either way M1 is the left hand and the brain.
 
 ---
 
 ## Interaction (v1 lock)
 
-Two **modes**. Same eight Gaterons, different job. Toggle with a tiny hardware button (or Shift+hold). OLED and plugin both show which mode you are in. Names in the UI: **Type** and **Degree**. Not “Orchid” or “HiChord.”
+Two **modes**. Same eight Gaterons, different job. Toggle with a tiny hardware button (or in the plugin). OLED and plugin both show which mode you are in.
 
-### Type mode — incoming MIDI is the root
+**UI names: Pro and Smart.** Clear for users. Do not use internal jargon or other brands’ names in the UI.
 
-USB (and later TRS) notes from the PC / keyboard choose the **root**. Eight buttons are triad + extras. Combinable. **Maj means maj.**
+### Pro mode — incoming MIDI is the root
 
-| Type | Extension |
-|------|-----------|
+For musicians with a keyboard who want control. USB (and later TRS) notes choose the **root**. Eight buttons are triad + extras. Combinable. **Maj means maj.**
+
+| Chord type | Extension |
+|---------|-----------|
 | Dim, Min, Maj, Sus | 6, m7, M7, 9 |
 
-This is the current RP2040-Zero proto (Launchkey keys = root, pads = types). Dynamic-from-note (“smart Type”) is a later experiment, not the v0 proto.
+Launchkey proto + M Core default. Dynamic-from-note (“auto chord-type”) is a later experiment.
 
-No mini-piano on M1.
+### Smart mode — pads are I–vii (+ high I)
 
-### Degree mode — buttons are I–vii
+For bedroom producers, travel, phone + box — **no big keyboard required**. Pads are degrees of the current key. Hold = chord while held (two hands on the device: stick + degrees).
 
-The eight keys are degrees of the current key (I–vii, plus whatever the eighth does — likely I in another octave or a spare). In C, button 2 is ii, which *should* be minor at HOME. No keyboard required.
+In C major: I C, ii D min, iii E min, IV F, V G, vi A min, vii B dim, 8th pad = **high I**. HOME quality is diatonic **triad**. Optional later settings can add nice 7ths for richer beginner defaults.
 
-Default quality comes from the scale (ii min, V maj, vii dim). Stick still **colors** that chord (voicing / bass / in-key extras), same contract as Type mode. Stick is not eight frozen qualities. That was the OG failure: lean on ii and you get Dmaj9. Out of key is a Type override or spice, not a missed slice.
+Stick still **colors** that chord (voicing / bass / in-key extras). Stick is not eight frozen qualities. Out of key is a Pro override or spice, not a missed stick slice.
 
-Degree mode is a **product mode**, not this proto’s job. Spec it in [chord-engine.md](chord-engine.md). Play Type until HOME is great, then add Degree.
+Spec + feel: [chord-engine.md](chord-engine.md).
 
 ### Stick is color, not type
 
 Alps **RKJXV1220001** (LCSC **C219778**). Analog, 8 seats in firmware. **Spring-back to center.** Center = HOME. Lean is temporary.
 
-Seats: voicing / bass / **in-key** color. Not maj vs min. Not the archive preset table. Both modes. Out of key only if the player tries (Type-mode Maj on a minor degree, spice later).
+Seats: voicing / bass / **in-key** color. Not maj vs min. Not the archive preset table. Both modes. Out of key only if the player tries (Pro-mode Maj on a minor degree, spice later).
 
 ```
         more tension
@@ -107,7 +108,7 @@ inv  4     HOME      6   inv
         tighter / lower
 ```
 
-That diagram is a **candidate**, not a lock. Seats are voicings (or extra color), never chord types. No quality-roulette stick, including in Degree mode.
+That diagram is a **candidate**, not a lock. Seats are voicings (or extra color), never chord types. No quality-roulette stick, including in Smart mode.
 
 No encoder on v1. **No pots / dials on the box.** They add size and cost, and this product assumes a DAW. A D-pad is a later maybe; the proto already has analog.
 
@@ -116,7 +117,7 @@ Split: **buttons pick the chord, stick colors it (in key).** Tactiles = Key, Shi
 The algorithm:
 
 - Remembers the last chord and voice-leads.
-- Stick extras stay in key. Type-mode quality can leave the key on purpose (maj means maj). Degree-mode HOME stays diatonic.
+- Stick extras stay in key. Pro-mode quality can leave the key on purpose (maj means maj). Smart-mode HOME stays diatonic.
 - Stick never changes type.
 - Key override: Key hold + incoming MIDI note.
 
@@ -126,7 +127,7 @@ Optional later: a dedicated “spice” gesture (stick click or hard edge) for o
 
 We want as little screen as we can get away with. We still need to know **key**, **current chord**, and **mode**.
 
-- Prefer a tiny OLED that only shows something like `Cmaj7`, `C major`, and Type/Degree.
+- Prefer a tiny OLED that only shows something like `Cmaj7`, `C major`, and Pro/Smart.
 - Or four LEDs plus that. A $2 OLED is not a jambox.
 - Key override: hold **Key** + incoming note.
 - Shift / mode tactiles: mode, thru / replace / panic — only what you need without opening a laptop.
@@ -188,7 +189,7 @@ When the box is connected, extra settings can push to the device over MIDI (SysE
 
 ### Mapping and UI
 
-MIDI Learn on Type buttons, Degree buttons (same eight physical keys, two maps), Key, Shift, stick X/Y. Ship a Launchkey Mini MK4 preset that matches the current proto (pads CC 36–43, knobs CC 47/48).
+MIDI Learn on Pro pads and Smart pads (same eight physical keys, two maps), Key, Shift, stick X/Y. Ship a Launchkey Mini MK4 preset that matches the current proto (pads CC 36–43, knobs CC 47/48).
 
 v0 UI: chord name, key, mode, stick diagram, bindable pads. Ugly is fine.
 
@@ -196,7 +197,7 @@ Pretty overlay of the real enclosure is **later**, when the PCB exists. Do not s
 
 ### Settings that are plugin knobs, not hardware dials
 
-Examples, not a lock: channel split (chords / bass / thru), thru vs replace vs merge, voice-lead tightness, octave / range, smart vs honest Type, retrigger vs add-notes, stick map tweaks, Degree eighth-button job.
+Examples, not a lock: channel split (chords / bass / thru), thru vs replace vs merge, voice-lead tightness, octave / range, smart vs honest Pro, retrigger vs add-notes, stick map tweaks, Smart enhancement presets (auto-7ths).
 
 The box keeps defaults that already sound good. The plugin is the mixer.
 
@@ -211,7 +212,7 @@ The archived Seed mapper (`archive/s1-daisy` chord engine + joystick presets) ha
 - No memory of the previous chord, no voice leading. Closed root-position stacks every time.
 - Presets were the same eight qualities shuffled.
 
-M1’s engine should make it **almost impossible to sound bad** and **still surprising**, then get good at **progressions**. That is the product. Do not port the old preset tables as the v1 model. Degree mode is how we take I–vii back without taking the static stick back. Design it in [chord-engine.md](chord-engine.md) — that file is next.
+M1’s engine should make it **almost impossible to sound bad** and **still surprising**, then get good at **progressions**. That is the product. Do not port the old preset tables as the v1 model. **Smart** mode is how we put I–vii on the pads without bringing back the static quality stick. Design it in [chord-engine.md](chord-engine.md).
 
 Useful scraps in the archive: scale/mode tables, interval lists, enclosure photos, “chord as an input plugin” as a concept. Not the 8-way quality map.
 
@@ -219,17 +220,17 @@ Useful scraps in the archive: scale/mode tables, interval lists, enclosure photo
 
 ## Positioning
 
-| Device | Why we are not that |
-|--------|---------------------|
-| Orchid ORC-1 | Instrument with speakers and battery. We are a studio MIDI tool. Type buttons are chord grammar, not their box. |
-| HiChord | Synth + a specific slab. Degree mode is I–vii with our coloring stick and voice leading. |
-| Kordbot | Huge, expensive, 32 buttons. We stay small. |
-| Scaler / Captain / ChordAXE | Software-only, paid. We ship a **free** plugin and a **hardware** left hand. |
-| Old OpenChord proto | Jambox. That is S1. |
+| Kind of product | Why we are not that |
+|-----------------|---------------------|
+| Battery synth with speakers | We are a studio **MIDI** tool. No audio of our own. |
+| Chord-slab synth | We output MIDI; Smart mode is I–vii with a coloring stick, designed here. |
+| Huge multi-button chord cockpit | We stay small and under $100. |
+| Paid software-only chord assistants | We ship a **free** plugin and a **hardware** left hand. |
+| Old OpenChord jambox proto | That is S1. |
 
 Sell path: a board we can spin and price **under $100**, not a synth price. Plugin is free on purpose. MCU and radio were never going to be the margin. Enclosure, assembly, and not certifying Wi‑Fi are.
 
-Name and domain: `openchord.com` is someone else’s music-apps site. Product name is still OpenChord M1; do not assume the domain. Do not put other products’ names on the hardware, plugin, or store page.
+Name and domain: `openchord.com` is someone else’s music-apps site. Product name is still OpenChord M1; do not assume the domain. Do not put other companies’ product names on the hardware, plugin, store page, UI, or source comments.
 
 ---
 
@@ -243,7 +244,7 @@ Name and domain: `openchord.com` is someone else’s music-apps site. Product na
 
 ```
 m1/engine/          portable chord logic (no Daisy, no TinyUSB, no JUCE). This is the product.
-m1/proto-rp2040/    RP2040-Zero lab harness. USB-C MIDI device. Launchkey pads/knobs. Type mode.
+m1/proto-rp2040/    RP2040-Zero lab harness. USB-C MIDI device. Launchkey pads/knobs. Pro mode.
 m1/proto-daisy/     parked Seed harness. Restore OG from archive; do not edit archive.
 m1/plugin/          OpenChord M Core — AU MIDI FX + VST3. Links m1/engine. Free.
 m1/firmware/        RP2040 product firmware (later)
@@ -274,11 +275,11 @@ These are not forgotten. They are not locked.
 - Thru vs replace vs merge when a keyboard already sends chords.
 - Stick click for spice vs Shift-only.
 - Exact tactiles: dedicated Mode vs Shift+hold. Panic placement.
-- Degree mode: what the eighth button is (high I vs spare).
-- One-hand layout: 2×4 cluster + thumb stick vs stick-only vs buttons-only.
+- Smart enhancement presets (auto diatonic 7ths, etc.).
+- One-hand layout: 2×4 cluster + thumb stick vs stick-only vs pads-only.
 - How much “next chord” suggestion is v1 vs v1.1.
 - Trademark / `openchord.com` is someone else’s music-apps site.
 
-Locked (do not reopen without updating this file): MCU RP2040; custom PCB with USB-C on the edge; no radio; no battery; no USB host on the SKU; Alps C219778 quantized to 8; 8 Gaterons + a few tactiles; **no pots / no encoder**; cheap OLED; ~$99 hardware; plugin free (AU MIDI FX + VST3, same engine); hardware works with no plugin; if the box is connected the plugin does not voice; Type + Degree modes (UI names); stick is color in both modes, never a quality table; engine portable; RP2040-Zero as current testbed; Seed proto parked; archive frozen.
+Locked (do not reopen without updating this file): MCU RP2040; custom PCB with USB-C on the edge; no radio; no battery; no USB host on the SKU; Alps C219778 quantized to 8; 8 Gaterons + a few tactiles; **no pots / no encoder**; cheap OLED; ~$99 hardware; plugin free (AU MIDI FX + VST3, same engine); hardware works with no plugin; if the box is connected the plugin does not voice; **Pro + Smart** modes (UI names); Smart 8th pad = high I; Smart HOME = triad (fancy 7ths = later setting); Smart pads = hold; stick is color in both modes, never a quality table; no competitor product names in UI/docs/code comments; engine portable; RP2040-Zero as current testbed; Seed proto parked; archive frozen.
 
 When one of these is decided, update this file. Do not start a second source of truth.

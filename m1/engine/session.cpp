@@ -21,9 +21,12 @@ bool VoicingHas(const Voicing& v, uint8_t note) {
 Session::Session() { reset(); }
 
 void Session::reset() {
+    mode_ = PlayMode::Pro;
     for (int i = 0; i < kMaxVoices; ++i) {
         voices_[i].root = -1;
         voices_[i].chord = false;
+        voices_[i].scale = false;
+        voices_[i].degree_idx = 0;
         voices_[i].type = Type::None;
         voices_[i].ext = 0;
         voices_[i].v.n = 0;
@@ -34,14 +37,64 @@ void Session::reset() {
     out_ch_ = 1;
     key_pc_ = 0;
     key_held_ = false;
+    scale_tonic_midi_ = 48;
     type_stack_n_ = 0;
     pad_ext_ = 0;
+    degree_held_ = 0;
     stick_x_ = 0.f;
     stick_y_ = 0.f;
     stick_x_armed_ = false;
     stick_y_armed_ = false;
     last_seat_ = Seat::Home;
     out_n_ = 0;
+}
+
+void Session::syncScaleTonic() {
+    const int oct = scale_tonic_midi_ / 12;
+    scale_tonic_midi_ = static_cast<int16_t>(oct * 12 + key_pc_);
+}
+
+void Session::setKeyPc(uint8_t pc) {
+    key_pc_ = static_cast<uint8_t>(pc % 12);
+    syncScaleTonic();
+    if (mode_ == PlayMode::Smart) {
+        for (int i = 0; i < kMaxVoices; ++i) {
+            if (voices_[i].root < 0 || !voices_[i].scale) continue;
+            int16_t root = -1;
+            Type t = Type::None;
+            if (!DegreeToChord(key_pc_, voices_[i].degree_idx, scale_tonic_midi_, &root, &t))
+                continue;
+            voices_[i].root = root;
+            voices_[i].type = t;
+            voices_[i].ext = 0;
+            voices_[i].v.n = 0;
+            renderVoice(voices_[i]);
+        }
+    }
+}
+
+void Session::clearAllVoices() {
+    for (int i = 0; i < kMaxVoices; ++i) {
+        if (voices_[i].root < 0) continue;
+        if (voices_[i].chord) voicingOff(voices_[i].v);
+        else midiSendOff(static_cast<uint8_t>(voices_[i].root));
+        voices_[i].root = -1;
+        voices_[i].v.n = 0;
+        voices_[i].scale = false;
+    }
+    for (int n = 0; n < 128; ++n) {
+        while (note_refs_[n]) midiSendOff(static_cast<uint8_t>(n));
+    }
+    type_stack_n_ = 0;
+    pad_ext_ = 0;
+    degree_held_ = 0;
+}
+
+void Session::setPlayMode(PlayMode mode) {
+    if (mode_ == mode) return;
+    clearAllVoices();
+    mode_ = mode;
+    last_seat_ = SeatFromStick(stick_x_, stick_y_);
 }
 
 void Session::pushOut(MidiEvent::Kind kind, uint8_t d1, uint8_t d2) {
@@ -121,6 +174,14 @@ Session::Voice* Session::findVoice(int16_t root) {
     return nullptr;
 }
 
+Session::Voice* Session::findScaleDegree(uint8_t degree_idx) {
+    for (int i = 0; i < kMaxVoices; ++i) {
+        if (voices_[i].root >= 0 && voices_[i].scale && voices_[i].degree_idx == degree_idx)
+            return &voices_[i];
+    }
+    return nullptr;
+}
+
 Session::Voice* Session::allocVoice() {
     for (int i = 0; i < kMaxVoices; ++i) {
         if (voices_[i].root < 0) return &voices_[i];
@@ -136,12 +197,14 @@ Type Session::heldType() const {
 uint8_t Session::typeHeldMask() const {
     uint8_t mask = 0;
     for (uint8_t i = 0; i < type_stack_n_; ++i) {
-        const uint8_t t = type_stack_[i]; // 1=Dim .. 4=Sus
+        const uint8_t t = type_stack_[i];
         if (t >= 1 && t <= 4)
             mask = static_cast<uint8_t>(mask | (1u << (t - 1)));
     }
     return mask;
 }
+
+uint8_t Session::degreeHeldMask() const { return degree_held_; }
 
 bool Session::typeStillHeld(Type t) const {
     uint8_t want = static_cast<uint8_t>(t);
@@ -152,8 +215,9 @@ bool Session::typeStillHeld(Type t) const {
 }
 
 void Session::typePad(uint8_t idx, bool on) {
+    if (mode_ != PlayMode::Pro) return;
     if (idx > 3) return;
-    uint8_t t = static_cast<uint8_t>(idx + 1); // Dim=1 ... Sus=4
+    uint8_t t = static_cast<uint8_t>(idx + 1);
     if (on) {
         for (uint8_t i = 0; i < type_stack_n_; ++i) {
             if (type_stack_[i] == t) {
@@ -174,14 +238,50 @@ void Session::typePad(uint8_t idx, bool on) {
 }
 
 void Session::setExtBit(uint8_t bit, bool on) {
+    if (mode_ != PlayMode::Pro) return;
     if (on) pad_ext_ = static_cast<uint8_t>(pad_ext_ | bit);
     else pad_ext_ = static_cast<uint8_t>(pad_ext_ & ~bit);
     refreshHeldChordExts();
 }
 
+void Session::degreePad(uint8_t idx, bool on) {
+    if (mode_ != PlayMode::Smart) return;
+    if (idx > 7) return;
+
+    const uint8_t bit = static_cast<uint8_t>(1u << idx);
+    if (on) {
+        if (degree_held_ & bit) return;
+        degree_held_ = static_cast<uint8_t>(degree_held_ | bit);
+        if (findScaleDegree(idx)) return;
+        int16_t root = -1;
+        Type t = Type::None;
+        if (!DegreeToChord(key_pc_, idx, scale_tonic_midi_, &root, &t)) return;
+        Voice* h = allocVoice();
+        if (!h) return;
+        h->root = root;
+        h->chord = true;
+        h->scale = true;
+        h->degree_idx = idx;
+        h->type = t;
+        h->ext = 0; // triad HOME; fancy 7ths = later setting
+        h->v.n = 0;
+        h->v.name[0] = 0;
+        renderVoice(*h);
+        return;
+    }
+
+    degree_held_ = static_cast<uint8_t>(degree_held_ & ~bit);
+    Voice* h = findScaleDegree(idx);
+    if (!h) return;
+    voicingOff(h->v);
+    h->root = -1;
+    h->v.n = 0;
+    h->scale = false;
+}
+
 void Session::refreshHeldChordExts() {
     for (int i = 0; i < kMaxVoices; ++i) {
-        if (voices_[i].root < 0 || !voices_[i].chord) continue;
+        if (voices_[i].root < 0 || !voices_[i].chord || voices_[i].scale) continue;
         if (!typeStillHeld(voices_[i].type)) continue;
         voices_[i].ext = pad_ext_;
         renderVoice(voices_[i]);
@@ -231,7 +331,24 @@ void Session::noteOn(uint8_t channel, uint8_t pitch, uint8_t velocity) {
     }
     out_ch_ = channel ? channel : 1;
     if (key_held_) {
-        key_pc_ = static_cast<uint8_t>(pitch % 12);
+        setKeyPc(static_cast<uint8_t>(pitch % 12));
+        return;
+    }
+
+    // Smart mode: keyboard is optional. Unassigned notes pass thru as melody.
+    if (mode_ == PlayMode::Smart) {
+        int16_t root = static_cast<int16_t>(pitch);
+        if (findVoice(root)) return;
+        Voice* h = allocVoice();
+        if (!h) return;
+        held_vel_ = velocity ? velocity : held_vel_;
+        h->root = root;
+        h->chord = false;
+        h->scale = false;
+        h->type = Type::None;
+        h->ext = 0;
+        h->v.n = 0;
+        midiSendOn(pitch, velocity);
         return;
     }
 
@@ -244,6 +361,7 @@ void Session::noteOn(uint8_t channel, uint8_t pitch, uint8_t velocity) {
     h->root = root;
     h->v.n = 0;
     h->v.name[0] = 0;
+    h->scale = false;
     if (t != Type::None) {
         h->chord = true;
         h->type = t;
@@ -260,27 +378,15 @@ void Session::noteOn(uint8_t channel, uint8_t pitch, uint8_t velocity) {
 void Session::noteOff(uint8_t /*channel*/, uint8_t pitch) {
     int16_t root = static_cast<int16_t>(pitch);
     Voice* h = findVoice(root);
-    if (!h) return;
+    if (!h || h->scale) return;
     if (h->chord) voicingOff(h->v);
     else midiSendOff(pitch);
     h->root = -1;
     h->v.n = 0;
-    h->v.name[0] = 0;
 }
 
 void Session::panic() {
-    for (int i = 0; i < kMaxVoices; ++i) {
-        if (voices_[i].root < 0) continue;
-        if (voices_[i].chord) voicingOff(voices_[i].v);
-        else midiSendOff(static_cast<uint8_t>(voices_[i].root));
-        voices_[i].root = -1;
-        voices_[i].v.n = 0;
-    }
-    for (int n = 0; n < 128; ++n) {
-        while (note_refs_[n]) midiSendOff(static_cast<uint8_t>(n));
-    }
-    type_stack_n_ = 0;
-    pad_ext_ = 0;
+    clearAllVoices();
     pushOut(MidiEvent::Kind::Cc, 123, 0);
 }
 

@@ -47,6 +47,8 @@ public:
     void uiSetStick(float x, float y);
     void resetMapToLaunchkey();
     void clearBinding(ocplug::ControlId id);
+    void setPlayMode(oc::PlayMode mode);
+    oc::PlayMode playMode() const;
 
     struct UiSnapshot {
         char    chord[20]{};
@@ -54,12 +56,14 @@ public:
         uint8_t key_pc = 0;
         float   stick_x = 0.f;
         float   stick_y = 0.f;
-        uint8_t type_mask = 0; // bits 0-3 Dim..Sus held
+        uint8_t type_mask = 0;    // Pro: bits 0-3 Dim..Sus
+        uint8_t degree_mask = 0;  // Smart: bits 0-7 I..high I
         uint8_t ext = 0;
         bool    key_held = false;
         bool    shift_held = false;
         bool    panic_held = false;
         int     learn_armed = -1;
+        oc::PlayMode mode = oc::PlayMode::Pro;
     };
     UiSnapshot snapshot() const;
 
@@ -77,7 +81,7 @@ private:
     std::atomic<uint16_t> controls_held_{0}; // bit per ControlId
 
     // Copy of map for audio thread; swapped under lock only on state/UI map edits.
-    juce::SpinLock map_lock_;
+    mutable juce::SpinLock map_lock_;
     ocplug::MidiMap map_rt_;
 
     mutable juce::SpinLock snap_lock_;

@@ -78,7 +78,7 @@ void BuildIntervals(const EngineInput& in, int8_t* ivs, int& n) {
     }
 
     uint8_t root_pc = static_cast<uint8_t>(in.root_midi % 12);
-    // Buttons are honest Orchid: M7 means M7, 6 means 6. Stick extras stay in key.
+    // Pad extras are literal: M7 means M7, 6 means 6. Stick extras stay in key.
     if (in.ext & Ext6) AddUnique(ivs, n, 9);
     if (in.ext & Extm7) AddUnique(ivs, n, 10);
     if (in.ext & ExtM7) AddUnique(ivs, n, 11);
@@ -262,6 +262,28 @@ void Render(const EngineInput& in, const Voicing* prev, Voicing* out) {
     Place(ivs, n, inv, IsOpen(in.seat), in.root_midi, prev, out->notes);
     out->n = static_cast<uint8_t>(n);
     MakeName(in, out->name, sizeof(out->name));
+}
+
+bool DegreeToChord(uint8_t key_pc, uint8_t degree_idx, int16_t tonic_midi,
+                   int16_t* root_midi_out, Type* type_out) {
+    if (!root_midi_out || !type_out) return false;
+    if (degree_idx > 7) return false;
+
+    // Major-key diatonic: I ii iii IV V vi vii°
+    static const int8_t kDegPc[7] = {0, 2, 4, 5, 7, 9, 11};
+    static const Type   kDegType[7] = {
+        Type::Maj, Type::Min, Type::Min, Type::Maj, Type::Maj, Type::Min, Type::Dim};
+
+    const uint8_t deg = (degree_idx == 7) ? 0 : degree_idx;
+    int root = static_cast<int>(tonic_midi) + kDegPc[deg];
+    if (degree_idx == 7) root += 12;
+    while (root < 0) root += 12;
+    while (root > 127) root -= 12;
+    // Keep pitch class aligned to key + degree (tonic_midi should already be key_pc).
+    (void)key_pc;
+    *root_midi_out = static_cast<int16_t>(root);
+    *type_out = kDegType[deg];
+    return true;
 }
 
 } // namespace oc

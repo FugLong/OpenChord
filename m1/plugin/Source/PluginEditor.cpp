@@ -3,7 +3,7 @@
 OpenChordMCoreEditor::OpenChordMCoreEditor(OpenChordMCoreProcessor& p)
     : AudioProcessorEditor(&p), proc_(p)
 {
-    setSize(520, 420);
+    setSize(520, 440);
     setWantsKeyboardFocus(true);
 
     auto style = [](juce::Label& l, float size, bool bold = false) {
@@ -26,23 +26,25 @@ OpenChordMCoreEditor::OpenChordMCoreEditor(OpenChordMCoreProcessor& p)
     };
     addAndMakeVisible(reset_map_);
 
+    mode_btn_.onClick = [this] {
+        const auto next = (proc_.playMode() == oc::PlayMode::Pro)
+                              ? oc::PlayMode::Smart
+                              : oc::PlayMode::Pro;
+        proc_.setPlayMode(next);
+        updateButtons();
+    };
+    addAndMakeVisible(mode_btn_);
+
     style(key_label_, 14.0f);
     style(chord_label_, 14.0f);
-    style(mode_label_, 14.0f, true);
-    mode_label_.setText("Type", juce::dontSendNotification);
     addAndMakeVisible(key_label_);
     addAndMakeVisible(chord_label_);
-    addAndMakeVisible(mode_label_);
-
-    degree_disabled_.setEnabled(false);
-    degree_disabled_.setColour(juce::Label::textColourId, juce::Colours::grey);
-    style(degree_disabled_, 12.0f);
-    addAndMakeVisible(degree_disabled_);
 
     learn_hint_.setText(
-        "Learn: click a button, then press pad / move knob. Hold button to play. Right-click clears. Esc cancels.",
+        "Pro: keyboard = root, pads = chord type. Smart: hold pads = I–vii (no keyboard needed). "
+        "Learn: click, then move control. Hold to play. Right-click clears.",
         juce::dontSendNotification);
-    style(learn_hint_, 12.0f);
+    style(learn_hint_, 11.0f);
     addAndMakeVisible(learn_hint_);
 
     wireButton(dim_, ocplug::ControlId::Dim);
@@ -84,6 +86,24 @@ OpenChordMCoreEditor::OpenChordMCoreEditor(OpenChordMCoreProcessor& p)
 }
 
 OpenChordMCoreEditor::~OpenChordMCoreEditor() { stopTimer(); }
+
+const char* OpenChordMCoreEditor::padLabel(oc::PlayMode mode, ocplug::ControlId id) {
+    using Id = ocplug::ControlId;
+    if (mode == oc::PlayMode::Smart) {
+        switch (id) {
+            case Id::Dim: return "I";
+            case Id::Min: return "ii";
+            case Id::Maj: return "iii";
+            case Id::Sus: return "IV";
+            case Id::Ext6: return "V";
+            case Id::Extm7: return "vi";
+            case Id::ExtM7: return "vii";
+            case Id::Ext9: return "I^";
+            default: break;
+        }
+    }
+    return ocplug::ControlName(id);
+}
 
 void OpenChordMCoreEditor::wireButton(HoldButton& b, ocplug::ControlId id) {
     addAndMakeVisible(b);
@@ -129,16 +149,15 @@ void OpenChordMCoreEditor::resized() {
     auto r = getLocalBounds().reduced(10);
 
     auto top = r.removeFromTop(28);
-    title_.setBounds(top.removeFromLeft(160));
-    preset_.setBounds(top.removeFromLeft(160));
-    reset_map_.setBounds(top.removeFromLeft(100).reduced(0, 2));
+    title_.setBounds(top.removeFromLeft(150));
+    preset_.setBounds(top.removeFromLeft(140));
+    mode_btn_.setBounds(top.removeFromLeft(80).reduced(0, 2));
+    reset_map_.setBounds(top.removeFromLeft(90).reduced(0, 2));
 
     r.removeFromTop(6);
     auto status = r.removeFromTop(24);
-    key_label_.setBounds(status.removeFromLeft(140));
-    chord_label_.setBounds(status.removeFromLeft(160));
-    mode_label_.setBounds(status.removeFromLeft(60));
-    degree_disabled_.setBounds(status);
+    key_label_.setBounds(status.removeFromLeft(160));
+    chord_label_.setBounds(status);
 
     r.removeFromTop(10);
     auto row1 = r.removeFromTop(48);
@@ -169,7 +188,7 @@ void OpenChordMCoreEditor::resized() {
     stick_y_.setBounds(sy);
 
     r.removeFromTop(12);
-    learn_hint_.setBounds(r.removeFromTop(40));
+    learn_hint_.setBounds(r.removeFromTop(48));
 }
 
 void OpenChordMCoreEditor::timerCallback() { refreshLabels(); }
@@ -190,25 +209,42 @@ void OpenChordMCoreEditor::refreshLabels() {
 void OpenChordMCoreEditor::updateButtons() {
     const auto s = proc_.snapshot();
     const int armed = proc_.learnArmed();
+    const bool smart = (s.mode == oc::PlayMode::Smart);
+
+    mode_btn_.setButtonText(smart ? "Smart" : "Pro");
 
     auto setCap = [this, &s, armed](HoldButton& b, ocplug::ControlId id, bool lit) {
-        char buf[48];
-        proc_.map().formatBinding(id, buf, sizeof(buf));
-        juce::String t(buf);
-        const bool isArmed = armed == static_cast<int>(id);
-        if (isArmed) t = "* " + t;
+        const char* name = padLabel(s.mode, id);
+        const auto binding = proc_.map().get(id);
+        juce::String t(name);
+        if (binding.kind == ocplug::Binding::Kind::Cc)
+            t = t + "\nCC " + juce::String(static_cast<int>(binding.number));
+        else if (binding.kind == ocplug::Binding::Kind::Note)
+            t = t + "\nN" + juce::String(static_cast<int>(binding.number));
+        if (armed == static_cast<int>(id)) t = "* " + t;
         b.setButtonText(t);
-        setPadLit(b, lit, isArmed);
+        setPadLit(b, lit, armed == static_cast<int>(id));
     };
 
-    setCap(dim_, ocplug::ControlId::Dim, (s.type_mask & 1) != 0);
-    setCap(min_, ocplug::ControlId::Min, (s.type_mask & 2) != 0);
-    setCap(maj_, ocplug::ControlId::Maj, (s.type_mask & 4) != 0);
-    setCap(sus_, ocplug::ControlId::Sus, (s.type_mask & 8) != 0);
-    setCap(e6_, ocplug::ControlId::Ext6, (s.ext & oc::Ext6) != 0);
-    setCap(em7_, ocplug::ControlId::Extm7, (s.ext & oc::Extm7) != 0);
-    setCap(eM7_, ocplug::ControlId::ExtM7, (s.ext & oc::ExtM7) != 0);
-    setCap(e9_, ocplug::ControlId::Ext9, (s.ext & oc::Ext9) != 0);
+    if (smart) {
+        setCap(dim_, ocplug::ControlId::Dim, (s.degree_mask & (1u << 0)) != 0);
+        setCap(min_, ocplug::ControlId::Min, (s.degree_mask & (1u << 1)) != 0);
+        setCap(maj_, ocplug::ControlId::Maj, (s.degree_mask & (1u << 2)) != 0);
+        setCap(sus_, ocplug::ControlId::Sus, (s.degree_mask & (1u << 3)) != 0);
+        setCap(e6_, ocplug::ControlId::Ext6, (s.degree_mask & (1u << 4)) != 0);
+        setCap(em7_, ocplug::ControlId::Extm7, (s.degree_mask & (1u << 5)) != 0);
+        setCap(eM7_, ocplug::ControlId::ExtM7, (s.degree_mask & (1u << 6)) != 0);
+        setCap(e9_, ocplug::ControlId::Ext9, (s.degree_mask & (1u << 7)) != 0);
+    } else {
+        setCap(dim_, ocplug::ControlId::Dim, (s.type_mask & 1) != 0);
+        setCap(min_, ocplug::ControlId::Min, (s.type_mask & 2) != 0);
+        setCap(maj_, ocplug::ControlId::Maj, (s.type_mask & 4) != 0);
+        setCap(sus_, ocplug::ControlId::Sus, (s.type_mask & 8) != 0);
+        setCap(e6_, ocplug::ControlId::Ext6, (s.ext & oc::Ext6) != 0);
+        setCap(em7_, ocplug::ControlId::Extm7, (s.ext & oc::Extm7) != 0);
+        setCap(eM7_, ocplug::ControlId::ExtM7, (s.ext & oc::ExtM7) != 0);
+        setCap(e9_, ocplug::ControlId::Ext9, (s.ext & oc::Ext9) != 0);
+    }
     setCap(key_btn_, ocplug::ControlId::Key, s.key_held);
     setCap(panic_btn_, ocplug::ControlId::Panic, s.panic_held);
     setCap(shift_btn_, ocplug::ControlId::Shift, s.shift_held);

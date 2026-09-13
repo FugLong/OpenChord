@@ -2,7 +2,7 @@
 
 Hand this file to a fresh agent and tell them to implement it. Product locks live in [goals.md](goals.md). Music model: [chord-engine.md](chord-engine.md). Engine API: [`m1/engine/chord_engine.h`](../engine/chord_engine.h). Feel that already works: [`m1/proto-rp2040/src/main.cpp`](../proto-rp2040/src/main.cpp).
 
-Do not invent a second chord engine. Do not edit `archive/s1-daisy/`. Do not name modes Orchid or HiChord in the UI.
+Do not invent a second chord engine. Do not edit `archive/s1-daisy/`. UI mode names: **Pro** and **Smart**. Do not put other companies’ product names in the UI or source.
 
 **Naming lock**
 
@@ -17,7 +17,7 @@ Do not call the plugin “M1” in the UI or bundle name.
 
 ## Why this exists
 
-OpenChord M1 (hardware) and **OpenChord M Core** (plugin) share one MIDI chord brain. Incoming notes become roots. Eight Type buttons pick Dim / Min / Maj / Sus plus extras 6 / m7 / M7 / 9. A stick (two axes) colors voicing. `oc::Render()` in `m1/engine` does the music.
+OpenChord M1 (hardware) and **OpenChord M Core** (plugin) share one MIDI chord brain. In **Pro** mode, incoming notes become roots; eight pads pick Dim / Min / Maj / Sus plus extras 6 / m7 / M7 / 9. In **Smart** mode the pads are I–vii + high I. A stick (two axes) colors voicing. `oc::Render()` in `m1/engine` does the music.
 
 Two hosts, one engine:
 
@@ -36,17 +36,18 @@ Hardware still works with no plugin. This v0 does **not** talk to the box. When 
 
 1. **AU MIDI effect** that Logic loads as a MIDI FX on an instrument (or on a MIDI FX slot).
 2. **VST3** from the same code, for everyone else.
-3. **Same chord feel as the RP2040 proto** (Type mode only).
-4. **Ugly UI** that is usable: Type buttons, extras, stick, key, chord name, MIDI Learn.
+3. **Same chord feel as the RP2040 proto** (Pro mode).
+4. **Ugly UI** that is usable: Pro pads, extras, stick, key, chord name, MIDI Learn, **Pro / Smart** mode toggle.
 5. **MIDI Learn:** click a control in the plugin, then press / move the matching thing on a MIDI controller. That message becomes the binding. No typing CC numbers.
+6. **Smart mode:** hold pads I–vii + high I; diatonic triad HOME; no keyboard required.
 
-If those five work in Logic with a Launchkey, v0 is done.
+If those six work in Logic with a Launchkey, v0 is done.
 
 ---
 
 ## v0 — do not build
 
-- Degree mode (I–vii). Specced, not this plugin pass.
+- Fancy Smart enhancement presets (auto-7ths). Specced as later settings.
 - Pretty picture of the hardware.
 - Hardware USB detect / SysEx / firmware update.
 - Channel split, smart Type, spice, progression suggestions.
@@ -91,7 +92,7 @@ License: MIT, same as the repo. JUCE has its own license — use the GPL/JUCE6+ 
 
 ---
 
-## How it should feel (Type mode)
+## How it should feel (Pro mode)
 
 Port the proto. Do not “improve” assignment.
 
@@ -109,7 +110,7 @@ Source of truth for feel: `m1/proto-rp2040/src/main.cpp`.
 - Key: when the Key control is held, the next root note sets `key_pc` (0–11) and is **not** a chord/thru note.
 - Panic: all notes off, clear voices, CC 123 optional.
 
-UI names: **Type**. Not Orchid.
+UI names: **Pro** / **Smart**. No other brands’ mode names.
 
 ### Default map (Launchkey Mini MK4 37)
 
@@ -186,13 +187,13 @@ Stick Y --------O--------
 Learn: click a button, then press the pad / move the knob.
 ```
 
-- Type / extra buttons are **momentary in MIDI** (held while CC/note held) and **click-and-hold** with the mouse so you can test with no controller.
+- Pro / extra pads are **momentary in MIDI** (held while CC/note held) and **click-and-hold** with the mouse so you can test with no controller.
 - Mouse click on Dim without Learn = hold Dim until mouse up (same as a pad).
 - Chord name from `Voicing.name` (engine already fills it) or a simple label from type+root.
 - Armed control: invert colors or a `*` prefix.
 - Stick sliders are display + mouse override. MIDI Learn still binds CCs. Moving the on-screen slider is enough to play without a stick.
 
-No Degree toggle in v0. You may show a disabled “Degree (later)” so the UI matches the product, or omit it. Do not implement Degree.
+Mode toggle: **Pro** ↔ **Smart**. In Smart, the eight pads are I–vii + high I (hold). Stick still colors.
 
 ---
 
@@ -206,20 +207,20 @@ m1/plugin/          JUCE project (CMake). Processor, editor, mapping, session.
 m1/proto-rp2040/    Do not make the plugin include Arduino headers.
 ```
 
-**Prefer** extracting the proto’s voice/refcount/pad logic into portable C++ next to the engine, e.g. `m1/engine/session.h` + `.cpp`:
+**Prefer** the shared `m1/engine/session.h` + `.cpp` (already extracted):
 
-- Inputs: note on/off, CC, Key held, panic, stick x/y
+- Inputs: note on/off, pads, Key held, panic, stick x/y, play mode
 - Outputs: MIDI note on/off to send (channel, pitch, vel)
-- Internals: the `Voice` array, type stack, `DiffVoicing`, extra refresh
+- Internals: the `Voice` array, type stack / degree holds, `DiffVoicing`, extra refresh
 
-Then proto and plugin both call the session. If extracting would delay a first loadable AU by days, duplicate the logic in the plugin **and** leave a `TODO: share session with proto`. Do not silently drift.
+Proto and plugin both call the session. Do not silently drift.
 
 Plugin `processBlock`:
 
 1. Read incoming MIDI.
 2. If Learn is armed, maybe consume one event for the map.
-3. If a message matches a binding, update Type / extra / stick / Key / panic.
-4. Otherwise note on/off → session as roots.
+3. If a message matches a binding, update pad / stick / Key / panic (meaning follows Pro vs Smart).
+4. Otherwise note on/off → session (roots in Pro; thru/melody in Smart).
 5. Emit session MIDI to the output buffer.
 6. Clear audio.
 
@@ -234,10 +235,11 @@ This is the acceptance path.
 1. Build AU. Logic should see **OpenChord M Core** as a MIDI effect / MIDI processor.
 2. Instrument track (any synth). MIDI FX slot: OpenChord M Core.
 3. Launchkey Mini MK4 → this track (not also to the synth).
-4. Default map: hold Maj pad, play C → C major from the synth. No Type → raw key.
+4. Default map: hold Maj pad, play C → C major from the synth. No type pad → raw key.
 5. Low keys (C1–G1) chord. High keys stay in that octave (engine already follows the played root).
 6. Click **Min** in the plugin (Learn), hit a different pad, that pad is now Min.
 7. Knobs at 0 do not yank voicing southwest until swept through center.
+8. Toggle **Smart**: hold pads I–vii (and high I) with no keyboard → diatonic triads.
 
 VST3: load in Reaper (or Ableton with MIDI routed out of the plugin track). Same Learn. Do not block on Ableton if Logic AU + Reaper VST3 work.
 
@@ -246,8 +248,7 @@ VST3: load in Reaper (or Ableton with MIDI routed out of the plugin track). Same
 ## Repo / build
 
 - Code under `m1/plugin/`. CMakeLists there. Engine files listed as target sources (`../engine/chord_engine.cpp`).
-- Document build in `m1/plugin/README.md`: macOS, CMake, Xcode or Ninja, copy AU to `~/Library/Audio/Plug-Ins/Components`, VST3 to `~/Library/Audio/Plug-Ins/VST3`.
-- `COPY_PLUGIN_AFTER_BUILD TRUE` on Mac is helpful.
+- Document build in `m1/plugin/README.md`: macOS, CMake, Xcode or Ninja. Install AU to `~/Library/Audio/Plug-Ins/Components`, VST3 to `~/Library/Audio/Plug-Ins/VST3` (CMake post-build signs + copies; ensure `Info.plist` is in the bundle).
 - Do not add the plugin to `archive/` or `s1/`.
 - Do not commit JUCE binaries or built `.vst3` / `.component` if they are huge; commit source + CMake. A `*.vst3` in gitignore is fine.
 
@@ -257,13 +258,14 @@ VST3: load in Reaper (or Ableton with MIDI routed out of the plugin track). Same
 
 - [ ] Logic loads OpenChord M Core as AU MIDI FX.
 - [ ] VST3 builds from the same target.
-- [ ] Maj + C key = C major; no Type = thru.
-- [ ] Live extra (Maj held, tap M7) adds notes without killing the triad.
+- [ ] Pro: Maj + C key = C major; no type pad = thru.
+- [ ] Pro: live extra (Maj held, tap M7) adds notes without killing the triad.
+- [ ] Smart: hold I–vii / high I pads → diatonic triads with no keyboard.
 - [ ] MIDI Learn: click control, send MIDI, binding sticks and recalls with the project.
 - [ ] Reset map restores Launchkey CC 36–43 / 47 / 48.
-- [ ] Mouse can hold Type buttons and move stick sliders.
-- [ ] UI shows current chord name and key.
-- [ ] No Orchid / HiChord strings in the UI.
+- [ ] Mouse can hold pads and move stick sliders.
+- [ ] UI shows current chord name, key, and Pro/Smart.
+- [ ] No other companies’ product names in the UI.
 - [ ] `archive/s1-daisy/` untouched.
 
 ---
@@ -272,8 +274,8 @@ VST3: load in Reaper (or Ableton with MIDI routed out of the plugin track). Same
 
 1. This file.
 2. [goals.md](goals.md) — plugin section and locked list.
-3. [chord-engine.md](chord-engine.md) — Type mode only for v0.
-4. `m1/engine/chord_engine.h` + `.cpp`
+3. [chord-engine.md](chord-engine.md) — Pro + Smart.
+4. `m1/engine/chord_engine.h` + `.cpp` + `session.h` + `.cpp`
 5. `m1/proto-rp2040/src/main.cpp` + `m1/proto-rp2040/README.md`
 
-When in doubt, match the proto, then add Learn and an ugly editor.
+When in doubt, match the proto for Pro feel, then Smart hold pads + Learn + an ugly editor.
