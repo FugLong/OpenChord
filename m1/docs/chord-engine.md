@@ -1,22 +1,26 @@
 # Chord engine
 
-Portable logic for OpenChord M1. Code: `m1/engine`. Product: `goals.md`. Hands-on: `testbed.md`.
+Portable logic for OpenChord M1. Code: `m1/engine`. Product: `goals.md`. Hands-on: `testbed.md`. Hosts: RP2040 firmware **and** the free plugin. Neither host may fork the voicing math.
 
-Stick **gesture** is spring-back to HOME. Stick **must not** be a static quality map. Buttons are Orchid types. Feel lock: fun, stick extras in key, jazz/wrong only if the player *tries* (honest Maj, spice later).
+Stick **gesture** is spring-back to HOME. Stick **must not** be a static quality map — not in Type mode, not in Degree mode. Feel lock: fun, stick extras in key, jazz/wrong only if the player *tries* (honest Maj, spice later).
 
 Do not port the archive joystick preset tables.
+
+UI names: **Type** and **Degree**. Not Orchid. Not HiChord.
 
 ---
 
 ## Split
 
-| Layer | Who | Clever? |
-|-------|-----|--------|
-| **Which chord** | Incoming MIDI = root. Buttons = Orchid type + extras | Maj means maj. Out of key is a choice. |
-| **How it sits** | Stick (lean, spring home) | Voicing, bass, in-key color. **Never** maj vs min. |
-| **Glue** | Key + last chord + voice leading | Always on. |
+| Layer | Type mode | Degree mode | Clever? |
+|-------|-----------|-------------|---------|
+| **Which chord** | Incoming MIDI = root. Buttons = triad + extras | Buttons = I–vii of the key. Quality from the scale at HOME | Type: Maj means maj. Degree: HOME is diatonic. Out of key is a choice. |
+| **How it sits** | Stick (lean, spring home) | Same stick contract | Voicing, bass, in-key color. **Never** maj vs min. |
+| **Glue** | Key + last chord + voice leading | Same | Always on. |
 
 Stick and buttons must not do the same job.
+
+This proto and the first plugin pass are **Type**. Degree is specified here so we do not accidentally rebuild the OG stick when we add it.
 
 ---
 
@@ -30,16 +34,19 @@ OG OpenChord **was** HiChord-shaped. The analysis that “we forgot I–vii” w
 
 The failure was the **static stick**, not missing diatonic buttons. Even with I–vii in key, the stick could turn ii into Dmaj9 / aug / dim. **About half the seats were out of key** for that degree. Fine once if you meant it. Trash as the default: you could not rest on the stick without leaving the key.
 
-M1 **does not** put I–vii on these eight keys. That was the OG. The new box is Orchid grammar + MIDI root. Later we can try **smart Orchid** (types follow the played note / key). Figure that out later.
+M1 **Type** mode does not put I–vii on these eight keys. Incoming note is the root; buttons are quality. That is the Launchkey proto.
 
-**Stick only colors the chord you already have.** Extra notes stay in key unless the player opens a door (Orchid maj on a ii, spice later).
+M1 **Degree** mode *does* put I–vii on the eight keys. That is the OG / HiChord-like idea done properly: diatonic default, coloring stick, voice leading. It is a mode, not the only product, and it is not this proto.
 
-| | HiChord | OG Seed | M1 proto |
+**Stick only colors the chord you already have.** Extra notes stay in key unless the player opens a door (Type-mode Maj on a ii, spice later).
+
+| | HiChord / OG Seed | M1 Type | M1 Degree |
 |--|--|--|--|
-| Buttons | I–vii | I–vii | **Orchid:** Dim / Min / Maj / Sus + 6 / m7 / M7 / 9. Extra keys = Key / Shift |
-| Root | Degree of the key | Degree of the key | **Incoming USB MIDI note** |
-| Stick | 8 quality transforms, snap back | Same, static presets | Snap back, **voicing / bass / in-key color** |
-| Out of key | Easy (half the stick) | Easy (half the stick) | Stick no. Type yes if you try |
+| Buttons | I–vii | Dim / Min / Maj / Sus + 6 / m7 / M7 / 9 | I–vii of the key |
+| Root | Degree of the key | Incoming MIDI note | Degree of the key (keyboard optional) |
+| Stick | 8 quality transforms, snap back | Snap back, voicing / bass / in-key color | Same coloring stick. Not quality slices. |
+| Out of key | Easy (half the stick) | Stick no. Type yes if you try | Stick no. Override / spice if you try |
+| Sound | Their synth / our old jambox | None (MIDI out) | None (MIDI out) |
 
 ---
 
@@ -49,13 +56,13 @@ M1 **does not** put I–vii on these eight keys. That was the OG. The new box is
 2. **Always sounds good** on the default path (in key, voice-led HOME).
 3. **Not stuck boring.** Jazzy / borrowed / “wrong” when the player *tries* (spice, type override, extra tensions). Never as the penalty for a missed slice or for holding the stick.
 
-Center + the type you held are the safe road. Interesting is a lean or a held extra.
+Center + the chord the mode asked for are the safe road. Interesting is a lean or a held extra.
 
 ---
 
-## Buttons — Orchid (locked for this proto)
+## Buttons — Type (locked for this proto)
 
-Same 8 Gaterons. They are **not** I–vii.
+Same 8 Gaterons. In Type mode they are **not** I–vii.
 
 | Bottom | Dim | Min | Maj | Sus |
 | Middle | 6 | m7 | M7 | — |
@@ -63,9 +70,23 @@ Same 8 Gaterons. They are **not** I–vii.
 
 Incoming MIDI note is the **root**. Type buttons combine with extras. **Maj means maj** even if the key wanted minor. That is a legal way to *try* to go out. Stick still does not change type.
 
-Extra proto keys are menu/options: **Key** (hold + note sets the key), **Shift** (reserved), RECORD = panic.
+Extra proto keys are menu/options: **Key** (hold + note sets the key), **Shift** (reserved), RECORD = panic. Product hardware adds a mode toggle among the tactiles; no pots.
 
-Later experiment, not this firmware: **smart Orchid** — the same type cluster, but qualities follow the note / key so you can mash Maj and still land in-key. Do not put I–vii on these eight keys to get that.
+Later experiment, not this firmware: **smart Type** — the same type cluster, but qualities follow the note / key so you can mash Maj and still land in-key. Degree mode is the other way to stay in key (degrees on the buttons). Do not confuse them.
+
+---
+
+## Buttons — Degree (product mode, not this proto)
+
+Same 8 Gaterons, different map. Buttons are scale degrees of the current key.
+
+In C major, roughly: I C, ii D min, iii E min, IV F, V G, vi A min, vii B dim. HOME quality is diatonic. The eighth button is still open (high I vs spare).
+
+No incoming note required to make a chord. A keyboard can still layer thru or set the key (Key + note).
+
+Held extras (6 / m7 / M7 / 9) from Type mode do not apply as pad labels in Degree mode unless we later reuse the same physical keys with a Shift layer. Do not invent that until Degree HOME is musical with triad-only degrees.
+
+Stick contract is **identical** to Type: color, not quality. ii + up is more open / in-key color on Dm, not Dmaj9.
 
 ---
 
@@ -73,7 +94,7 @@ Later experiment, not this firmware: **smart Orchid** — the same type cluster,
 
 Box left of a keyboard. Left hand is M1.
 
-1. **Buttons only** — complete at HOME. Stick optional.
+1. **Buttons only** — complete at HOME. Stick optional. Type needs a root from MIDI; Degree does not.
 2. **Buttons + thumb stick** — 2×4 cluster, stick on the inner edge where the thumb lives. Lean = color, release = HOME.
 3. **Stick-only** — needs latched last degree / type.
 
@@ -87,13 +108,13 @@ Hardware: analog, snap to 8 seats + center.
 
 **Locked:** spring-back. Center = HOME. Lean is temporary. Release = HOME. Not sticky.
 
-**Locked:** seats are not chord types. No static 8-quality table, even if buttons are I–vii. That was the trash part.
+**Locked:** seats are not chord types. No static 8-quality table, **including in Degree mode**. That was the trash part.
 
 The stick should be:
 
 1. **Dynamic** — notes depend on current chord, key, and last HOME (voice leading). Same seat, different MIDI next bar.
 2. **Predictable** — same gesture, same *kind* of thing.
-3. **In key by default** — extra notes from the scale. ♯11 / dim-for-fun = spice, not a diagonal. Maj on a ii is the type button, not the stick.
+3. **In key by default** — extra notes from the scale. ♯11 / dim-for-fun = spice, not a diagonal. Maj on a ii is Type-mode Maj (or spice), not the stick.
 4. **Fun / not boring** — up should still do something you can hear (open voicing and/or in-key 9/11/13).
 
 ### Predictability (voicing stick)
@@ -108,12 +129,12 @@ If a tester cannot say what up does in one sentence, too clever.
 
 ### What the stick is not
 
-- Not 8 chord qualities. Archive failure even with I–vii buttons.
+- Not 8 chord qualities. Archive failure even with I–vii buttons. Degree mode does not bring this back.
 - Not a progression picker.
 - Not a key picker.
 - Not sticky.
 
-Lab “quality stick” mode: only as a compile flag to A/B against this. Not the default.
+No lab “quality stick” as a user-facing mode. Compile-flag A/B against the old tables is allowed in private. Do not ship it.
 
 ---
 
@@ -121,10 +142,10 @@ Lab “quality stick” mode: only as a compile flag to A/B against this. Not th
 
 **Role + context.** Seats are roles. Notes are picked smart:
 
-Given: current chord (from buttons) + key + last HOME + seat  
+Given: current chord (from Type buttons or Degree + key) + last HOME + seat  
 Pick pitches that (1) keep that chord’s identity, (2) match the role, (3) voice-lead, (4) stay in key unless spice is open.
 
-Example, C major, MIDI D + Min held → Dm.
+Example, C major, Type mode, MIDI D + Min held → Dm.
 
 - HOME: D–F–A near the last chord.
 - RIGHT: F in the bass, rest voice-led.
@@ -133,13 +154,17 @@ Example, C major, MIDI D + Min held → Dm.
 
 Same lean with MIDI G + Maj does that job to G, not “the same MIDI notes.”
 
+Degree mode, C major, button ii: same Dm example, no MIDI D required.
+
 Start proto here. If it feels dead, enrich the up-ladder (still in key) before bringing back quality slices.
 
 ---
 
 ## Tension ladder (up / down)
 
-The type cluster already has 6 / m7 / M7 / 9, so up is (1) spacing and/or (2) unnamed in-key extras the buttons did not already hold. Held 9 always wins.
+In Type mode the cluster already has 6 / m7 / M7 / 9, so up is (1) spacing and/or (2) unnamed in-key extras the buttons did not already hold. Held 9 always wins.
+
+Degree mode has no extra pads at first, so the up-ladder *is* how you add in-key color.
 
 Never add ♯11 / ♭9 from a normal seat. That is spice.
 
@@ -163,9 +188,9 @@ Non-inversion slashes (C/D) = spice. Do not hide them in a normal seat.
 Stick centered or just released:
 
 - Default chord. Buttons-only players live here.
-- The chord the buttons asked for, voice-led. Buttons-only at HOME must already sound like a product.
+- The chord the mode asked for, voice-led. Buttons-only at HOME must already sound like a product.
 - Voice-lead from the previous HOME. Not a fresh closed pile every time.
-- Top note biased into a useful band (around G3–G5).
+- Top note biased into a useful band (around G3–G5). Firmware used to clamp everything toward middle C; do not do that. Follow the played octave (Type) or a sensible default register (Degree).
 
 If HOME is ugly, stop. The stick cannot save it. If HOME is great, the stick is gravy.
 
@@ -183,11 +208,12 @@ If HOME is ugly, stop. The stick cannot save it. If HOME is great, the stick is 
 
 ## Key
 
-- Buttons ignore key for quality (Orchid is honest). Stick extras and spice still read key.
+- Type mode: buttons ignore key for quality (honest Maj). Stick extras and spice still read key.
+- Degree mode: key **is** the map. Wrong key makes the wrong degrees, which is correct.
 - Override: hold **Key** + incoming MIDI note.
-- Display: `Dm7` and `C major`.
+- Display: `Dm7` and `C major`, plus Type/Degree.
 
-Wrong key should only make stick extras weird, not change Min into Maj.
+Wrong key in Type mode should only make stick extras weird, not change Min into Maj.
 
 ---
 
@@ -201,7 +227,7 @@ v0 can ship spice = off and still not be boring if the in-key up-ladder is audib
 
 ## MIDI (this proto)
 
-Lab box: RP2040-Zero USB-C as MIDI **device** `OpenChord M1`. Launchkey Mini MK4 keys = roots. Pads = Orchid types (ch 10 CC 36–43). Two knobs = stick (CC 47/48).
+Lab box: RP2040-Zero USB-C as MIDI **device** `OpenChord M1`. Launchkey Mini MK4 keys = roots. Pads = Type buttons (ch 10 CC 36–43). Two knobs = stick (CC 47/48), ignored until they pass center once.
 
 Each piano key is assigned at **note-on**:
 
@@ -211,17 +237,19 @@ Each piano key is assigned at **note-on**:
 
 PC is USB host. Launchkey → DAW/router → OpenChord in. OpenChord out → instrument track. Do not also send Launchkey notes straight to the instrument.
 
-Outgoing notes are ref-counted so a thru E on top of C major does not kill the chord’s E. Channel split later.
+Outgoing notes are ref-counted so a thru E on top of C major does not kill the chord’s E. Channel split later (plugin setting).
+
+The plugin, when it exists, uses the same assignment rules. MIDI Learn remaps CC/notes; it does not change the engine. If a hardware M1 is present, the plugin does not render — see `goals.md`.
 
 ---
 
 ## v0 playtest
 
-1. USB MIDI in = root. Hold Dim/Min/Maj/Sus (+ extras) and play a key. Chord stays until that key is up.
+1. USB MIDI in = root. Hold Dim/Min/Maj/Sus (+ extras) and play a key. Chord stays until that key is up. (Type mode.)
 2. Stick roles, spring-back, **in-key extras only**. Type never comes from the stick.
-3. Key override (Key + note). OLED: chord + key. (Product; not on the Zero proto yet.)
+3. Key override (Key + note). OLED: chord + key + mode. (Product; not on the Zero proto yet.)
 4. Thru when no type is held at note-on.
-5. Smart Orchid / I–vii later if this is boring or too easy to leave the key.
+5. Degree mode after Type HOME is worth shipping. Smart Type later if Type is too easy to leave the key.
 
 Do not add quality slices on the stick. That is the OG.
 
@@ -229,17 +257,19 @@ Do not add quality slices on the stick. That is the OG.
 
 ## Open questions
 
-Locked: spring-back HOME. Stick ≠ static quality map. Stick extras in key. Out of key is the type you held (or spice later).
+Locked: spring-back HOME. Stick ≠ static quality map in **both** modes. Stick extras in key. Type + Degree as product modes (Degree not this proto). Out of key is Type quality you held, or spice later. Plugin and firmware share this file.
 
-Decided for this proto: Orchid buttons + MIDI root. Not I–vii on the eight keys.
+Decided for this proto: Type buttons + MIDI root.
 
 Still open:
 
-1. Smart Orchid (types follow the note/key) — later.
-2. HOME = triad or always add a 7th?
-3. Up: spacing, in-key extras, or both?
-4. Keep role while leaning across a new type (probably yes)?
-5. Hold vs latch on the physical buttons? Note-on assignment is what the RP2040 proto does.
-6. Layout: thumb-reach stick?
+1. Smart Type (types follow the note/key) — later.
+2. Degree eighth button.
+3. HOME = triad or always add a 7th?
+4. Up: spacing, in-key extras, or both?
+5. Keep role while leaning across a new type (probably yes)?
+6. Hold vs latch on the physical buttons? Note-on assignment is what the RP2040 proto does.
+7. Layout: thumb-reach stick?
+8. Degree + Shift layer for 6/m7/M7/9, or leave extras to the stick?
 
 When one is decided, update this file.

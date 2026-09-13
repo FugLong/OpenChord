@@ -1,6 +1,6 @@
 # M1 hardware
 
-Custom PCB: RP2040 on the board, USB-C on our edge. Not a Pico carrier.
+Custom PCB: RP2040 on the board, USB-C on our edge. Not a Pico carrier. No pots — extra settings live in the free plugin.
 
 KiCad library bits pulled from EasyEDA/LCSC:
 

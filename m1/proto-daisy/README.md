@@ -2,8 +2,8 @@
 
 Throwaway firmware for the **original OpenChord box** (Daisy Seed, 11 keys, stick, OLED, USB MIDI). Implements the **new** M1 design on that hardware:
 
-- Incoming USB MIDI note = **root**
-- Eight chord keys = **Orchid** types (not I–vii)
+- Incoming USB MIDI note = **root** (**Type** mode; Degree is later)
+- Eight chord keys = triad + extras (not I–vii)
 - Stick = voicing / in-key color, spring-back HOME
 - Chords go back out USB MIDI to the DAW
 

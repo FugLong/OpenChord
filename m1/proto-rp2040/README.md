@@ -1,6 +1,6 @@
 # M1 RP2040-Zero proto
 
-USB-C on the Zero is a MIDI **device** named `OpenChord M1`. Launchkey Mini MK4 **keys** are roots. **Pads** are Orchid types. Two **knobs** are the stick.
+USB-C on the Zero is a MIDI **device** named `OpenChord M1`. This harness is **Type** mode only. Launchkey Mini MK4 **keys** are roots. **Pads** are Type buttons (triad + extras). Two **knobs** are the stick. Degree mode is later (see `m1/docs`).
 
 USB-A / qwerty host is parked. Product M1 still has no USB host.
 
@@ -39,7 +39,7 @@ Type is captured **when the piano key goes down**. That chord stays until you re
 | 42 | M7 |
 | 43 | 9 |
 
-36–39 are the triad. 40–43 only add color **with** a type (Maj + M7 = maj7). Extensions alone do not make a chord. Hold type + key, then tap an extra: the extra notes add in without retriggering the triad.
+36–39 are the triad. 40–43 only add color **with** a type (Maj + M7 = maj7). Extensions alone do not make a chord. Hold type + key, then tap an extra: the extra notes add in without retriggering the triad. The plugin’s Launchkey preset should match this map.
 
 Value ≥ 64 = held. Channel 10 notes are ignored (not roots).
 
