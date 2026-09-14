@@ -46,10 +46,11 @@ Avoid USB, QSPI, crystal pins.
 |----------|--------|
 | ROW0–1, COL0–3 | Matrix |
 | STICK_X/Y | ADC, C219778 |
-| I2C SDA/SCL | OLED |
+| I2C SDA/SCL | OLED **+ AT42QT2120** (same bus) |
 | UART TX/RX | MIDI out / in |
 | KEY, SHIFT, MODE | Tactiles |
+| TOUCH_CHANGE | Optional, QT2120 change/IRQ-style pin if used |
 
 ## Layout
 
-2×4 left-hand cluster; stick at thumb; USB-C on edge; TRS rear/side; diode next to each socket; bottom keepout for case.
+2×4 left-hand cluster; stick at thumb; **tentative touch strip** along a free edge (I2C electrodes); USB-C on edge; TRS rear/side; diode next to each socket; bottom keepout for case.

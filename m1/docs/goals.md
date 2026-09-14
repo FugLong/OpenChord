@@ -145,8 +145,8 @@ Zero screen is allowed only if we accept “what key am I in?” as the first su
 | MCU | **RP2040** on our PCB (TinyUSB MIDI device, UART TRS). Not ESP32. Not a Pico glued to a carrier. |
 | USB | USB-C on the **edge of our board**, device only, also power |
 | MIDI | TRS in, TRS out; USB MIDI in/out |
-| Front | 8× Gateron low-profile, Alps RKJXV1220001, a few cheap tactiles (Key, Shift, mode). **No pots.** |
-| Display | Cheap 0.91" I2C SSD1306 from LCSC, not Adafruit |
+| Front | 8× Gateron LP, Alps RKJXV1220001, tactiles (Key, Shift, mode). **Tentative:** capacitive **touch strip** (strum / sparkle) via **AT42QT2120** + PCB electrodes. **No pots / SoftPot.** |
+| Display | Cheap 0.91" I2C SSD1306 (Ali module on PCB). |
 | Audio | None |
 | Battery | None |
 | Host USB | None |
@@ -271,6 +271,7 @@ The plugin can start as soon as HOME on the proto is worth repeating. Do not wai
 
 These are not forgotten. They are not locked.
 
+- Touch strip (**AT42QT2120-MMHR**): electrode count, mask vs ENIG frets, Smart-only vs both modes; plugin CC/axis = same strum engine.
 - MIDI channel split (chords / bass / thru) — plugin setting; hardware default TBD.
 - Thru vs replace vs merge when a keyboard already sends chords.
 - Stick click for spice vs Shift-only.

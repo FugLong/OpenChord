@@ -1,10 +1,10 @@
 # M1 BOM (rev A)
 
-Locks: [`../docs/goals.md`](../docs/goals.md). Switches: [`switches.md`](switches.md). OLED: [`lib/OLED.md`](lib/OLED.md).
+Locks: [`../docs/goals.md`](../docs/goals.md). Switches: [`switches.md`](switches.md). OLED: [`lib/OLED.md`](lib/OLED.md). Touch: [`touch.md`](touch.md).
 
-**Hand-build only.** Bare PCB from fab. Hot air for RP2040 QFN; iron for the rest. One PCB — no harnesses, no 74HC14, no paid PCBA.
+**Hand-build only.** Bare PCB. Hot air: RP2040 + QT2120. Iron: the rest. One board, no harnesses, no SoftPot, no paid PCBA.
 
-Packages: **0603** passives (0805 bulk OK), **SOIC-8** flash, **SOD-123** diodes, **H11L1M** (not 6N137).
+Packages: **0603** (0805 bulk OK), **SOIC-8** flash, **SOD-123** diodes, **H11L1M**, **AT42QT2120-MMHR** VQFN-20.
 
 ---
 
@@ -24,12 +24,11 @@ Packages: **0603** passives (0805 bulk OK), **SOIC-8** flash, **SOD-123** diodes
 | 1 | MIDI IN opto | H11L1M | yes | C16587 | DIP-6 | candidate |
 | 2 | TRS 3.5 mm | SJ1-3525N | yes | PJ-313 | TH R/A | candidate |
 | 1 | OLED 0.91" white | Ali SSD1306 4-pin | — | — | TH | **have** (×5) |
+| 1 | Cap touch | **AT42QT2120-MMHR** | [DigiKey](https://www.digikey.com/en/products/detail/microchip-technology/AT42QT2120-MMHR/3678733) | — | VQFN-20 3×3 | **tentative** |
 | 8 | LP hotswap | Gateron LP socket | keeb shops | — | bottom SMD | ordered |
 | 8 | LP switch | KS-27 / KS-33 | — | — | 2-pin | **have** |
 
-Cut: 74HC14, Panic 4th button, PTC, FPC OLED, flying cables.
-
-USB: use **C5184243** (GCT). Do not mix Hroparts **C165948** footprint.
+Cut: SoftPot, 74HC14, Panic tactile, PTC, FPC OLED, flying cables. USB = GCT **C5184243** only.
 
 ### Passives (0603 unless noted)
 
@@ -38,7 +37,7 @@ USB: use **C5184243** (GCT). Do not mix Hroparts **C165948** footprint.
 | 2 | 27 Ω | USB D+/D− |
 | 2 | 5.1 kΩ | CC1/CC2 → GND |
 | 2–3 | 10 kΩ | BOOT / pulls |
-| 2 | 4.7 kΩ | I2C (skip if OLED has them) |
+| 2 | 4.7 kΩ | I2C (OLED + QT2120) |
 | 1–2 | 220 Ω | MIDI IN |
 | 1 | 1–10 kΩ | Opto pull-up |
 | 1 | 10 Ω | MIDI OUT TX |
@@ -48,13 +47,12 @@ USB: use **C5184243** (GCT). Do not mix Hroparts **C165948** footprint.
 | 3–4 | 1–10 µF 0805 | LDO + bulk |
 | 1 | 1 kΩ | QSPI_SS / BOOTSEL |
 
-MIDI OUT = UART + resistors (Type A). No buffer IC.
+QT2120 extras: per Microchip datasheet at schematic time. MIDI OUT = UART + resistors (Type A).
 
 ---
 
 ## Buy / build
 
-1. DigiKey: everything except stick, sockets, OLED.
+1. DigiKey: core + **AT42QT2120-MMHR** (not stick / sockets / OLED).
 2. LCSC: stick **C219778**.
-3. 2-key LP socket coupon → then full bare PCB.
-4. You assemble; case = PCB + plate + screws.
+3. LP socket coupon → bare PCB → hand assemble → plate + case.
