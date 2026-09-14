@@ -18,7 +18,7 @@ How we prove the chord engine before the custom M1 PCB exists.
 2. **`m1/proto-rp2040`** — Waveshare RP2040-Zero, PlatformIO. USB-C = MIDI device. Launchkey Mini MK4 pads/knobs fake the Pro cluster and stick.
 3. Play until C–Am–F–G never sounds stupid and ideas start showing up.
 4. **`m1/plugin`** — **OpenChord M Core**, same engine in AU MIDI FX + VST3. Learn + extra settings. Skip voicing if a hardware M1 is present.
-5. **`m1/firmware`** — same engine on the custom PCB. USB device only. No host on the SKU. No pots; tactiles for Key / Shift / mode.
+5. **`m1/firmware`** — same engine on the custom PCB. USB device only. No host on the SKU. No pots; cap system pads (or tactile fallback) for Key / Shift / mode.
 6. The Seed box stays on archived OG firmware unless we explicitly go back.
 
 If the engine is wrong on a laptop, the enclosure will not save it. If it is right on a laptop and wrong on the Seed, the harness is wrong, not the music.
@@ -89,4 +89,4 @@ Stale `pin_config.h` still says joy click D14, display DC on D0, MIDI as D12/D13
 
 ## Product hardware (not this testbed)
 
-RP2040 on our PCB, USB-C on our edge, Gateron LP × 8, Alps C219778, a few tactiles (Key, Shift, mode), no pots, LCSC OLED. Free plugin is the settings surface. KiCad bits for the stick are already in `m1/hardware/lib/` (LCSC C219778).
+RP2040 on our PCB, USB-C on our edge, Gateron LP × 8, **2× AT42QT2120** (strip + wheel + system pads; Alps / tactiles as fallback), no pots / SoftPot, Ali OLED. Free plugin is the settings surface. See [`../hardware/`](../hardware/).

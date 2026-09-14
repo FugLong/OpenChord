@@ -96,9 +96,9 @@ Spec + feel: [chord-engine.md](chord-engine.md).
 
 ### Stick is color, not type
 
-Alps **RKJXV1220001** (LCSC **C219778**). Analog, 8 seats in firmware. **Spring-back to center.** Center = HOME. Lean is temporary.
+**Gesture lock** (firmware / engine): 8 seats around HOME. Center / no lean = HOME. Lean is temporary. Seats: voicing / bass / **in-key** color. Not maj vs min. Not the archive preset table. Both modes. Out of key only if the player tries (Pro-mode Maj on a minor degree, spice later).
 
-Seats: voicing / bass / **in-key** color. Not maj vs min. Not the archive preset table. Both modes. Out of key only if the player tries (Pro-mode Maj on a minor degree, spice later).
+**Hardware plan (design-time, can fall back):** capacitive **wheel** on a second **AT42QT2120** (I2C1) — 3 interleaved electrodes, absolute angle 0–255, firmware → same 8 seats. Touch the rim → seat; lift finger → HOME. Empty center of the ring = deadzone (same idea as a big stick deadzone). Alps **RKJXV1220001** / LCSC **C219778** stays in the KiCad lib as the fallback if the wheel feel fails.
 
 ```
         more tension
@@ -110,9 +110,9 @@ inv  4     HOME      6   inv
 
 That diagram is a **candidate**, not a lock. Seats are voicings (or extra color), never chord types. No quality-roulette stick, including in Smart mode.
 
-No encoder on v1. **No pots / dials on the box.** They add size and cost, and this product assumes a DAW. A D-pad is a later maybe; the proto already has analog.
+No encoder on v1. **No pots / dials on the box.** They add size and cost, and this product assumes a DAW.
 
-Split: **buttons pick the chord, stick colors it (in key).** Tactiles = Key, Shift, and a mode toggle (exact combo still open). Panic can stay a chord-row extra or Shift.
+Split: **Gateron pads pick the chord, stick colors it (in key).** System controls (Key, Shift, mode — exact combo still open) are planned as **capacitive pads** on spare QT2120 channels under a 3D-printed cover with openings; fall back to tactiles if needed. Panic can stay a chord-row extra or Shift. Deep settings stay in the **plugin** — more control does not mean more buttons on the box.
 
 The algorithm:
 
@@ -121,7 +121,7 @@ The algorithm:
 - Stick never changes type.
 - Key override: Key hold + incoming MIDI note.
 
-Optional later: a dedicated “spice” gesture (stick click or hard edge) for one borrowed chord from a mood table. Spice is a door the player opens, not the miss penalty.
+Optional later: a dedicated “spice” gesture (hard rim edge / Shift) for one borrowed chord from a mood table. Spice is a door the player opens, not the miss penalty.
 
 ### Display and settings
 
@@ -130,7 +130,7 @@ We want as little screen as we can get away with. We still need to know **key**,
 - Prefer a tiny OLED that only shows something like `Cmaj7`, `C major`, and Pro/Smart.
 - Or four LEDs plus that. A $2 OLED is not a jambox.
 - Key override: hold **Key** + incoming note.
-- Shift / mode tactiles: mode, thru / replace / panic — only what you need without opening a laptop.
+- Shift / mode: mode, thru / replace / panic — only what you need without opening a laptop. Menu/settings overhaul can add power without a button farm.
 - **No companion required.** The box plays with no plugin. The plugin is how you bind controllers, see extra settings, and (when a box is plugged in) edit the device.
 - No OpenChord-style hierarchical menu on the hardware.
 
@@ -145,14 +145,14 @@ Zero screen is allowed only if we accept “what key am I in?” as the first su
 | MCU | **RP2040** on our PCB (TinyUSB MIDI device, UART TRS). Not ESP32. Not a Pico glued to a carrier. |
 | USB | USB-C on the **edge of our board**, device only, also power |
 | MIDI | TRS in, TRS out; USB MIDI in/out |
-| Front | 8× Gateron LP, Alps RKJXV1220001, tactiles (Key, Shift, mode). **Tentative:** capacitive **touch strip** (strum / sparkle) via **AT42QT2120** + PCB electrodes. **No pots / SoftPot.** |
+| Front | **8× Gateron LP** (hotswap) stay mechanical — **direct GPIO** each (internal pull-ups; no matrix / no diodes). Cap plan: **strip** (strum / sparkle) + **wheel** (color stick) + **system pads** (Key / Shift / mode) via **2× AT42QT2120** (fixed I2C addr → **I2C0** with OLED, **I2C1** for the other). PCB copper electrodes; printed cover with openings. Fall back to Alps stick and/or tactiles if feel fails. **No pots / SoftPot.** |
 | Display | Cheap 0.91" I2C SSD1306 (Ali module on PCB). |
 | Audio | None |
 | Battery | None |
 | Host USB | None |
-| Price | Under **$100** to the customer, with margin, after the first messy run |
+| Cost | Small-batch COGS ballpark **~$25–35**/unit (parts+PCB+case); street under **$100** with margin after the first messy run |
 
-One custom PCB. SMT chip + flash + crystal + USB-C. Through-hole for stick, TRS, switches as needed. Reproducible. No breakout nest.
+One custom PCB. Hot air for RP2040 + both QT2120s. Through-hole for TRS (and Gaterons via sockets). Reproducible. No breakout nest. Details: [`../hardware/touch.md`](../hardware/touch.md), [`../hardware/bom.md`](../hardware/bom.md).
 
 **Prove the engine before that board.** Portable logic first. Hands-on feel on the **RP2040-Zero proto** (`m1/proto-rp2040`) with a Launchkey. Seed box is parked on archived OG firmware. See [testbed.md](testbed.md).
 
@@ -259,7 +259,7 @@ Build order:
 3. Play it on the RP2040-Zero proto (`m1/proto-rp2040`).
 4. Iterate engine + proto until C–Am–F–G never sounds stupid.
 5. Plugin that links the same engine — Learn, extra settings, ugly UI. Faster to iterate than flashing, and the free SKU.
-6. PCB: RP2040, USB-C on our edge, TRS, Gaterons, Alps, OLED on the same board (no harness). No pots.
+6. PCB: RP2040, USB-C on our edge, TRS, Gaterons, cap strip/wheel (or Alps fallback), OLED on the same board (no harness). No pots.
 7. Enclosure last.
 8. Pretty device GUI + SysEx editor once the hardware is real.
 
@@ -271,16 +271,19 @@ The plugin can start as soon as HOME on the proto is worth repeating. Do not wai
 
 These are not forgotten. They are not locked.
 
-- Touch strip (**AT42QT2120-MMHR**): electrode count, mask vs ENIG frets, Smart-only vs both modes; plugin CC/axis = same strum engine.
+- Cap stack (**2× AT42QT2120**): strip electrode geometry (slider = 3 interleaved → 0–255); wheel diameter / rim width; mask vs ENIG; Smart-only vs both modes for strip; plugin CC/axis = same strum engine.
+- System pads vs tactiles: keep planning capacitive under cover openings; swap to B3F-style if accidental hits or feel suck in bring-up.
+- Wheel vs Alps stick: wheel is the plan; C219778 remains the mechanical fallback.
 - MIDI channel split (chords / bass / thru) — plugin setting; hardware default TBD.
 - Thru vs replace vs merge when a keyboard already sends chords.
-- Stick click for spice vs Shift-only.
-- Exact tactiles: dedicated Mode vs Shift+hold. Panic placement.
+- Spice gesture: hard rim edge vs Shift-only (no stick-click on a flat wheel).
+- Exact Key / Shift / mode combo. Panic placement.
 - Smart enhancement presets (auto diatonic 7ths, etc.).
-- One-hand layout: 2×4 cluster + thumb stick vs stick-only vs pads-only.
+- One-hand layout: 2×4 + thumb wheel vs pads-only experiments.
+- Menu / settings overhaul (more control, still few front-panel controls).
 - How much “next chord” suggestion is v1 vs v1.1.
 - Trademark / `openchord.com` is someone else’s music-apps site.
 
-Locked (do not reopen without updating this file): MCU RP2040; custom PCB with USB-C on the edge; no radio; no battery; no USB host on the SKU; Alps C219778 quantized to 8; 8 Gaterons + a few tactiles; **no pots / no encoder**; cheap OLED; ~$99 hardware; plugin free (AU MIDI FX + VST3, same engine); hardware works with no plugin; if the box is connected the plugin does not voice; **Pro + Smart** modes (UI names); Smart 8th pad = high I; Smart HOME = triad (fancy 7ths = later setting); Smart pads = hold; stick is color in both modes, never a quality table; no competitor product names in UI/docs/code comments; engine portable; RP2040-Zero as current testbed; Seed proto parked; archive frozen.
+Locked (do not reopen without updating this file): MCU RP2040; custom PCB with USB-C on the edge; no radio; no battery; no USB host on the SKU; **8 Gateron LP** for the chord pads (**direct GPIO**, not a matrix); stick **gesture** = 8 seats + HOME (color, never a quality table); **no pots / no encoder / no SoftPot**; hand-build (no paid PCBA); cheap OLED; ~$99 hardware; plugin free (AU MIDI FX + VST3, same engine); hardware works with no plugin; if the box is connected the plugin does not voice; **Pro + Smart** modes (UI names); Smart 8th pad = high I; Smart HOME = triad (fancy 7ths = later setting); Smart pads = hold; no competitor product names in UI/docs/code comments; engine portable; RP2040-Zero as current testbed; Seed proto parked; archive frozen.
 
 When one of these is decided, update this file. Do not start a second source of truth.

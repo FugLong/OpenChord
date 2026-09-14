@@ -29,7 +29,7 @@ m1/
   proto-daisy/    Seed harness (parked; restore OG from archive)
   plugin/         OpenChord M Core — free AU MIDI FX + VST3. Same engine + session as M1 hardware.
   firmware/       Product RP2040 (later)
-  hardware/       PCB, enclosure, KiCad libs (C219778 stick already here)
+  hardware/       PCB, enclosure, KiCad libs (cap plan in hardware/touch.md; Alps C219778 lib = fallback)
 ```
 
 `s1/` stays empty. `archive/s1-daisy/` stays frozen.

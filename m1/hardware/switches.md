@@ -1,6 +1,6 @@
-# M1 switches — Gateron LP + matrix
+# M1 switches — Gateron LP, direct GPIO
 
-Parts: [`bom.md`](bom.md). Feel: [`../docs/goals.md`](../docs/goals.md).
+Parts: [`bom.md`](bom.md). Feel: [`../docs/goals.md`](../docs/goals.md). Cap front: [`touch.md`](touch.md).
 
 ## Socket family
 
@@ -14,29 +14,32 @@ KS-27 and KS-33 share a compatible footprint. Wrong family = scrap board.
 [keycap] [LP switch]  ← press from top
 [plate]
 ── PCB top ──  NPTH for legs
-── PCB bottom ──  LP hotswap socket (SMD) + diode → matrix
+── PCB bottom ──  LP hotswap socket (SMD)
 ```
 
 Solder sockets on the **bottom**. Press switches in after plate. Coupon 1–2 keys before full fab.
 
 Footprints to try (verify on coupon): [siderakb/key-switches.pretty](https://github.com/siderakb/key-switches.pretty) `SW_Gateron_LowProfile_HotSwap_*`.
 
-## Matrix 2×4
+## Wiring — direct GPIO (no matrix)
 
-8 pads → 4 cols × 2 rows = 6 GPIOs + 8 diodes.
+Eight pads → **eight GPIOs**. One switch pin → GPIO, other → GND.
 
-- Scan: **rows out**, **columns in** (pull-ups).
-- Diode: **anode → row**, **cathode → column** (match firmware).
-- Multi-hold needs diodes — mandatory.
+- Enable **internal pull-up** on each key GPIO (~50–80 kΩ on RP2040). No external pull-up resistors.
+- Pressed = low. Firmware debounce.
+- **No diodes** — ghosting is a matrix problem; each key has its own line.
+- Multi-hold works.
 
-Tactiles (Key / Shift / mode) = dedicated GPIOs to GND, **not** in the matrix.
+Key / Shift / mode stay capacitive (spare QT2120 SNS) or TH tactiles on dedicated GPIOs if we fall back — not part of the eight Gaterons.
 
 ### Pad map (firmware)
 
-| Cell | Pro | Smart |
-|------|-----|-------|
-| R0C0–R0C3 | Dim Min Maj Sus | I ii iii IV |
-| R1C0–R1C3 | 6 m7 M7 9 | V vi vii I↑ |
+| Pad | Pro | Smart |
+|-----|-----|-------|
+| 0–3 | Dim Min Maj Sus | I ii iii IV |
+| 4–7 | 6 m7 M7 9 | V vi vii I↑ |
+
+Physical layout is still a **2×4** cluster; numbering is firmware-defined.
 
 ### GPIO sketch (not final pins)
 
@@ -44,13 +47,15 @@ Avoid USB, QSPI, crystal pins.
 
 | Function | Notes |
 |----------|--------|
-| ROW0–1, COL0–3 | Matrix |
-| STICK_X/Y | ADC, C219778 |
-| I2C SDA/SCL | OLED **+ AT42QT2120** (same bus) |
+| KEY0–KEY7 | Direct to Gaterons; internal pull-up |
+| I2C0 SDA/SCL | OLED (`0x3C`) + QT2120 A (strip / slider) @ `0x1C` |
+| I2C1 SDA/SCL | QT2120 B (wheel + system pads) @ `0x1C` |
 | UART TX/RX | MIDI out / in |
-| KEY, SHIFT, MODE | Tactiles |
-| TOUCH_CHANGE | Optional, QT2120 change/IRQ-style pin if used |
+| TOUCH_CHANGE_A/B | Optional, per-chip CHANGE |
+| STICK_X/Y | **Only if Alps fallback** — ADC on GPIO26–29 |
+
+~16 GPIOs used with optional CHANGE pins — fine on RP2040 (~30 available).
 
 ## Layout
 
-2×4 left-hand cluster; stick at thumb; **tentative touch strip** along a free edge (I2C electrodes); USB-C on edge; TRS rear/side; diode next to each socket; bottom keepout for case.
+2×4 left-hand cluster; thumb **wheel** (or Alps stick fallback); touch **strip** on a free edge; system pads near thumb/edge under cover openings; USB-C on edge; TRS rear/side; bottom keepout for case.

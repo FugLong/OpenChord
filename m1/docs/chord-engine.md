@@ -2,7 +2,7 @@
 
 Portable logic for OpenChord M1 / M Core. Code: `m1/engine`. Product: `goals.md`. Hands-on: `testbed.md`. Hosts: RP2040 firmware **and** the free plugin. Neither host may fork the voicing math.
 
-Stick **gesture** is spring-back to HOME. Stick **must not** be a static quality map — not in Pro mode, not in Smart mode. Feel lock: fun, stick extras in key, spicy / out-of-key only if the player *tries*.
+Stick **gesture** is temporary color then back to HOME (lift finger on the cap wheel, or spring-back on Alps fallback). Stick **must not** be a static quality map — not in Pro mode, not in Smart mode. Feel lock: fun, stick extras in key, spicy / out-of-key only if the player *tries*.
 
 Do not port the archive joystick preset tables.
 
@@ -28,7 +28,7 @@ UI mode names: **Pro** and **Smart**. Do not use competitor product names in UI,
 | Layer | Pro mode | Smart mode | Clever? |
 |-------|--------------|------------|---------|
 | **Which chord** | Incoming MIDI = root. Pads = triad + extras | Pads = I–vii (+ high I). Diatonic quality from the key at HOME | Pro: Maj means maj. Smart: HOME is diatonic. Out of key is a choice. |
-| **How it sits** | Stick (lean, spring home) | Same stick contract | Voicing, bass, in-key color. **Never** maj vs min. |
+| **How it sits** | Stick (rim seat / lean, then HOME) | Same stick contract | Voicing, bass, in-key color. **Never** maj vs min. |
 | **Glue** | Key + last chord + voice leading | Same | Always on. |
 
 Stick and pads must not do the same job.
@@ -50,7 +50,7 @@ M1 / M Core:
 |--|--|--|--|
 | Pads | I–vii | Dim / Min / Maj / Sus + extras | I–vii + high I |
 | Root | Degree of the key | Incoming MIDI note | Degree of the key (keyboard optional) |
-| Stick | 8 quality transforms | Snap back, voicing / bass / in-key color | Same coloring stick. Not quality slices. |
+| Stick | 8 quality transforms | Snap back to HOME, voicing / bass / in-key color | Same coloring stick. Not quality slices. |
 | Out of key | Easy (half the stick) | Stick no. Pro pad yes if you try | Stick no. Override / spice if you try |
 | Sound | Old jambox synth | None (MIDI out) | None (MIDI out) |
 
@@ -102,7 +102,7 @@ Keyboard in Smart: optional melody thru; **Key + note** still sets the key. Stic
 Box left of a keyboard (Pro) or alone (Smart).
 
 1. **Pads only** — complete at HOME. Stick optional. Pro needs a root from MIDI; Smart does not.
-2. **Pads + thumb stick** — 2×4 cluster, stick on the inner edge. Lean = color, release = HOME.
+2. **Pads + thumb stick** — 2×4 cluster, stick (cap wheel plan) on the inner edge. Lean / rim = color, release = HOME.
 3. **Stick-only** — needs latched last degree / quality (later).
 
 ---
@@ -194,7 +194,7 @@ If HOME is ugly, stop. The stick cannot save it.
 
 ## Spice (the “I tried” door)
 
-Later: stick click / Shift+stick / labeled edge for borrowed color. Player opened it. Diagonals are not spice.
+Later: hard rim edge / Shift for borrowed color. Player opened it. Diagonals are not spice.
 
 v0 can ship spice = off if the in-key up-ladder is audible.
 
