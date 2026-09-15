@@ -74,6 +74,14 @@ tests/build/
 *.bak
 *.backup
 
+# KiCad
+*-backups/
+*.lck
+~$*
+fp-info-cache
+*.kicad_pcb-bak
+*.kicad_sch-bak
+
 # Environment files
 .env
 .env.local

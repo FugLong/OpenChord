@@ -1,0 +1,11 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "oc-oled")(type "KiCad")(uri "${KIPRJMOD}/../lib/oled.pretty")(options "")(descr "0.91 in SSD1306 OLED"))
+  (lib (name "oc-lcsc")(type "KiCad")(uri "${KIPRJMOD}/../lib/lcsc.pretty")(options "")(descr "LCSC parts / Alps stick fallback"))
+  (lib (name "oc-gateron")(type "KiCad")(uri "${KIPRJMOD}/../lib/gateron.pretty")(options "")(descr "Gateron KS-27/KS-33 LP hotswap + solderable (ai03)"))
+  (lib (name "oc-touch")(type "KiCad")(uri "${KIPRJMOD}/../lib/easyeda/oc_touch.pretty")(options "")(descr "IQS572 + QT2120 (EasyEDA/LCSC)"))
+  (lib (name "oc-usb")(type "KiCad")(uri "${KIPRJMOD}/../lib/easyeda/oc_usb.pretty")(options "")(descr "GCT USB4105-GF-A USB-C"))
+  (lib (name "oc-trs")(type "KiCad")(uri "${KIPRJMOD}/../lib/easyeda/oc_trs.pretty")(options "")(descr "Same Sky SJ1-3523N TRS MIDI"))
+  (lib (name "oc-btn")(type "KiCad")(uri "${KIPRJMOD}/../lib/easyeda/oc_btn.pretty")(options "")(descr "Panasonic EVQ-PUA02K edge mode"))
+  (lib (name "captouch")(type "KiCad")(uri "${KIPRJMOD}/../lib/captouch.pretty")(options "")(descr "Generated captouch electrodes"))
+)

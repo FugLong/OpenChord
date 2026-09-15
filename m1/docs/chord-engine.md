@@ -2,7 +2,7 @@
 
 Portable logic for OpenChord M1 / M Core. Code: `m1/engine`. Product: `goals.md`. Hands-on: `testbed.md`. Hosts: RP2040 firmware **and** the free plugin. Neither host may fork the voicing math.
 
-Stick **gesture** is temporary color then back to HOME (lift finger on the cap wheel, or spring-back on Alps fallback). Stick **must not** be a static quality map — not in Pro mode, not in Smart mode. Feel lock: fun, stick extras in key, spicy / out-of-key only if the player *tries*.
+Stick **gesture** is temporary color then back to HOME (lift finger on the cap trackpad, or spring-back on Alps fallback). Stick **must not** be a static quality map — not in Pro mode, not in Smart mode. Feel lock: fun, stick extras in key, spicy / out-of-key only if the player *tries*.
 
 Do not port the archive joystick preset tables.
 
@@ -102,7 +102,7 @@ Keyboard in Smart: optional melody thru; **Key + note** still sets the key. Stic
 Box left of a keyboard (Pro) or alone (Smart).
 
 1. **Pads only** — complete at HOME. Stick optional. Pro needs a root from MIDI; Smart does not.
-2. **Pads + thumb stick** — 2×4 cluster, stick (cap wheel plan) on the inner edge. Lean / rim = color, release = HOME.
+2. **Pads + thumb stick** — 2×4 cluster, stick (cap trackpad plan) on the inner edge. Lean / position = color, release = HOME.
 3. **Stick-only** — needs latched last degree / quality (later).
 
 ---

@@ -19,7 +19,12 @@ KS-27 and KS-33 share a compatible footprint. Wrong family = scrap board.
 
 Solder sockets on the **bottom**. Press switches in after plate. Coupon 1–2 keys before full fab.
 
-Footprints to try (verify on coupon): [siderakb/key-switches.pretty](https://github.com/siderakb/key-switches.pretty) `SW_Gateron_LowProfile_HotSwap_*`.
+Footprints **in-repo** (ai03 MX_V2, MIT): see [`lib/GATERON.md`](lib/GATERON.md).
+
+- Schematic: **`oc-gateron:SW_Gateron_LP`**
+- PCB: **`oc-gateron:Gateron-KS33-Hotswap-1U`** — then **flip** so socket is on **B.Cu** (bottom)
+- Backup solder-only: `Gateron-KS33-Solderable-1U`
+- 3D: socket + switch (`Gateron-KS33-Socket.step`, `Gateron-KS33-Switch.step`) — see [`lib/GATERON.md`](lib/GATERON.md)
 
 ## Wiring — direct GPIO (no matrix)
 
@@ -30,7 +35,7 @@ Eight pads → **eight GPIOs**. One switch pin → GPIO, other → GND.
 - **No diodes** — ghosting is a matrix problem; each key has its own line.
 - Multi-hold works.
 
-Key / Shift / mode stay capacitive (spare QT2120 SNS) or TH tactiles on dedicated GPIOs if we fall back — not part of the eight Gaterons.
+**Key / Shift** = capacitive (spare QT2120 SNS; TH tactiles if we fall back). **Mode** = edge **EVQ-PUA02K** (GPIO). None of these are Gaterons.
 
 ### Pad map (firmware)
 
@@ -48,14 +53,15 @@ Avoid USB, QSPI, crystal pins.
 | Function | Notes |
 |----------|--------|
 | KEY0–KEY7 | Direct to Gaterons; internal pull-up |
-| I2C0 SDA/SCL | OLED (`0x3C`) + QT2120 A (strip / slider) @ `0x1C` |
-| I2C1 SDA/SCL | QT2120 B (wheel + system pads) @ `0x1C` |
+| MODE | EVQ-PUA02K → GPIO; internal pull-up |
+| I2C0 SDA/SCL | OLED (`0x3C`) + QT2120 (strip / Key / Shift) @ `0x1C` + IQS572 (trackpad) @ `0x74` |
+| IQS572_RDY | Required — Azoteq ready line |
+| TOUCH_CHANGE | Optional QT2120 CHANGE |
 | UART TX/RX | MIDI out / in |
-| TOUCH_CHANGE_A/B | Optional, per-chip CHANGE |
 | STICK_X/Y | **Only if Alps fallback** — ADC on GPIO26–29 |
 
-~16 GPIOs used with optional CHANGE pins — fine on RP2040 (~30 available).
+~14–16 GPIOs with RDY / CHANGE — fine on RP2040 (~30 available).
 
 ## Layout
 
-2×4 left-hand cluster; thumb **wheel** (or Alps stick fallback); touch **strip** on a free edge; system pads near thumb/edge under cover openings; USB-C on edge; TRS rear/side; bottom keepout for case.
+2×4 left-hand cluster; thumb **trackpad** (or Alps stick fallback); touch **strip** on a free edge; Key/Shift pads near thumb under cover openings; **mode** on board edge (PUA); USB-C on edge; TRS rear/side; bottom keepout for case.
