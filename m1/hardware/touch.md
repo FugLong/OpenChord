@@ -6,7 +6,7 @@ Locks / fallbacks: [`../docs/goals.md`](../docs/goals.md). Parts: [`bom.md`](bom
 
 | Role | MPN | DigiKey | Pkg | Bus |
 |------|-----|---------|-----|-----|
-| **Trackpad** (color stick) | **IQS572BLQNR** | [7165004](https://www.digikey.com/en/products/detail/azoteq-pty-ltd/IQS572BLQNR/7165004) | QFN-28 **4×4** (0.4 mm) | I²C **`0x74`**, needs **RDY** GPIO |
+| **Trackpad** (color stick) | **IQS572BLQNR** | [7165004](https://www.digikey.com/en/products/detail/azoteq-pty-ltd/IQS572BLQNR/7165004) | QFN-28 **4×4** (**0.5 mm** pitch) | I²C **`0x74`**, needs **RDY** GPIO |
 | **Strip + Key / Shift** | **AT42QT2120-XUR** | [XUR](https://www.digikey.com/en/products/detail/microchip-technology/AT42QT2120-XUR/3678735) (TSSOP-20, tape/reel — prefer) · [MMHR](https://www.digikey.com/en/products/detail/microchip-technology/AT42QT2120-MMHR/3678733) (VQFN-20 alt) | same die | I²C **`0x1C`** |
 
 **One of each.** Not 2× QT2120. IQS572 does real XY (mutual diamond). QT2120 does strip (slider ch 0–2) + **Key / Shift** on spare SNS. Mode = edge **EVQ-PUA02K** (not capacitive).
@@ -60,9 +60,7 @@ Finger → cover opening + mask/ENIG
 
 1. **Official:** [IQS572EV02](https://www.azoteq.com/product/iqs572-b000/) Arduino-shield trackpad (8×8) — order from Azoteq / Seltech if DigiKey empty. Pair with **CT210A** or **DS200** USB streamer + [IQS5xx-B000 GUI](https://www.azoteq.com/).
 2. **Ready module (best buy):** [TPS43-201A-S](https://www.digikey.com/en/products/detail/azoteq-pty-ltd/TPS43-201A-S/7164940) — 43×40 mm pad with **IQS572 on board** (FPC). Wire to Zero; prove XY + seat mapping before any coupon.
-3. **DIY chip on adapter:** solder IQS572BLQNR onto a **QFN-28 4×4 / 0.4 mm → DIP** adapter, then fly-wire to a hand-etched or JLCPCB **coupon** with only the diamond matrix + 0603s:
-   - [Chip Quik IPC0042](http://www.chipquik.com/store/product_info.php?products_id=3100042) (~$9)
-   - [Artekit QFN-28 4×4 P0.40](https://www.artekit.eu/products/breakout-boards/bbadapters/qfn-to-dip/qfn-28-4x4-p040-to-dip-adapter/)
+3. **DIY chip on adapter:** only if you cannot get TPS43/EV02 — need a **QFN-28 4×4 / 0.5 mm → DIP** adapter (not 0.4 mm; Chip Quik **IPC0042 is 0.4 mm and wrong**). Prefer coupon with the IC soldered direct.
 
 ### AT42QT2120
 

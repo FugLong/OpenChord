@@ -21,7 +21,7 @@ Packages: **0603** (0805 bulk OK), **SOIC-8** flash, **H11L1M**, **IQS572BLQNR**
 | 2 | USB-C | **USB4105-GF-A** | [11198441](https://www.digikey.com/en/products/detail/gct/USB4105-GF-A/11198441) | **C3020560** | SMT+TH | **locked** — KiCad `oc-usb:USB4105-GF-A`; 20k cycles |
 | 2 | USB ESD | USBLC6-2SC6 | yes | C7519 | SOT-23-6 | candidate |
 | 1 | Cap trackpad | **IQS572BLQNR** | [7165004](https://www.digikey.com/en/products/detail/azoteq-pty-ltd/IQS572BLQNR/7165004) | **C3827635** | QFN-28 4×4 | **locked** — KiCad `oc-touch:IQS572-BL-QNR` |
-| 1 | Cap strip / keys | **AT42QT2120-XUR** | [XUR](https://www.digikey.com/en/products/detail/microchip-technology/AT42QT2120-XUR/3678735) | **C1522278** (same die/pkg) | TSSOP-20 | **locked** — reel pack; KiCad `oc-touch:AT42QT2120-XUR`; MMHR DigiKey-only alt |
+| 1 | Cap strip / Key / Shift | **AT42QT2120-XUR** | [XUR](https://www.digikey.com/en/products/detail/microchip-technology/AT42QT2120-XUR/3678735) | **C1522278** (same die/pkg) | TSSOP-20 | **locked** — reel pack; KiCad `oc-touch:AT42QT2120-XUR`; MMHR DigiKey-only alt |
 | 1 | MIDI IN opto | H11L1M | yes | C16587 | DIP-6 | candidate |
 | 2 | TRS 3.5 mm | **SJ1-3523N** | [738689](https://www.digikey.com/en/products/detail/same-sky-formerly-cui-devices/SJ1-3523N/738689) | **C20182914** | TH R/A, **0 switches** | **locked** — KiCad `oc-trs:SJ1-3523N`; Type A; tip/ring always live |
 | 1 | Mode btn | **EVQ-PUA02K** | [286334](https://www.digikey.com/en/products/detail/panasonic-industry/EVQ-PUA02K/286334) | **C128539** | SMD side ~4.7×3.5×1.65 | **locked** — KiCad `oc-btn:EVQ-PUA02K`; edge Pro/Smart |
@@ -63,7 +63,7 @@ Touch extras (series R, VREG caps): Azoteq IQS5xx + Microchip QT2120 datasheets 
 |------|-----|------|
 | **TPS43-201A-S** | Ready IQS572 trackpad module → RP2040-Zero | [DigiKey](https://www.digikey.com/en/products/detail/azoteq-pty-ltd/TPS43-201A-S/7164940) |
 | IQS572EV02 (+ CT210A/DS200) | Official Azoteq shield + GUI | [Azoteq IQS572](https://www.azoteq.com/product/iqs572-b000/) |
-| Chip Quik IPC0042 | QFN-28 4×4 → DIP if soldering bare IQS572 | Chip Quik |
+| QFN-28 4×4 **0.5 mm** → DIP | Only if hand-soldering bare IQS572; **not** Chip Quik IPC0042 (that is 0.4 mm) | — |
 | Touchy Subject / QT2120 | Strip/key bring-up | [Lectronz](https://www.lectronz.com/products/touchy-subject) / DigiKey **XUR** |
 
 Details: [`touch.md`](touch.md).

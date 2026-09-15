@@ -259,7 +259,7 @@ Build order:
 3. Play it on the RP2040-Zero proto (`m1/proto-rp2040`).
 4. Iterate engine + proto until C–Am–F–G never sounds stupid.
 5. Plugin that links the same engine — Learn, extra settings, ugly UI. Faster to iterate than flashing, and the free SKU.
-6. Cap coupons + TPS43/QT2120 bring-up → PCB: RP2040, USB-C on our edge, TRS, Gaterons, IQS572 trackpad + QT2120 strip (or Alps fallback), OLED on the same board (no harness). No pots.
+6. Cap coupons + TPS43/QT2120 bring-up → PCB: RP2040, USB-C on our edge, TRS, Gaterons, IQS572 trackpad + QT2120 strip/Key/Shift, edge **EVQ-PUA02K** mode (or Alps fallback), OLED on the same board (no harness). No pots.
 7. Enclosure last.
 8. Pretty device GUI + SysEx editor once the hardware is real.
 
