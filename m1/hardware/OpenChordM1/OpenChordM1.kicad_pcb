@@ -7717,7 +7717,7 @@
 	(footprint "oc-btn:EVQ-PUA02K"
 		(layer "B.Cu")
 		(uuid "a5d21e3b-1139-4052-b751-b58a47ac209a")
-		(at 155 48.3)
+		(at 160 48.3)
 		(property "Reference" "SW10"
 			(at 0 4.9 0)
 			(layer "B.SilkS")
@@ -7775,6 +7775,7 @@
 			(effects
 				(font
 					(size 1.27 1.27)
+					(thickness 0.15)
 				)
 				(justify mirror)
 			)
@@ -9729,6 +9730,7 @@
 			(effects
 				(font
 					(size 1.27 1.27)
+					(thickness 0.15)
 				)
 				(justify mirror)
 			)
@@ -10122,7 +10124,7 @@
 			(at 0 6.373 0)
 			(layer "B.SilkS")
 			(hide yes)
-			(uuid "305fecb7-5821-4e8a-9d65-319c25f392a6")
+			(uuid "3f86a90d-42f2-4154-9311-f1214b6afd37")
 			(effects
 				(font
 					(size 1 1)
@@ -10134,7 +10136,7 @@
 		(property "Value" "USB4105-GF-A"
 			(at 0 -6.373 0)
 			(layer "B.Fab")
-			(uuid "c4fc1852-5f75-4e85-9fcf-cf59415a6e03")
+			(uuid "793efde5-873f-4f51-b0fc-bbdaa69df106")
 			(effects
 				(font
 					(size 1 1)
@@ -10147,7 +10149,7 @@
 			(at 0 0 0)
 			(layer "B.Fab")
 			(hide yes)
-			(uuid "80c8c208-6c68-46ad-ada3-9f8c035d949b")
+			(uuid "5869e33b-7c3e-4f63-a82a-f4bfc2cc319a")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10159,7 +10161,7 @@
 			(at 0 0 0)
 			(layer "B.Fab")
 			(hide yes)
-			(uuid "7a265af7-f489-4626-b784-0b27e389c768")
+			(uuid "63f5f2b6-60d1-4797-a38b-433004aac355")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -11586,7 +11588,7 @@
 	(footprint "oc-btn:EVQ-PUA02K"
 		(layer "B.Cu")
 		(uuid "e6ae8b5d-9272-4e12-a553-73f5e77af081")
-		(at 135 48.3)
+		(at 130 48.3)
 		(property "Reference" "SW11"
 			(at 0 4.9 0)
 			(layer "B.SilkS")
@@ -11644,6 +11646,7 @@
 			(effects
 				(font
 					(size 1.27 1.27)
+					(thickness 0.15)
 				)
 				(justify mirror)
 			)

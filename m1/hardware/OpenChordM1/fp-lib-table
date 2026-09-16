@@ -7,5 +7,6 @@
   (lib (name "oc-usb")(type "KiCad")(uri "${KIPRJMOD}/../lib/easyeda/oc_usb.pretty")(options "")(descr "GCT USB4105-GF-A USB-C"))
   (lib (name "oc-trs")(type "KiCad")(uri "${KIPRJMOD}/../lib/easyeda/oc_trs.pretty")(options "")(descr "Same Sky SJ1-3523N TRS MIDI"))
   (lib (name "oc-btn")(type "KiCad")(uri "${KIPRJMOD}/../lib/easyeda/oc_btn.pretty")(options "")(descr "Panasonic EVQ-PUA02K edge mode"))
+  (lib (name "oc-midi")(type "KiCad")(uri "${KIPRJMOD}/../lib/easyeda/oc_midi.pretty")(options "")(descr "Toshiba TLP2361 MIDI IN opto"))
   (lib (name "captouch")(type "KiCad")(uri "${KIPRJMOD}/../lib/captouch.pretty")(options "")(descr "Generated captouch electrodes"))
 )

@@ -20,5 +20,5 @@
 ## Schematic notes
 
 - **OUT:** UART TX → series R → Tip (2); Ring (3) → return / −; Sleeve → GND. Leave hot with no plug.
-- **IN:** Tip/Ring → H11L1M (or equiv) optocoupler; Sleeve → GND. No plug = idle.
+- **IN:** Tip → **220 Ω** → **TLP2361** anode; Ring → cathode; **1N4148** across LED; VO → UART RX; VCC=3V3 + 100 nF. Sleeve → GND. KiCad `oc-midi:TLP2361`. See [`MIDI.md`](MIDI.md) / [`../support.md`](../support.md).
 - Mounting pads (unnumbered) → GND if you want shell bonded.

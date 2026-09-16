@@ -4,7 +4,8 @@ RP2040 on our PCB, USB-C on the edge. Not a Pico carrier. **Hand-assemble only.*
 
 | Doc | What |
 |-----|------|
-| [bom.md](bom.md) | Parts + small-batch cost ballpark |
+| [bom.md](bom.md) | Parts + DigiKey/LCSC |
+| [support.md](support.md) | Flash / clock / power / USB / MIDI recipe (place before wiring) |
 | [switches.md](switches.md) | Gateron LP, direct GPIO (no matrix) |
 | [touch.md](touch.md) | Cap strip + trackpad + Key/Shift (**IQS572** + **QT2120**) |
 | [lib/OLED.md](lib/OLED.md) | OLED pinout / STEP / symbol |
@@ -12,6 +13,7 @@ RP2040 on our PCB, USB-C on the edge. Not a Pico carrier. **Hand-assemble only.*
 | [lib/USB.md](lib/USB.md) | GCT USB4105-GF-A USB-C |
 | [lib/TRS.md](lib/TRS.md) | Same Sky SJ1-3523N TRS MIDI |
 | [lib/BTN.md](lib/BTN.md) | Panasonic EVQ-PUA02K edge mode |
+| [lib/MIDI.md](lib/MIDI.md) | Toshiba TLP2361 MIDI IN opto |
 
 Product locks: [`../docs/goals.md`](../docs/goals.md).
 
@@ -32,8 +34,9 @@ Product locks: [`../docs/goals.md`](../docs/goals.md).
 | `easyeda/oc_usb.*` | GCT USB4105-GF-A ([USB.md](lib/USB.md)) |
 | `easyeda/oc_trs.*` | Same Sky SJ1-3523N ([TRS.md](lib/TRS.md)) |
 | `easyeda/oc_btn.*` | Panasonic EVQ-PUA02K ([BTN.md](lib/BTN.md)) |
+| `easyeda/oc_midi.*` | Toshiba TLP2361 ([MIDI.md](lib/MIDI.md)) |
 | `captouch.*` | Generated electrodes (slider/trackpad) — plugin writes here, not into `OpenChordM1/` |
 | `lcsc.*` | Alps stick C219778 (**fallback**) |
 | `3dshapes/` | OLED STEP |
 
-Nicknames: `oc-oled`, `oc-lcsc`, `oc-gateron`, `oc-touch`, `oc-usb`, `oc-trs`, `oc-btn`, `captouch`. RP2040 = KiCad stock `MCU_RaspberryPi` + `Package_DFN_QFN`. Place slider as `captouch:CT_Slider`.
+Nicknames: `oc-oled`, `oc-lcsc`, `oc-gateron`, `oc-touch`, `oc-usb`, `oc-trs`, `oc-btn`, `oc-midi`, `captouch`. RP2040 = KiCad stock `MCU_RaspberryPi` + `Package_DFN_QFN`. Place slider as `captouch:CT_Slider`. Support ICs (flash/LDO/ESD/crystal/diode) = KiCad stock — see [`support.md`](support.md).

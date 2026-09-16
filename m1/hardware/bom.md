@@ -1,77 +1,85 @@
 # M1 BOM (rev A)
 
-Locks: [`../docs/goals.md`](../docs/goals.md). Switches: [`switches.md`](switches.md). OLED: [`lib/OLED.md`](lib/OLED.md). Touch: [`touch.md`](touch.md).
+Locks: [`../docs/goals.md`](../docs/goals.md). Wiring recipe: [`support.md`](support.md). Touch: [`touch.md`](touch.md).
 
-**Hand-build only.** Bare PCB. Hot air: RP2040 + **IQS572** + **QT2120**. Iron: the rest. One board, no harnesses, no SoftPot, no paid PCBA.
+**Hand-build only.** Bare PCB. Hot air: RP2040 + **IQS572** + **QT2120**. Iron: the rest. Packages **0603** unless noted.
 
-Packages: **0603** (0805 bulk OK), **SOIC-8** flash, **H11L1M**, **IQS572BLQNR** QFN-28 4×4, **AT42QT2120** VQFN-20 or TSSOP-20.
-
-**Cost (small batch ~10–25):** parts + PCB + printed cover ≈ **$25–35**/unit (switches included); ~$22–30 if switches already paid for. Street target under **$100** with margin.
+**Cost (small batch ~10–25):** parts + PCB + printed cover ≈ **$25–35**/unit (switches included). Street under **$100**.
 
 ---
 
-## Parts (qty = 1 board)
+## ICs / connectors (qty = 1 board)
 
-| Qty | What | MPN | DigiKey | LCSC | Pkg | Status |
-|-----|------|-----|---------|------|-----|--------|
-| 3–5 | MCU | RP2040 | yes | C2040 | QFN-56 | locked |
-| 2–3 | Flash 16 Mbit | W25Q16JVSSIQ / SSIM | yes | C131025 | SOIC-8 | candidate |
-| 2 | 12 MHz xtal | ABM8-12.000MHZ-B2-T | yes | C596894 / C9002 | 3.2×2.5 | candidate |
-| 1 | 3.3 V LDO | AP2112K-3.3TRG1 | yes | C51118 | SOT-23-5 | candidate |
-| 2 | USB-C | **USB4105-GF-A** | [11198441](https://www.digikey.com/en/products/detail/gct/USB4105-GF-A/11198441) | **C3020560** | SMT+TH | **locked** — KiCad `oc-usb:USB4105-GF-A`; 20k cycles |
-| 2 | USB ESD | USBLC6-2SC6 | yes | C7519 | SOT-23-6 | candidate |
-| 1 | Cap trackpad | **IQS572BLQNR** | [7165004](https://www.digikey.com/en/products/detail/azoteq-pty-ltd/IQS572BLQNR/7165004) | **C3827635** | QFN-28 4×4 | **locked** — KiCad `oc-touch:IQS572-BL-QNR` |
-| 1 | Cap strip / Key / Shift | **AT42QT2120-XUR** | [XUR](https://www.digikey.com/en/products/detail/microchip-technology/AT42QT2120-XUR/3678735) | **C1522278** (same die/pkg) | TSSOP-20 | **locked** — reel pack; KiCad `oc-touch:AT42QT2120-XUR`; MMHR DigiKey-only alt |
-| 1 | MIDI IN opto | H11L1M | yes | C16587 | DIP-6 | candidate |
-| 2 | TRS 3.5 mm | **SJ1-3523N** | [738689](https://www.digikey.com/en/products/detail/same-sky-formerly-cui-devices/SJ1-3523N/738689) | **C20182914** | TH R/A, **0 switches** | **locked** — KiCad `oc-trs:SJ1-3523N`; Type A; tip/ring always live |
-| 1 | Mode btn | **EVQ-PUA02K** | [286334](https://www.digikey.com/en/products/detail/panasonic-industry/EVQ-PUA02K/286334) | **C128539** | SMD side ~4.7×3.5×1.65 | **locked** — KiCad `oc-btn:EVQ-PUA02K`; edge Pro/Smart |
-| 1 | OLED 0.91" white | Ali SSD1306 4-pin | — | — | TH | **have** (×5) |
-| 8 | LP hotswap | Gateron LP socket | keeb shops | — | bottom SMD | ordered |
-| 8 | LP switch | KS-27 / KS-33 | — | — | 2-pin | **have** |
+Order by **MPN** (DigiKey search) or **LCSC #**. No fragile DigiKey product IDs.
 
-### Fallback (keep available; not default)
+| Qty | What | MPN | LCSC | Pkg | Status |
+|-----|------|-----|------|-----|--------|
+| 1 | MCU | **RP2040** | **C2040** | QFN-56 7×7 | **locked** |
+| 1 | Flash 16 Mbit | **W25Q16JVSSIQ** | **C131025** | SOIC-8 | **locked** — Winbond QSPI; 2 MB |
+| 1 | 12 MHz crystal | **ABM8-272-T3** | **C20625731** | 3.2×2.5 | **locked** — Pico / RPi pick |
+| 1 | 3.3 V LDO | **AP2112K-3.3TRG1** | **C51118** | SOT-23-5 | **locked** — 600 mA |
+| 1 | USB-C | **USB4105-GF-A** | **C3020560** | SMT+TH | **locked** — `oc-usb`; one port |
+| 1 | USB ESD | **USBLC6-2SC6** | **C7519** | SOT-23-6 | **locked** |
+| 1 | Cap trackpad | **IQS572BLQNR** | **C3827635** | QFN-28 4×4 0.5 | **locked** — `oc-touch` |
+| 1 | Cap strip / Key / Shift | **AT42QT2120-XUR** | **C1522278** | TSSOP-20 | **locked** — `oc-touch` |
+| 1 | MIDI IN opto | **TLP2361(TPL,E** | **C107626** | SO6 | **locked** — 2.7–5.5 V totem-pole; **not** H11L1 |
+| 1 | MIDI IN clamp | **1N4148WS** | **C2128** | SOD-323 | **locked** — across opto LED |
+| 2 | TRS 3.5 mm | **SJ1-3523N** | **C20182914** | TH R/A | **locked** — `oc-trs`; Type A |
+| 1 | Mode btn | **EVQ-PUA02K** | **C128539** | SMD side | **locked** — `oc-btn` |
+| 1 | BOOTSEL | **EVQ-PUA02K** | **C128539** | SMD side | **locked** — UF2; under cover OK |
+| 1 | OLED 0.91" white | Ali SSD1306 4-pin | — | TH | **have** |
+| 8 | LP hotswap | Gateron LP socket | — | bottom SMD | ordered |
+| 8 | LP switch | KS-27 / KS-33 | — | 2-pin | **have** |
 
-| Qty | What | MPN | DigiKey | LCSC | Pkg | When |
-|-----|------|-----|---------|------|-----|------|
-| 1 | Stick | RKJXV1220001 | rare | **C219778** | TH | If trackpad feel fails (KiCad lib already here) |
-| 3 | Tactile | B3F-1000 | yes | — | TH 6×6 | If Key/Shift cap pads fail |
+### Fallback (DNP on product sch)
 
-Cut: SoftPot, 74HC14, matrix diodes (keys are direct GPIO), Panic-as-extra-tactile (use Shift or spare SNS), PTC, FPC OLED, flying cables, paid PCBA. Second QT2120 (old wheel plan).
+| Qty | What | MPN | LCSC | When |
+|-----|------|-----|------|------|
+| 1 | Stick | RKJXV1220001 | **C219778** | Trackpad feel fails |
+| 2–3 | TH tactile | B3F-1000 | — | Key/Shift cap fails |
 
-### Passives (0603 unless noted)
+Cut: SoftPot, matrix diodes, H11L1 / 6N138 as MIDI IN, second QT2120, PTC, FPC OLED, paid PCBA. Second USB-C optional later — not on rev A.
 
-| Qty | Value | Role |
-|-----|-------|------|
-| 2 | 27 Ω | USB D+/D− |
-| 2 | 5.1 kΩ | CC1/CC2 → GND |
-| 2–3 | 10 kΩ | BOOT / pulls |
-| 2 | 4.7 kΩ | I2C0 (OLED + QT2120 + IQS572) |
-| 1–2 | 220 Ω | MIDI IN |
-| 1 | 1–10 kΩ | Opto pull-up |
-| 1 | 10 Ω | MIDI OUT TX |
-| 1 | 33 Ω | MIDI OUT tip |
-| ~14 | 100 nF | Decoupling (incl. IQS572 + QT2120) |
-| 2 | 15–22 pF C0G | Crystal |
-| 3–4 | 1–10 µF 0805 | LDO + bulk |
-| 1 | 1 kΩ | QSPI_SS / BOOTSEL |
+---
 
-Touch extras (series R, VREG caps): Azoteq IQS5xx + Microchip QT2120 datasheets at schematic time. MIDI OUT = UART + resistors (Type A).
+## Passives (0603; DigiKey/LCSC generic OK — match value)
 
-### Eval / bring-up (not in product BOM)
+Exact LCSC #s are JLCPCB-friendly; any 1% / C0G equivalent works for hand-build.
+
+| Qty | Value | Role | Notes |
+|----:|-------|------|-------|
+| 2 | 27 Ω | USB D+/D− series | Between ESD and RP2040 |
+| 2 | 5.1 kΩ | USB-C CC1/CC2 → GND | UFP |
+| 1 | 1 kΩ | QSPI_SS ↔ BOOTSEL (to GND via btn) | Per RPi design |
+| 1 | 10 kΩ | QSPI_SS pull-up → 3V3 | Optional DNP if flash holds CS; place pad |
+| 1 | 1 kΩ | Crystal series (XOUT) | RPi crystal circuit |
+| 2 | 15 pF C0G | Crystal load | ABM8-272-T3 CL=10 pF |
+| 2 | 10 kΩ | RUN pull-up; spare | RUN → 3V3 |
+| 2 | 4.7 kΩ | I2C0 SDA/SCL pull-ups | OLED + QT2120 + IQS572 |
+| 1 | 220 Ω | MIDI IN series (LED drive) | Tip → anode (Type A) |
+| 1 | 10 Ω | MIDI OUT TX → Ring | Type A |
+| 1 | 33 Ω | MIDI OUT 3V3 → Tip | Type A (~5 mA) |
+| ~12 | 100 nF | RP2040 + flash + USB + opto + LDO | See [`support.md`](support.md) |
+| 2 | 1 µF | RP2040 VREG_IN / VREG_OUT | Mandatory, close to chip |
+| 2 | 10 µF 0805 | LDO in (VBUS) + LDO out (3V3 bulk) | |
+| 2–4 | 100 nF + 1 µF | IQS572 (VDDHI / VREG) | Per Azoteq |
+| 1–2 | 100 nF | QT2120 Vdd | Per Microchip |
+| ~8–16 | 560 Ω–2.2 kΩ | Touch sense series R | QT2120 ~560 Ω self; IQS572 ~2 kΩ mutual — finalize at layout per datasheet |
+
+---
+
+## Eval / bring-up (not product)
 
 | What | Why | Link |
 |------|-----|------|
-| **TPS43-201A-S** | Ready IQS572 trackpad module → RP2040-Zero | [DigiKey](https://www.digikey.com/en/products/detail/azoteq-pty-ltd/TPS43-201A-S/7164940) |
-| IQS572EV02 (+ CT210A/DS200) | Official Azoteq shield + GUI | [Azoteq IQS572](https://www.azoteq.com/product/iqs572-b000/) |
-| QFN-28 4×4 **0.5 mm** → DIP | Only if hand-soldering bare IQS572; **not** Chip Quik IPC0042 (that is 0.4 mm) | — |
-| Touchy Subject / QT2120 | Strip/key bring-up | [Lectronz](https://www.lectronz.com/products/touchy-subject) / DigiKey **XUR** |
-
-Details: [`touch.md`](touch.md).
+| **TPS43-201A-S** | IQS572 module → Zero | [DigiKey](https://www.digikey.com/en/products/detail/azoteq-pty-ltd/TPS43-201A-S/7164940) |
+| IQS572EV02 | Official trackpad + GUI | [Azoteq](https://www.azoteq.com/product/iqs572-b000/) |
+| Touchy Subject | QT2120 breakout | [Lectronz](https://www.lectronz.com/products/touchy-subject) |
 
 ---
 
-## Buy / build
+## Buy order
 
-1. DigiKey: core + **IQS572BLQNR** + **AT42QT2120-XUR** (or MMHR).
-2. Eval: **TPS43** and/or QT2120 breakout → Zero.
-3. Cap coupons → bare product PCB → hand assemble → plate + case.
+1. DigiKey: RP2040, **W25Q16JVSSIQ**, **ABM8-272-T3**, **AP2112K**, **USBLC6**, **TLP2361**, **IQS572**, **QT2120-XUR**, USB4105, SJ1-3523N, EVQ-PUA ×2, passives kit.
+2. Or LCSC for the same MPNs (CAD already matches EasyEDA imports).
+3. Coupons / TPS43 before product fab — [`touch.md`](touch.md).

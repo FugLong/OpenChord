@@ -17,4 +17,4 @@ USB 2.0 Type-C receptacle, right-angle, SMT signals + TH shell pegs. Rated **20k
 - **CC1** and **CC2** each → **5.1 kΩ → GND**
 - **SBU1/SBU2** → NC
 
-BOM qty: **2** (device + spare / second port — confirm at layout).
+BOM qty: **1** (USB device / power). Second port not on rev A.
