@@ -35,7 +35,7 @@ Eight pads → **eight GPIOs**. One switch pin → GPIO, other → GND.
 - **No diodes** — ghosting is a matrix problem; each key has its own line.
 - Multi-hold works.
 
-**Key / Shift** = capacitive (spare QT2120 SNS; TH tactiles if we fall back). **Mode** = edge **EVQ-PUA02K** (GPIO). None of these are Gaterons.
+**3× system EVQ-PUA02K** → GPIO (internal pull-up). Roles **TBD** — not capacitive, not Gaterons. **BOOTSEL** is a separate strap on QSPI_SS (see [`support.md`](support.md)).
 
 ### Pad map (firmware)
 
@@ -53,15 +53,16 @@ Avoid USB, QSPI, crystal pins.
 | Function | Notes |
 |----------|--------|
 | KEY0–KEY7 | Direct to Gaterons; internal pull-up |
-| MODE | EVQ-PUA02K → GPIO; internal pull-up |
-| I2C0 SDA/SCL | OLED (`0x3C`) + QT2120 (strip / Key / Shift) @ `0x1C` + IQS572 (trackpad) @ `0x74` |
+| SYS0–SYS2 | 3× EVQ → GPIO; roles TBD |
+| I2C0 SDA/SCL | OLED (`0x3C`) + QT2120 (**strip only**) @ `0x1C` + IQS572 (trackpad) @ `0x74` |
 | IQS572_RDY | Required — Azoteq ready line |
 | TOUCH_CHANGE | Optional QT2120 CHANGE |
 | UART TX/RX | MIDI out / in |
+| BOOTSEL | **Not a GPIO** — EVQ + 1 kΩ on **QSPI_SS** (UF2 at reset) |
 | STICK_X/Y | **Only if Alps fallback** — ADC on GPIO26–29 |
 
 ~14–16 GPIOs with RDY / CHANGE — fine on RP2040 (~30 available).
 
 ## Layout
 
-2×4 left-hand cluster; thumb **trackpad** (or Alps stick fallback); touch **strip** on a free edge; Key/Shift pads near thumb under cover openings; **mode** on board edge (PUA); USB-C on edge; TRS rear/side; bottom keepout for case.
+2×4 left-hand cluster; thumb **trackpad** (or Alps stick fallback); touch **strip** on a free edge; **3× system EVQs** (roles TBD); USB-C on edge; TRS rear/side; bottom keepout for case.

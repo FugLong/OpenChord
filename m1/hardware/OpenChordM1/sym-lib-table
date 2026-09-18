@@ -6,7 +6,7 @@
   (lib (name "oc-touch")(type "KiCad")(uri "${KIPRJMOD}/../lib/easyeda/oc_touch.kicad_sym")(options "")(descr "IQS572-BL-QNR + AT42QT2120-XUR"))
   (lib (name "oc-usb")(type "KiCad")(uri "${KIPRJMOD}/../lib/easyeda/oc_usb.kicad_sym")(options "")(descr "GCT USB4105-GF-A USB-C"))
   (lib (name "oc-trs")(type "KiCad")(uri "${KIPRJMOD}/../lib/easyeda/oc_trs.kicad_sym")(options "")(descr "Same Sky SJ1-3523N TRS MIDI"))
-  (lib (name "oc-btn")(type "KiCad")(uri "${KIPRJMOD}/../lib/easyeda/oc_btn.kicad_sym")(options "")(descr "Panasonic EVQ-PUA02K edge mode"))
+  (lib (name "oc-btn")(type "KiCad")(uri "${KIPRJMOD}/../lib/easyeda/oc_btn.kicad_sym")(options "")(descr "EVQ-PUA02K edge + TS-1187A BOOT/RUN"))
   (lib (name "oc-midi")(type "KiCad")(uri "${KIPRJMOD}/../lib/easyeda/oc_midi.kicad_sym")(options "")(descr "Toshiba TLP2361 MIDI IN opto"))
   (lib (name "captouch")(type "KiCad")(uri "${KIPRJMOD}/../lib/captouch.kicad_sym")(options "")(descr "Generated captouch symbols"))
 )

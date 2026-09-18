@@ -7,13 +7,13 @@ Locks / fallbacks: [`../docs/goals.md`](../docs/goals.md). Parts: [`bom.md`](bom
 | Role | MPN | DigiKey | Pkg | Bus |
 |------|-----|---------|-----|-----|
 | **Trackpad** (color stick) | **IQS572BLQNR** | [7165004](https://www.digikey.com/en/products/detail/azoteq-pty-ltd/IQS572BLQNR/7165004) | QFN-28 **4×4** (**0.5 mm** pitch) | I²C **`0x74`**, needs **RDY** GPIO |
-| **Strip + Key / Shift** | **AT42QT2120-XUR** | [XUR](https://www.digikey.com/en/products/detail/microchip-technology/AT42QT2120-XUR/3678735) (TSSOP-20, tape/reel — prefer) · [MMHR](https://www.digikey.com/en/products/detail/microchip-technology/AT42QT2120-MMHR/3678733) (VQFN-20 alt) | same die | I²C **`0x1C`** |
+| **Strip** (strum / sparkle) | **AT42QT2120-XUR** | [XUR](https://www.digikey.com/en/products/detail/microchip-technology/AT42QT2120-XUR/3678735) (TSSOP-20, tape/reel — prefer) · [MMHR](https://www.digikey.com/en/products/detail/microchip-technology/AT42QT2120-MMHR/3678733) (VQFN-20 alt) | same die | I²C **`0x1C`** |
 
-**One of each.** Not 2× QT2120. IQS572 does real XY (mutual diamond). QT2120 does strip (slider ch 0–2) + **Key / Shift** on spare SNS. Mode = edge **EVQ-PUA02K** (not capacitive).
+**One of each.** Not 2× QT2120. IQS572 = XY trackpad. QT2120 = **strip only** (SNS0–2). System buttons = mechanical EVQ → GPIO (**roles TBD**) — not capacitive.
 
 Addresses differ → **OLED (`0x3C`) + QT2120 + IQS572 can share I2C0**. Pull-ups once. Wire IQS572 **RDY** to a GPIO (required for clean comms). Optional QT2120 **CHANGE** → GPIO.
 
-Fall back: Alps stick (C219778) and/or TH tactiles if feel fails. Chord pads stay **Gateron LP**.
+Fall back: Alps stick (C219778) if trackpad feel fails. Chord pads stay **Gateron LP**. System buttons stay EVQ (B3F only if PUA unavailable).
 
 ---
 
@@ -23,15 +23,15 @@ Fall back: Alps stick (C219778) and/or TH tactiles if feel fails. Chord pads sta
 
 Mutual-cap **Tx columns + Rx rows**. Copper = diamond matrix from the captouch plugin (or hand layout per Azoteq AZD068). Chip outputs **XY** (+ gestures) over I²C. Firmware maps position → **8 color seats + HOME** (center / no-touch deadzone). Up to **9×8** channels; use a small stick-sized grid (e.g. 5×4 / 6×5), leave unused Tx/Rx unconnected per datasheet rules.
 
-### AT42QT2120 — strip + buttons
+### AT42QT2120 — strip only
 
-Self-cap. **Slider** on SNS0–2 = three interleaved electrodes → continuous **0–255** (strum / sparkle). Remaining SNS = discrete **Key / Shift** pads (and optional extras). Mode is mechanical — see [`lib/BTN.md`](lib/BTN.md).
+Self-cap. **Slider** on SNS0–2 = three interleaved electrodes → continuous **0–255** (strum / sparkle). Unused SNS left open. System buttons are **not** on this chip.
 
 ```
 Finger → cover opening + mask/ENIG
-  trackpad diamonds → Tx/Rx → IQS572 → I2C0 → RP2040
-  strip triangles    → SNS0–2 → QT2120 → I2C0 → RP2040
-  Key / Shift pads     → SNS3+  → QT2120 → same
+  trackpad diamonds → Tx/Rx (+ 1 kΩ) → IQS572 → I2C0 → RP2040
+  strip triangles    → SNS0–2 (+ 10 kΩ) → QT2120 → I2C0 → RP2040
+  3× system EVQ      → GPIO (roles TBD)
 ```
 
 ## Soldermask vs gold
@@ -43,12 +43,14 @@ Finger → cover opening + mask/ENIG
 
 ## Cover
 
-3D-printed cover with openings over **trackpad**, **strip**, and **Key / Shift**. Discrete pads ~**8–12 mm**, gaps **≥2–3 mm**. Overlay over electrodes **≥0.5 mm** (datasheets — bare copper is not a valid test). Mode button is a separate edge opening for the PUA plate.
+3D-printed cover with openings over **trackpad** and **strip**. System EVQs get their own openings (not copper pads).
 
 ## Layout notes
 
 - Keepout under sense copper; ground pour around (not under) electrodes.
-- IQS572 and QT2120 **close** to their electrodes; short sense traces; series R per datasheet (~2 kΩ mutual / ~560 Ω self ballpark).
+- IQS572 and QT2120 **close** to their electrodes; short sense traces; **series R on every sense line**:
+  - Strip: **3× 10 kΩ** (QT2120 datasheet Rs 4.7–20 kΩ)
+  - Trackpad 7×7: **14× 1 kΩ** — electrode silk Rx1–7/Tx1–7 → chip **Rx0–6 / Tx0–6** (Rx7, Tx7, Tx8 NC)
 - Decoupling / VREG caps: Azoteq + Microchip datasheets at schematic time.
 - IQS572 is **NRFND** at Azoteq but DigiKey-stocked — acceptable for M1; do not redesign around vaporware 7211E.
 
@@ -92,7 +94,7 @@ Cap copper is easy to draw and easy to **feel** wrong (dead zones, palm hits, ji
 Order **tiny boards**, not the product:
 
 1. **Trackpad coupon:** IQS572 footprint + diamond matrix sized like the final stick + cover stack (same overlay thickness you will ship) + I2C/RDY header to Zero.
-2. **Strip + pads coupon:** QT2120 + interleaved strip + Key/Shift pads + cover openings.
+2. **Strip coupon:** QT2120 + interleaved strip + cover opening (no Key/Shift copper).
 3. Optional: one **combo coupon** (both ICs) once each alone passes.
 
 Sweep **one variable per coupon** if possible: pitch / overlay / mask-vs-ENIG. Do **not** change five things between fabs.
@@ -101,12 +103,12 @@ Sweep **one variable per coupon** if possible: pitch / overlay / mask-vs-ENIG. D
 
 - [ ] Trackpad: all seats reachable; HOME center reliable; no palm on rim while resting hand
 - [ ] Strip: end-to-end travel; no dead third; works with intended cover
-- [ ] Key / Shift pads: no accidental hits from trackpad / strip use
+- [ ] System EVQs: clean GPIO presses; no ghost with trackpad palm
 - [ ] EMI: USB plugged, MIDI TRS connected, OLED on — touch still stable
 - [ ] I2C: OLED + both touch ICs on one bus at once (addr `0x3C` / `0x1C` / `0x74`)
 - [ ] Power: brown-out / plug cycle; IQS572 RDY still sane after reset
-- [ ] Mechanical: cover openings align; finger never on bare copper; mode PUA reachable on edge
-- [ ] Fallback footprints still on schematic (Alps / Key-Shift tactiles) but DNP
+- [ ] Mechanical: cover openings align; finger never on bare copper; PUA buttons reachable
+- [ ] Alps stick footprint DNP fallback still OK if trackpad fails
 
 ### Phase 3 — product PCB
 

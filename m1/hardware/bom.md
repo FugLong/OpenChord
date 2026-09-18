@@ -21,12 +21,13 @@ Order by **MPN** (DigiKey search) or **LCSC #**. No fragile DigiKey product IDs.
 | 1 | USB-C | **USB4105-GF-A** | **C3020560** | SMT+TH | **locked** — `oc-usb`; one port |
 | 1 | USB ESD | **USBLC6-2SC6** | **C7519** | SOT-23-6 | **locked** |
 | 1 | Cap trackpad | **IQS572BLQNR** | **C3827635** | QFN-28 4×4 0.5 | **locked** — `oc-touch` |
-| 1 | Cap strip / Key / Shift | **AT42QT2120-XUR** | **C1522278** | TSSOP-20 | **locked** — `oc-touch` |
+| 1 | Cap strip (slider) | **AT42QT2120-XUR** | **C1522278** | TSSOP-20 | **locked** — `oc-touch`; strip only |
 | 1 | MIDI IN opto | **TLP2361(TPL,E** | **C107626** | SO6 | **locked** — 2.7–5.5 V totem-pole; **not** H11L1 |
 | 1 | MIDI IN clamp | **1N4148WS** | **C2128** | SOD-323 | **locked** — across opto LED |
 | 2 | TRS 3.5 mm | **SJ1-3523N** | **C20182914** | TH R/A | **locked** — `oc-trs`; Type A |
-| 1 | Mode btn | **EVQ-PUA02K** | **C128539** | SMD side | **locked** — `oc-btn` |
-| 1 | BOOTSEL | **EVQ-PUA02K** | **C128539** | SMD side | **locked** — UF2; under cover OK |
+| 3 | System btn | **EVQ-PUA02K** | **C128539** | SMD side | **locked** part — **roles TBD** (not capacitive) |
+| 1 | BOOTSEL | **TS-1187A-B-A-B** | **C318884** | SMD top 5.1×5.1 | **locked** — UF2; under cover; `oc-btn` |
+| 0–1 | RUN / RST | **TS-1187A-B-A-B** | **C318884** | same | optional — same part |
 | 1 | OLED 0.91" white | Ali SSD1306 4-pin | — | TH | **have** |
 | 8 | LP hotswap | Gateron LP socket | — | bottom SMD | ordered |
 | 8 | LP switch | KS-27 / KS-33 | — | 2-pin | **have** |
@@ -36,7 +37,7 @@ Order by **MPN** (DigiKey search) or **LCSC #**. No fragile DigiKey product IDs.
 | Qty | What | MPN | LCSC | When |
 |-----|------|-----|------|------|
 | 1 | Stick | RKJXV1220001 | **C219778** | Trackpad feel fails |
-| 2–3 | TH tactile | B3F-1000 | — | Key/Shift cap fails |
+| 2–3 | TH tactile | B3F-1000 | — | Extra EVQ / bring-up only |
 
 Cut: SoftPot, matrix diodes, H11L1 / 6N138 as MIDI IN, second QT2120, PTC, FPC OLED, paid PCBA. Second USB-C optional later — not on rev A.
 
@@ -48,7 +49,7 @@ Exact LCSC #s are JLCPCB-friendly; any 1% / C0G equivalent works for hand-build.
 
 | Qty | Value | Role | Notes |
 |----:|-------|------|-------|
-| 2 | 27 Ω | USB D+/D− series | Between ESD and RP2040 |
+| 2 | 22 Ω | USB D+/D− series | Already on sch (R3/R4); 22 Ω is fine |
 | 2 | 5.1 kΩ | USB-C CC1/CC2 → GND | UFP |
 | 1 | 1 kΩ | QSPI_SS ↔ BOOTSEL (to GND via btn) | Per RPi design |
 | 1 | 10 kΩ | QSPI_SS pull-up → 3V3 | Optional DNP if flash holds CS; place pad |
@@ -64,7 +65,8 @@ Exact LCSC #s are JLCPCB-friendly; any 1% / C0G equivalent works for hand-build.
 | 2 | 10 µF 0805 | LDO in (VBUS) + LDO out (3V3 bulk) | |
 | 2–4 | 100 nF + 1 µF | IQS572 (VDDHI / VREG) | Per Azoteq |
 | 1–2 | 100 nF | QT2120 Vdd | Per Microchip |
-| ~8–16 | 560 Ω–2.2 kΩ | Touch sense series R | QT2120 ~560 Ω self; IQS572 ~2 kΩ mutual — finalize at layout per datasheet |
+| 3 | 10 kΩ | QT2120 SNS series (strip E1–E3) | Datasheet Rs **4.7–20 kΩ**; lock **10 kΩ** |
+| 14 | 1 kΩ | IQS572 Tx/Rx series (trackpad 7×7) | U5 → chip **Rx0–6 / Tx0–6** (leave Rx7, Tx7, Tx8 open) |
 
 ---
 

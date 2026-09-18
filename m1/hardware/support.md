@@ -12,21 +12,22 @@ Companion to [`bom.md`](bom.md). Place these **before** wiring nets.
 | Boot flash | W25Q16JVSSIQ QSPI | **Locked** — place |
 | Clock | ABM8-272-T3 + 15 pF ×2 + 1 kΩ | **Locked** — place |
 | 3V3 | AP2112K + bulk caps | **Locked** — place |
-| USB | USB4105 + USBLC6 + 27 Ω + CC 5.1 kΩ | Connector have; ESD/Rs place |
+| USB | USB4105 + USBLC6 + **22 Ω** (on sch) + CC 5.1 kΩ | Connector + series R have; place ESD |
 | MIDI OUT | 10 Ω + 33 Ω Type A | Place Rs |
 | MIDI IN | **TLP2361** + 220 Ω + 1N4148 + 100 nF | **Locked** — place `oc-midi` |
 | Touch | IQS572 + QT2120 + electrodes | Have |
 | Display | OLED | Have |
 | Keys | 8× Gateron | Have |
-| Mode | EVQ-PUA02K | Have (use **1** for Mode) |
-| BOOTSEL | 2nd EVQ-PUA + 1 kΩ | Place |
+| System btns | EVQ-PUA02K ×3 | Have — **GPIO; roles TBD** |
+| BOOTSEL | TS-1187A top tact + 1 kΩ | Place — **QSPI_SS strap** (`oc-btn:TS-1187A-B-A-B`) |
+| RUN / RST | same tact (optional) | Place if you want a reset button |
 | I2C | 4.7 kΩ ×2 | Place |
 | RUN | 10 kΩ pull-up | Place |
 | RP2040 ties | VREG 1 µF ×2; IO/DVDD 100 nF; **TESTEN→GND**; ADC_AVDD→3V3 | Place |
 
 **Not required for rev A:** second USB-C, Alps stick, B3F (DNP fallbacks only), ferrite on VBUS (optional), SWD header (nice-to-have).
 
-**Sch note:** you have **3× EVQ** — product = Mode + BOOTSEL (+ optional Key/Shift stand-in). Cap Key/Shift still the plan; extra EVQs are fine for bring-up.
+**Sch note:** **3× EVQ** = system buttons → GPIO (roles TBD). **BOOTSEL** / optional **RUN** = top tact `TS-1187A-B-A-B` (not the edge PUA). Do not wire QT2120 SNS to buttons.
 
 ---
 
@@ -88,7 +89,7 @@ USB VBUS ──► AP2112K VIN ──► +3V3 ──► RP2040 IOVDD / USB_VDD /
 
 ## 4. USB (one port)
 
-Per [`lib/USB.md`](lib/USB.md): DP/DN shorts; **USBLC6**; **27 Ω** series; CC **5.1 kΩ→GND**; VBUS→LDO.
+Per [`lib/USB.md`](lib/USB.md): DP/DN shorts; **USBLC6**; **22 Ω** series (R3/R4 already); CC **5.1 kΩ→GND**; VBUS→LDO.
 
 ---
 
@@ -108,10 +109,14 @@ OLED `0x3C` + QT2120 `0x1C` + IQS572 `0x74`. Pull-ups **4.7 kΩ** ×2. **RDY** �
 
 ---
 
-## 7. Touch extras
+## 7. Touch series R (**locked**)
 
-IQS572: VREG/VDDHI caps + ~2 kΩ series Tx/Rx; EP→GND.  
-QT2120: 100 nF + ~560 Ω series SNS. See [`touch.md`](touch.md).
+| Ref | Value | Net | Why |
+|-----|-------|-----|-----|
+| R14–R16 | **10 kΩ** | QT2120 ↔ strip E1–E3 | QT2120 datasheet Rs **4.7–20 kΩ** |
+| R17–R30 | **1 kΩ** | IQS572 ↔ trackpad **Rx0–6 + Tx0–6** (U5 silk Rx1–7 / Tx1–7) | Azoteq AZD068 / IQS525 ref (100 Ω–1 kΩ) |
+
+**Not capacitive:** 3× system EVQ → **GPIO** (roles TBD). BOOTSEL → **QSPI_SS** (see below), not a user GPIO. Gaterons → GPIO.
 
 ---
 
@@ -121,8 +126,10 @@ QT2120: 100 nF + ~560 Ω series SNS. See [`touch.md`](touch.md).
 - [ ] RP2040 VREG + decoupling + **TESTEN→GND** + ADC_AVDD→3V3  
 - [ ] Crystal + 15 pF ×2 + 1 kΩ  
 - [ ] Flash + 100 nF + BOOTSEL EVQ + 1 kΩ  
-- [ ] USBLC6 + 27 Ω ×2 + 5.1 kΩ ×2  
+- [ ] USBLC6 (series R + CC already on sch)  
 - [ ] **oc-midi:TLP2361** + 220 Ω + 1N4148 + 100 nF; MIDI OUT Rs  
 - [ ] I2C 4.7 kΩ ×2; RUN 10 kΩ  
-- [ ] Touch series R / VREG caps  
+- [ ] Touch VREG caps + **series R R14–R30** (10 kΩ strip / 1 kΩ trackpad)  
+- [ ] Gaterons + 3× system EVQs → **RP2040 GPIO** (roles TBD; no touch series R)  
+- [ ] BOOTSEL EVQ on **QSPI_SS** (+ 1 kΩ) — UF2 only  
 - [ ] **Then** wire nets
