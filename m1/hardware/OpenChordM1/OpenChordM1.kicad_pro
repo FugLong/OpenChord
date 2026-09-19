@@ -534,7 +534,7 @@
       "netlist": "",
       "plot": "",
       "specctra_dsn": "",
-      "step": "",
+      "step": "OpenChordM1.step",
       "vrml": ""
     },
     "page_layout_descr_file": ""
