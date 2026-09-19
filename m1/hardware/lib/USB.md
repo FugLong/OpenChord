@@ -4,17 +4,15 @@
 |--|--|
 | LCSC (buy) | [C165948](https://www.lcsc.com/product-detail/C165948.html) |
 | KiCad | `oc-usb:TYPE-C-31-M-12` (symbol + footprint) |
+| Rev A | **J1** on schematic and PCB |
 | Files | `lib/easyeda/oc_usb.{kicad_sym,pretty,3dshapes}/` |
 | In lib only | GCT `USB4105-GF-A` (do not place on rev A) |
 
 USB 2.0 Type-C receptacle, right-angle. SMT signal pads + 4× through-hole shell stakes + 2× NPTH locating pegs.
 
-## Swap (J1)
+## Rev A wiring (J1)
 
-1. Schematic: replace `oc-usb:USB4105-GF-A` with **`oc-usb:TYPE-C-31-M-12`**.
-2. PCB: Update PCB from schematic so the footprint becomes **`oc-usb:TYPE-C-31-M-12`**. Not a copper drop-in — delete the old GCT pads and re-route.
-
-EasyEDA merges some VBUS/GND pairs. Wiring is the same idea as GCT, pin numbers differ:
+EasyEDA merges some VBUS/GND pairs. Pin numbers differ from GCT:
 
 | Net | TYPE-C-31-M-12 pins |
 |-----|---------------------|

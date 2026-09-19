@@ -14,7 +14,7 @@
 |-------|--------|
 | MCU | RP2040 + W25Q32JVSSIQ ([C179173](https://www.lcsc.com/product-detail/C179173.html)) QSPI + 12 MHz crystal |
 | Power | USB-C VBUS → AP2112K-3.3 → `+3.3V` (EN tied to VIN) |
-| USB | USB4105 + USBLC6 + 22Ω series + CC 5.1k→GND |
+| USB | J1 TYPE-C-31-M-12 (C165948) + USBLC6 + 22Ω series + CC 5.1k→GND |
 | Display | 0.91" SSD1306 OLED I²C `0x3C` |
 | Trackpad | IQS572 + 7×7 diamond matrix, I²C `0x74`, **RDY required** |
 | Slider | QT2120 **strip only** KEY0–2, I²C `0x1C`, MODE→GND, RESET→3V3 |
@@ -163,8 +163,10 @@ Use this as the slow pass. For each: open MPN datasheet, confirm every pin.
 ### U8 USBLC6-2SC6
 - [ ] Connector-side D+/D− to I/Os; chip-side through 22Ω to MCU; VBUS pin to VBUS
 
-### J1 USB4105
-- [ ] CC1/CC2 5.1k→GND; DP1↔DP2, DN1↔DN2; shell/GND
+### J1 TYPE-C-31-M-12 (C165948)
+- [ ] VBUS **A4B9** + **B4A9**; GND **A1B12** + **B1A12** + shell **EH 1–4**
+- [ ] CC1 **A5** and CC2 **B5** each 5.1k→GND (not tied to each other)
+- [ ] DP1 **A6** ↔ DP2 **B6**; DN1 **A7** ↔ DN2 **B7**; SBU A8/B8 NC
 
 ### U9 TLP2361 + D1 + MIDI jacks
 - [ ] IN: Tip→220→AN, Ring→CAT, diode reverse across LED, VO→RX, VCC+100nF

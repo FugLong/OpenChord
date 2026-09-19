@@ -14,7 +14,7 @@ Paths: `OpenChordM1/OpenChordM1.kicad_sch` · `OpenChordM1.kicad_pcb`.
 | Boot flash | W25Q32JVSSIQ ([C179173](https://www.lcsc.com/product-detail/C179173.html)) QSPI |
 | Clock | ABM8-272-T3 + 15 pF ×2 + 1 kΩ on XOUT |
 | 3V3 | AP2112K-3.3, EN tied to VIN; 10 µF in/out |
-| USB | USB4105 + USBLC6 + 22 Ω + CC 5.1 kΩ→GND |
+| USB | J1 TYPE-C-31-M-12 ([C165948](https://www.lcsc.com/product-detail/C165948.html)) + USBLC6 + 22 Ω + CC 5.1 kΩ→GND |
 | MIDI OUT | Type A: 33 Ω (3V3→Tip), 10 Ω (TX→Ring) |
 | MIDI IN | TLP2361 + 220 Ω + 1N4148 + 100 nF |
 | Touch | IQS572 + QT2120 + electrodes |
@@ -75,7 +75,7 @@ USB VBUS ──► AP2112K VIN ──► +3V3 ──► RP2040 IOVDD / USB_VDD /
 
 ## 4. USB (one port)
 
-Per [`lib/USB.md`](lib/USB.md): DP1↔DP2, DN1↔DN2; **USBLC6**; **R3/R4 22 Ω**; CC **R1/R2 5.1 kΩ→GND**; VBUS→LDO.
+**J1** Hroparts `TYPE-C-31-M-12` ([C165948](https://www.lcsc.com/product-detail/C165948.html)). Per [`lib/USB.md`](lib/USB.md): DP1↔DP2, DN1↔DN2; **USBLC6**; **R3/R4 22 Ω**; CC **R1/R2 5.1 kΩ→GND** (do not tie CC1 to CC2); VBUS→LDO; SBU NC.
 
 ---
 

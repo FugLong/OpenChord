@@ -1,0 +1,23 @@
+﻿Index,LCSC#,MPN,Manufacturer,Package,Customer #,Description,RoHS,Quantity,MOQ,Multiple,Unit Price($),Extended Price($),Product Link
+1,C318884,TS-1187A-B-A-B,XKB Connection,"SMD-4P,5.1x5.1mm",,Tactile Switch SPST 160gf 1.5mm 5.1mm x 5.1mm Surface Mount,yes,20,20,20,0.0207,0.41,https://www.lcsc.com/product-detail/C318884.html
+2,C79174,EVQPUC02K,PANASONIC,"SMD,4.7x4.5mm",,"Tactile Switch SPST 2.2N 1.65mm PC Pin 4.7mm x 4.5mm Surface Mount, Right Angle",yes,15,5,5,0.1764,2.65,https://www.lcsc.com/product-detail/C79174.html
+3,C2128,1N4148WS,JSCJ,SOD-323,,Diode Independent 100V 150mA Surface Mount SOD-323,yes,50,50,50,0.0170,0.85,https://www.lcsc.com/product-detail/C2128.html
+4,C107626,"TLP2361(TPL,E",TOSHIBA,SO-5,,6V 10mA 5V 1.5V 2.7V~5.5V DC SO-5 Logic Output Optoisolators RoHS,yes,5,1,1,0.5272,2.64,https://www.lcsc.com/product-detail/C107626.html
+5,C20625731,ABM8-272-T3,ABRACON,SMD3225-4P,,±30ppm 10pF ±30ppm SMD3225-4P Crystals RoHS,yes,5,1,1,0.6255,3.13,https://www.lcsc.com/product-detail/C20625731.html
+6,C7519,USBLC6-2SC6,ST,SOT-23-6L,,17VC Clamp 5A Ipp ESD DIODE SOT-23-6L,yes,5,5,5,0.1781,0.89,https://www.lcsc.com/product-detail/C7519.html
+7,C51118,AP2112K-3.3TRG1,DIODES,SOT-25-5,,"3.3V Positive Fixed SOT-25-5 Voltage Regulators - Linear, Low Drop Out (LDO) Regulators RoHS",yes,5,5,5,0.1726,0.86,https://www.lcsc.com/product-detail/C51118.html
+8,C2040,RP2040,Raspberry Pi,LQFN-56(7x7),,"ARM Cortex-M0+ 32 Bit 133MHz LQFN-56(7x7) Microcontrollers ",yes,5,1,1,0.9968,4.98,https://www.lcsc.com/product-detail/C2040.html
+9,C179173,W25Q32JVSSIQ,Winbond,SOIC-8-208mil,,32Mbit 2.7V~3.6V 133MHz SPI SOIC-8-208mil Memory RoHS,yes,10,10,10,1.4929,14.93,https://www.lcsc.com/product-detail/C179173.html
+10,C165948,TYPE-C-31-M-12,Korean Hroparts Elec,SMD,,USB-C (USB TYPE-C) Receptacle Connector 16 Position Surface Mount,yes,5,5,5,0.1729,0.86,https://www.lcsc.com/product-detail/C165948.html
+11,C23345,0603WAF220JT5E,UNI-ROYAL,0603,,22Ω ±1% 100mW 0603 Thick Film Resistor,yes,100,100,100,0.0019,0.19,https://www.lcsc.com/product-detail/C23345.html
+12,C23186,0603WAF5101T5E,UNI-ROYAL,0603,,5.1kΩ ±1% 100mW 0603 Thick Film Resistor,yes,100,100,100,0.0018,0.18,https://www.lcsc.com/product-detail/C23186.html
+13,C21190,0603WAF1001T5E,UNI-ROYAL,0603,,1kΩ ±1% 100mW 0603 Thick Film Resistor,yes,200,100,100,0.0033,0.66,https://www.lcsc.com/product-detail/C21190.html
+14,C98220,RC0603FR-0710KL,YAGEO,0603,,100mW 10kΩ 75V Thick Film Resistor ±100ppm/℃ ±1% 0603 Chip Resistor - Surface Mount RoHS,yes,100,100,100,0.0035,0.35,https://www.lcsc.com/product-detail/C98220.html
+15,C23162,0603WAF4701T5E,UNI-ROYAL,0603,,4.7kΩ ±1% 100mW 0603 Thick Film Resistor,yes,100,100,100,0.0047,0.47,https://www.lcsc.com/product-detail/C23162.html
+16,C22962,0603WAF2200T5E,UNI-ROYAL,0603,,220Ω ±1% 100mW 0603 Thick Film Resistor,yes,100,100,100,0.0051,0.51,https://www.lcsc.com/product-detail/C22962.html
+17,C22859,0603WAF100JT5E,UNI-ROYAL,0603,,10Ω ±1% 100mW 0603 Thick Film Resistor,yes,100,20,20,0.0035,0.35,https://www.lcsc.com/product-detail/C22859.html
+18,C23140,0603WAF330JT5E,UNI-ROYAL,0603,,33Ω ±1% 100mW 0603 Thick Film Resistor,yes,100,100,100,0.0028,0.28,https://www.lcsc.com/product-detail/C23140.html
+19,C14663,CC0603KRX7R9BB104,YAGEO,0603,,100nF ±10% 50V Ceramic Capacitor X7R 0603,yes,100,50,50,0.0125,1.25,https://www.lcsc.com/product-detail/C14663.html
+20,C14664,CC0603KRX5R8BB105,YAGEO,0603,,1uF ±10% 25V Ceramic Capacitor X5R 0603,yes,100,100,100,0.0139,1.39,https://www.lcsc.com/product-detail/C14664.html
+21,C1644,CL10C150JB8NNNC,Samsung Electro-Mechanics,0603,,15pF ±5% 50V Ceramic Capacitor C0G 0603,yes,50,50,50,0.0115,0.58,https://www.lcsc.com/product-detail/C1644.html
+22,C1713,CL21A106KOQNNNE,Samsung Electro-Mechanics,0805,,10uF ±10% 16V Ceramic Capacitor X5R 0805,yes,40,20,20,0.0637,2.55,https://www.lcsc.com/product-detail/C1713.html

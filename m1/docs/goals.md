@@ -150,7 +150,7 @@ Zero screen is allowed only if we accept “what key am I in?” as the first su
 | Audio | None |
 | Battery | None |
 | Host USB | None |
-| Cost | Qty-10 COGS **~$22.60**/unit (parts+PCB+cover, switches in); landed **~$26–28**. Band **$25–35**. Street under **$100**. Priced in [`../hardware/bom.md`](../hardware/bom.md) (2026-09-18). |
+| Cost | Proto (buy 5): **~$34**/unit, **~$171** for five, landed. Street under **$100**. Breakdown: [`../hardware/bom.md`](../hardware/bom.md) (2026-09-19 carts). |
 
 One custom PCB. Hot air for RP2040 + IQS572 + QT2120. Through-hole for TRS (and Gaterons via sockets). Reproducible. Prove touch on **coupons / TPS43** before product fab. Details: [`../hardware/touch.md`](../hardware/touch.md), [`../hardware/bom.md`](../hardware/bom.md).
 
@@ -283,6 +283,6 @@ These are not forgotten. They are not locked.
 - How much “next chord” suggestion is v1 vs v1.1.
 - Trademark / `openchord.com` is someone else’s music-apps site.
 
-Locked (do not reopen without updating this file): MCU RP2040; custom PCB with USB-C on the edge; no radio; no battery; no USB host on the SKU; **8 Gateron LP** for the chord pads (**direct GPIO**, not a matrix); stick **gesture** = 8 seats + HOME (color, never a quality table); cap ICs = **IQS572BLQNR** (trackpad) + **AT42QT2120-XUR** (**strip only**); shared **I2C1** GPIO10/11; **3× EVQPUC02K** system (roles TBD); USB-C = **USB4105-GF-A**; TRS = **SJ1-3523N** ×2; **no pots / no encoder / no SoftPot**; no QT Key/Shift copper; hand-build (no paid PCBA); cheap OLED; ~$99 hardware; plugin free (AU MIDI FX + VST3, same engine); hardware works with no plugin; if the box is connected the plugin does not voice; **Pro + Smart** modes (UI names); Smart 8th pad = high I; Smart HOME = triad (fancy 7ths = later setting); Smart pads = hold; no competitor product names in UI/docs/code comments; engine portable; RP2040-Zero as current testbed; Seed proto parked; archive frozen. Pin map and passives: [`../hardware/support.md`](../hardware/support.md).
+Locked (do not reopen without updating this file): MCU RP2040; custom PCB with USB-C on the edge; no radio; no battery; no USB host on the SKU; **8 Gateron LP** for the chord pads (**direct GPIO**, not a matrix); stick **gesture** = 8 seats + HOME (color, never a quality table); cap ICs = **IQS572BLQNR** (trackpad) + **AT42QT2120-XUR** (**strip only**); shared **I2C1** GPIO10/11; **3× EVQPUC02K** system (roles TBD); USB-C = **TYPE-C-31-M-12** (C165948); TRS = **SJ1-3523N** ×2; **no pots / no encoder / no SoftPot**; no QT Key/Shift copper; hand-build (no paid PCBA); cheap OLED; ~$99 hardware; plugin free (AU MIDI FX + VST3, same engine); hardware works with no plugin; if the box is connected the plugin does not voice; **Pro + Smart** modes (UI names); Smart 8th pad = high I; Smart HOME = triad (fancy 7ths = later setting); Smart pads = hold; no competitor product names in UI/docs/code comments; engine portable; RP2040-Zero as current testbed; Seed proto parked; archive frozen. Pin map and passives: [`../hardware/support.md`](../hardware/support.md).
 
 When one of these is decided, update this file. Do not start a second source of truth.
