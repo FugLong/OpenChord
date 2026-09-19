@@ -11,9 +11,9 @@ Locks / fallbacks: [`../docs/goals.md`](../docs/goals.md). Parts: [`bom.md`](bom
 
 **One of each.** Not 2× QT2120. IQS572 = XY trackpad. QT2120 = **strip only** (SNS0–2). System buttons = mechanical EVQ → GPIO (**roles TBD**) — not capacitive.
 
-Addresses differ → **OLED (`0x3C`) + QT2120 + IQS572 can share I2C0**. Pull-ups once. Wire IQS572 **RDY** to a GPIO (required for clean comms). Optional QT2120 **CHANGE** → GPIO.
+Addresses differ → **OLED (`0x3C`) + QT2120 + IQS572 share I2C1** (GPIO10 SDA / GPIO11 SCL). Pull-ups once (**R8/R9 4.7 kΩ**). IQS572 **RDY → GPIO8** (required). **NRST → GPIO9**. QT2120 **CHANGE** is open (poll I²C).
 
-Fall back: Alps stick (C219778) if trackpad feel fails. Chord pads stay **Gateron LP**. System buttons stay EVQ (B3F only if PUA unavailable).
+Fall back: Alps stick (C219778) if trackpad feel fails. Chord pads stay **Gateron LP**. System buttons stay EVQ.
 
 ---
 
@@ -29,8 +29,8 @@ Self-cap. **Slider** on SNS0–2 = three interleaved electrodes → continuous *
 
 ```
 Finger → cover opening + mask/ENIG
-  trackpad diamonds → Tx/Rx (+ 1 kΩ) → IQS572 → I2C0 → RP2040
-  strip triangles    → SNS0–2 (+ 10 kΩ) → QT2120 → I2C0 → RP2040
+  trackpad diamonds → Tx/Rx (+ 1 kΩ R16–R29) → IQS572 → I2C1 → RP2040
+  strip triangles    → SNS0–2 (+ 10 kΩ R13–R15) → QT2120 → I2C1 → RP2040
   3× system EVQ      → GPIO (roles TBD)
 ```
 
@@ -47,11 +47,11 @@ Finger → cover opening + mask/ENIG
 
 ## Layout notes
 
-- Keepout under sense copper; ground pour around (not under) electrodes.
+- Keepout under **sense** copper on internal GND/PWR planes; ground pour around (not under) electrodes. Slider **GND end chevrons** (U2 pads 4–5) may sit outside keepout so parts can share that area — that is intentional.
 - IQS572 and QT2120 **close** to their electrodes; short sense traces; **series R on every sense line**:
-  - Strip: **3× 10 kΩ** (QT2120 datasheet Rs 4.7–20 kΩ)
-  - Trackpad 7×7: **14× 1 kΩ** — electrode silk Rx1–7/Tx1–7 → chip **Rx0–6 / Tx0–6** (Rx7, Tx7, Tx8 NC)
-- Decoupling / VREG caps: Azoteq + Microchip datasheets at schematic time.
+  - Strip: **R13–R15 10 kΩ** (QT2120 datasheet Rs 4.7–20 kΩ)
+  - Trackpad 7×7: **R16–R29 1 kΩ** — electrode silk Rx1–7/Tx1–7 → chip **Rx0–6 / Tx0–6** (Rx7, Tx7, Tx8 NC)
+- Decoupling: IQS572 **C2 1 µF on VDDHI**, **C7 1 µF on VREG** (VREG is the internal regulator output — cap to GND only). Optional 100 pF across C7 skipped on rev A.
 - IQS572 is **NRFND** at Azoteq but DigiKey-stocked — acceptable for M1; do not redesign around vaporware 7211E.
 
 ---
@@ -107,7 +107,7 @@ Sweep **one variable per coupon** if possible: pitch / overlay / mask-vs-ENIG. D
 - [ ] EMI: USB plugged, MIDI TRS connected, OLED on — touch still stable
 - [ ] I2C: OLED + both touch ICs on one bus at once (addr `0x3C` / `0x1C` / `0x74`)
 - [ ] Power: brown-out / plug cycle; IQS572 RDY still sane after reset
-- [ ] Mechanical: cover openings align; finger never on bare copper; PUA buttons reachable
+- [ ] Mechanical: cover openings align; finger never on bare copper; edge buttons reachable
 - [ ] Alps stick footprint DNP fallback still OK if trackpad fails
 
 ### Phase 3 — product PCB

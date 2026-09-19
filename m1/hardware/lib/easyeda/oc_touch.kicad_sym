@@ -277,7 +277,7 @@
     )
     (property
       "Manufacturer"
-      "MICROCHIP(美国微芯)"
+      "Microchip"
       (id 4)
       (at 0 -24.13 0)
       (effects (font (size 1.27 1.27) ) hide)

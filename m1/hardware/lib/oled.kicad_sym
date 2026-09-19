@@ -43,6 +43,24 @@
 				(hide yes)
 			)
 		)
+		(property "Manufacturer" "generic"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MPN" "SSD1306 0.91in 4-pin"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(symbol "SSD1306_0.91_4pin_0_1"
 			(rectangle
 				(start -5.08 5.08)

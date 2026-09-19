@@ -18,7 +18,7 @@ How we prove the chord engine before the custom M1 PCB exists.
 2. **`m1/proto-rp2040`** — Waveshare RP2040-Zero, PlatformIO. USB-C = MIDI device. Launchkey Mini MK4 pads/knobs fake the Pro cluster and stick.
 3. Play until C–Am–F–G never sounds stupid and ideas start showing up.
 4. **`m1/plugin`** — **OpenChord M Core**, same engine in AU MIDI FX + VST3. Learn + extra settings. Skip voicing if a hardware M1 is present.
-5. **`m1/firmware`** — same engine on the custom PCB. USB device only. No host on the SKU. No pots; QT2120 Key / Shift (or tactile fallback); edge **EVQ-PUA02K** for mode.
+5. **`m1/firmware`** — same engine on the custom PCB. USB device only. No host on the SKU. No pots. **QT2120 strip only**; **3× EVQPUC02K** for Key / Shift / Mode (roles TBD). **I2C1** on GPIO10/11. See [`../hardware/support.md`](../hardware/support.md).
 6. The Seed box stays on archived OG firmware unless we explicitly go back.
 
 If the engine is wrong on a laptop, the enclosure will not save it. If it is right on a laptop and wrong on the Seed, the harness is wrong, not the music.
@@ -89,4 +89,4 @@ Stale `pin_config.h` still says joy click D14, display DC on D0, MIDI as D12/D13
 
 ## Product hardware (not this testbed)
 
-RP2040 on our PCB, USB-C on our edge, Gateron LP × 8, **IQS572BLQNR** trackpad + **AT42QT2120-XUR** strip/Key/Shift, edge **EVQ-PUA02K** mode (Alps / Key-Shift tactiles as fallback), no pots / SoftPot, Ali OLED. Free plugin is the settings surface. See [`../hardware/`](../hardware/).
+RP2040 on our PCB, USB-C on our edge, Gateron LP × 8, **IQS572BLQNR** trackpad + **AT42QT2120-XUR** strip only, **3× EVQPUC02K** system (roles TBD; Alps stick is a lib fallback, not on rev A), no pots / SoftPot, Ali OLED on **I2C1**. Free plugin is the settings surface. See [`../hardware/`](../hardware/).

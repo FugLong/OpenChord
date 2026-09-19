@@ -2,6 +2,7 @@
   "board": {
     "3dviewports": [],
     "design_settings": {
+      "custom_rules": "(version 1)\n# OpenChord M1 — DRC vs JLCPCB & PCBWay standard 4-layer 1 oz (no extra-cost).\n# Does not define board geometry; only flags fab-illegal items.\n# JLC: https://jlcpcb.com/capabilities/Capabilities\n# PCBWay: https://www.pcbway.com/capabilities\n# Quote target: 4L, 1.6 mm, 1 oz outer, ENIG, tented vias, 0.3 mm via hole.\n# Shared minima also live in Board Setup → Constraints. Netclass Default stays 0.20/0.60/0.30.\n\n(rule \"PTH hole to hole, different nets (JLC/PCBWay 0.45 mm)\"\n\t(constraint hole_to_hole (min 0.45mm))\n\t(condition \"A.Type == 'Pad' && B.Type == 'Pad' && A.Pad_Type == 'Through hole' && B.Pad_Type == 'Through hole' && A.Net != B.Net\"))\n",
       "defaults": {
         "apply_defaults_to_fp_barcodes": false,
         "apply_defaults_to_fp_dimensions": false,
@@ -43,11 +44,11 @@
           "height": 0.6,
           "width": 0.6
         },
-        "silk_line_width": 0.1,
+        "silk_line_width": 0.15,
         "silk_text_italic": false,
         "silk_text_size_h": 1.0,
         "silk_text_size_v": 1.0,
-        "silk_text_thickness": 0.1,
+        "silk_text_thickness": 0.15,
         "silk_text_upright": false,
         "zones": {
           "border_display_style": 2,
@@ -140,23 +141,23 @@
       },
       "rules": {
         "max_error": 0.005,
-        "min_clearance": 0.0,
-        "min_connection": 0.0,
-        "min_copper_edge_clearance": 0.5,
+        "min_clearance": 0.15,
+        "min_connection": 0.15,
+        "min_copper_edge_clearance": 0.25,
         "min_groove_width": 0.0,
-        "min_hole_clearance": 0.25,
+        "min_hole_clearance": 0.2,
         "min_hole_to_hole": 0.25,
         "min_microvia_diameter": 0.2,
         "min_microvia_drill": 0.1,
         "min_resolved_spokes": 2,
-        "min_silk_clearance": 0.0,
+        "min_silk_clearance": 0.15,
         "min_text_height": 0.8,
-        "min_text_thickness": 0.08,
+        "min_text_thickness": 0.15,
         "min_through_hole_diameter": 0.3,
-        "min_track_width": 0.2,
+        "min_track_width": 0.15,
         "min_via_annular_width": 0.1,
-        "min_via_diameter": 0.5,
-        "solder_mask_to_copper_clearance": 0.0,
+        "min_via_diameter": 0.45,
+        "solder_mask_to_copper_clearance": 0.09,
         "use_height_for_length_calcs": true
       },
       "teardrop_options": [
@@ -203,7 +204,9 @@
           "td_width_to_size_filter_ratio": 0.9
         }
       ],
-      "track_widths": [],
+      "track_widths": [
+        0.2
+      ],
       "tuning_pattern_settings": {
         "diff_pair_defaults": {
           "corner_radius_percentage": 80,
@@ -230,7 +233,12 @@
           "spacing": 0.6
         }
       },
-      "via_dimensions": [],
+      "via_dimensions": [
+        {
+          "diameter": 0.6,
+          "drill": 0.3
+        }
+      ],
       "zones_allow_external_fillets": false
     },
     "ipc2581": {
@@ -661,7 +669,7 @@
         "uuid": "70ab98c6-d5a7-4384-a5eb-a0a43e740ed4"
       }
     ],
-    "used_designators": "TP\\-SWCLK1-2,TP1,U1-5,C14,#PWR1-46,SW1-13,DS1,J1-3,TP\\-SWDIO1-2,R1-4",
+    "used_designators": "TP\\-SWCLK1-2,TP1,U1-5,C14-15,#PWR1-51,SW1-13,DS1,J1-4,TP\\-SWDIO1-2,R1-4,R30",
     "variants": []
   },
   "sheets": [

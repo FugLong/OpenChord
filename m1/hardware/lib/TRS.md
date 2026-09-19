@@ -19,6 +19,6 @@
 
 ## Schematic notes
 
-- **OUT:** UART TX → series R → Tip (2); Ring (3) → return / −; Sleeve → GND. Leave hot with no plug.
-- **IN:** Tip → **220 Ω** → **TLP2361** anode; Ring → cathode; **1N4148** across LED; VO → UART RX; VCC=3V3 + 100 nF. Sleeve → GND. KiCad `oc-midi:TLP2361`. See [`MIDI.md`](MIDI.md) / [`../support.md`](../support.md).
+- **OUT (Type A):** Tip (2) ← **R12 33 Ω** ← 3V3 (current source +); Ring (3) ← **R11 10 Ω** ← UART0 TX GPIO0 (current sink −); Sleeve → GND. Leave hot with no plug.
+- **IN:** Tip → **220 Ω** → **TLP2361** anode; Ring → cathode; **1N4148** across LED; VO → UART0 RX GPIO1; VCC=3V3 + 100 nF. Sleeve → GND. KiCad `oc-midi:TLP2361`. See [`MIDI.md`](MIDI.md) / [`../support.md`](../support.md).
 - Mounting pads (unnumbered) → GND if you want shell bonded.

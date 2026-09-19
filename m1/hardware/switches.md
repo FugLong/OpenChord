@@ -35,7 +35,7 @@ Eight pads → **eight GPIOs**. One switch pin → GPIO, other → GND.
 - **No diodes** — ghosting is a matrix problem; each key has its own line.
 - Multi-hold works.
 
-**3× system EVQ-PUA02K** → GPIO (internal pull-up). Roles **TBD** — not capacitive, not Gaterons. **BOOTSEL** is a separate strap on QSPI_SS (see [`support.md`](support.md)).
+**3× system EVQPUC02K** → GPIO (internal pull-up). Roles **TBD** — not capacitive, not Gaterons. **BOOTSEL** is a separate strap on QSPI_SS (see [`support.md`](support.md)).
 
 ### Pad map (firmware)
 
@@ -46,22 +46,21 @@ Eight pads → **eight GPIOs**. One switch pin → GPIO, other → GND.
 
 Physical layout is still a **2×4** cluster; numbering is firmware-defined.
 
-### GPIO sketch (not final pins)
+### GPIO map (rev A schematic)
 
-Avoid USB, QSPI, crystal pins.
+See [`support.md`](support.md) §8 for the full table. Firmware must use **I2C1** (GPIO10/11), not I2C0.
 
-| Function | Notes |
-|----------|--------|
-| KEY0–KEY7 | Direct to Gaterons; internal pull-up |
-| SYS0–SYS2 | 3× EVQ → GPIO; roles TBD |
-| I2C0 SDA/SCL | OLED (`0x3C`) + QT2120 (**strip only**) @ `0x1C` + IQS572 (trackpad) @ `0x74` |
-| IQS572_RDY | Required — Azoteq ready line |
-| TOUCH_CHANGE | Optional QT2120 CHANGE |
-| UART TX/RX | MIDI out / in |
-| BOOTSEL | **Not a GPIO** — EVQ + 1 kΩ on **QSPI_SS** (UF2 at reset) |
+| Function | GPIO |
+|----------|------|
+| KEY (SW1–8 Gateron) | 24, 18, 25, 17, 2, 13, 6, 12 |
+| SYS (SW9, SW10, SW11 EVQ) | 4, 5, 3 |
+| I2C1 SDA/SCL | 10 / 11 — OLED `0x3C` + QT2120 strip @ `0x1C` + IQS572 @ `0x74` |
+| IQS572_RDY / NRST | 8 / 9 |
+| UART0 TX/RX (MIDI) | 0 / 1 |
+| BOOTSEL | **Not a GPIO** — TS-1187A + **R5 1 kΩ** on **QSPI_SS**, **R30 10 kΩ** SS→3V3 |
 | STICK_X/Y | **Only if Alps fallback** — ADC on GPIO26–29 |
 
-~14–16 GPIOs with RDY / CHANGE — fine on RP2040 (~30 available).
+QT2120 **CHANGE** is unconnected. Spare: GPIO7, 14–16, 19–23.
 
 ## Layout
 

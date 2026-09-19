@@ -13,7 +13,7 @@ Files under `lib/easyeda/oc_touch.{kicad_sym,pretty,3dshapes}/`.
 
 - DigiKey buy for IQS572 is **IQS572BLQNR**; LCSC # is for EasyEDA CAD + optional JLCPCB.
 - DigiKey buy for QT2120 is **AT42QT2120-XUR** (TSSOP reel — better stock). Electrically identical to `-XU` tube. MMHR (VQFN 3×3) remains DigiKey-only alt — no EasyEDA import here.
-- QT2120 pin names use LCSC **KEY0…** labels; those are the SNS electrodes (KEY0 = SNS0 = slider ch 0).
+- QT2120 pin names use LCSC **KEY0…** labels; those are the SNS electrodes (KEY0 = SNS0 = slider ch 0). Product sch uses **KEY0–2 only**; KEY3–11 open.
 - IQS572 pinout matches Azoteq datasheet (SDA/SCL/VDDHI/VSS/VREG/NRST/RDY/Rx*/Tx*/PGM/SW_IN).
 - QFN pitch **0.5 mm** confirmed against IQS5xx datasheet §11.3 (`e = 0.5`).
 - EasyEDA footprint was **missing the exposed pad** — we added **pad 29 (EP)** (~2.7×2.7 mm). Tie **EP → VSS/GND** on the schematic (Azoteq recommends soldering EP to ground).

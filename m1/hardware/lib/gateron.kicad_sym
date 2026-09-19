@@ -61,6 +61,24 @@
 				(hide yes)
 			)
 		)
+		(property "Manufacturer" "Gateron"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MPN" "KS-33 hotswap socket"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(symbol "SW_Gateron_LP_0_1"
 			(rectangle
 				(start -2.54 1.27)

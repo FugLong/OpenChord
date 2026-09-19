@@ -4,31 +4,32 @@ Nickname: **`oc-btn`**. Files: `lib/easyeda/oc_btn.{kicad_sym,pretty,3dshapes}/`
 
 | Part | Role | LCSC | Size | KiCad |
 |------|------|------|------|-------|
-| **EVQ-PUA02K** | System / edge (side-push) | [C128539](https://www.lcsc.com/product-detail/C128539.html) · [DigiKey](https://www.digikey.com/en/products/detail/panasonic-industry/EVQ-PUA02K/286334) | ~4.7×3.5, side | `oc-btn:EVQ-PUA02K` |
-| **TS-1187A-B-A-B** | BOOTSEL / RUN (top-push) | [C318884](https://www.lcsc.com/product-detail/C318884.html) | **5.1×5.1×1.5 mm**, ~**$0.03–0.05** | `oc-btn:TS-1187A-B-A-B` |
+| **EVQPUC02K** | System / edge (side-push) | [C79174](https://www.lcsc.com/product-detail/C79174.html) | 4.7×4.5×1.65, side | `oc-btn:EVQPUC02K` |
+| **TS-1187A-B-A-B** | BOOTSEL / RUN (top-push) | [C318884](https://www.lcsc.com/product-detail/C318884.html) | **5.1×5.1×1.5 mm** | `oc-btn:TS-1187A-B-A-B` |
+
+## EVQPUC02K (SW9 / SW10 / SW11)
+
+Panasonic EVQ-PU side-press SPST. Four pads: **1+2** one pole, **3+4** the other. SMD pads 1.55×1.0 at x=±2.60, y=±0.85. Two **0.9 mm NPTH** locating bosses at (0, ±1.4).
+
+Wiring: one pole → GPIO (MCU pull-up), other → GND. Roles TBD.
 
 ## TS-1187A-B-A-B (bring-up tactiles)
 
-XKB Connection SPST-NO, 4-pad SMD, **top actuated**, low profile. Same family every cheap MCU board uses for Boot/Reset.
+XKB Connection SPST-NO, 4-pad SMD, **top actuated**, low profile.
 
-**Schematic:** Place `oc-btn:TS-1187A-B-A-B`. Four pads — left column **1+3** = one pole (internally common), right **2+4** = other. Wire one pole → net, other → GND (tie both pads of each pole on the PCB).
+**Schematic (rev A):** Place `oc-btn:TS-1187A-B-A-B` as **SW13**. Four pads — **top 1+2** = one pole, **bottom 3+4** = other. Press bridges top↔bottom.
 
-| Use | Net |
-|-----|-----|
-| **BOOTSEL** | Through **1 kΩ** onto `~QSPI_SS` / flash CS; other side GND |
-| **RUN / RST** (optional) | RP2040 **RUN** (active low reset); other side GND. Keep RUN’s **10 kΩ** pull-up to 3V3 |
-
-## EVQ-PUA02K (system edge)
-
-SMD side-push. Body ~4.7×3.5 mm, height off board 1.65 mm. Edge-mounted for the three TBD system buttons.
-
-Schematic: one pin → GPIO (internal pull-up), other → GND.
+| Use | As built |
+|-----|----------|
+| **BOOTSEL (SW13)** | Pad **1 → GND**; pad **3 → R5 1 kΩ → `~QSPI_SS`**. Pads 2 and 4 NC. **R30 10 kΩ** always populated: `~QSPI_SS` → 3V3. |
+| **RUN / RST** | **Not placed** on rev A. RP2040 RUN still has **R6 10 kΩ** pull-up to 3V3. |
 
 ## Re-import
 
 ```bash
-python3 -m easyeda2kicad --lcsc_id C128539 C318884 --full \
+python3 -m easyeda2kicad --lcsc_id C79174 C318884 --full \
   --output m1/hardware/lib/easyeda/oc_btn.kicad_sym --overwrite
-# rename long EasyEDA footprint → TS-1187A-B-A-B; 3D →
-# ${KIPRJMOD}/../lib/easyeda/oc_btn.3dshapes/TS-1187A-B-A-B.step
+# rename long EasyEDA names → EVQPUC02K / TS-1187A-B-A-B
+# 3D → ${KIPRJMOD}/../lib/easyeda/oc_btn.3dshapes/<name>.step
+# PUC bosses: pad type NPTH (not plated)
 ```

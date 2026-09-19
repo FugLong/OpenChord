@@ -4,7 +4,7 @@
 
 **Pinout (locked)** — view screen, pins on right, top→bottom:
 
-1. GND · 2. VCC · 3. SCL · 4. SDA · I2C **0x3C**
+1. GND · 2. VCC · 3. SCL · 4. SDA · I2C **0x3C** (on product **I2C1**, GPIO10/11)
 
 | KiCad | Path |
 |-------|------|
