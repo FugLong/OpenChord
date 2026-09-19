@@ -75,7 +75,7 @@ USB VBUS ──► AP2112K VIN ──► +3V3 ──► RP2040 IOVDD / USB_VDD /
 
 ## 4. USB (one port)
 
-**J1** Hroparts `TYPE-C-31-M-12` ([C165948](https://www.lcsc.com/product-detail/C165948.html)). Per [`lib/USB.md`](lib/USB.md): DP1↔DP2, DN1↔DN2; **USBLC6**; **R3/R4 22 Ω**; CC **R1/R2 5.1 kΩ→GND** (do not tie CC1 to CC2); VBUS→LDO; SBU NC.
+**J1** Hroparts `TYPE-C-31-M-12` ([C165948](https://www.lcsc.com/product-detail/C165948.html)) on **B.Cu**, board edge. Per [`lib/USB.md`](lib/USB.md): DP1↔DP2, DN1↔DN2; **USBLC6**; **R3/R4 22 Ω**; CC **R1/R2 5.1 kΩ→GND** (do not tie CC1 to CC2); VBUS→LDO; SBU NC.
 
 ---
 
@@ -87,6 +87,8 @@ USB VBUS ──► AP2112K VIN ──► +3V3 ──► RP2040 IOVDD / USB_VDD /
 
 **IN (J3 + U9 TLP2361):** Tip → R10 220 Ω → AN; Ring → CAT; VO → RX; VCC=3V3 + C14 100 nF; D1 1N4148 reverse across LED.
 
+Place the jacks so the **metal bushing is past Edge.Cuts** (plastic body + pins on FR4). Boss holes are mechanical, no net.
+
 ---
 
 ## 6. I²C — **I2C1** (not I2C0)
@@ -95,7 +97,7 @@ RP2040 mux: **GPIO10 = I2C1 SDA**, **GPIO11 = I2C1 SCL**. Firmware must use **I2
 
 | Device | Address | Notes |
 |--------|---------|-------|
-| OLED DS1 | `0x3C` | GND / VCC / SCL / SDA |
+| OLED DS1 | `0x3C` | Module must be **GND / VCC / SCL / SDA** |
 | QT2120 U4 | `0x1C` | MODE→GND, RESET→3V3, CHANGE open |
 | IQS572 U3 | `0x74` | **RDY → GPIO8** (required); **NRST → GPIO9** |
 

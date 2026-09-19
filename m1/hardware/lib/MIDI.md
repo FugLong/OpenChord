@@ -2,7 +2,7 @@
 
 | | |
 |--|--|
-| MPN | **TLP2361(TPL,E** |
+| MPN | **TLP2361(TPL,E)** |
 | LCSC | **C107626** |
 | KiCad | `oc-midi:TLP2361` |
 | Files | `lib/easyeda/oc_midi.{kicad_sym,pretty,3dshapes}/` |

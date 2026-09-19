@@ -89,7 +89,9 @@ In the LCSC cart. Equivalents OK if value + package match. Crystal load caps sta
 
 ## PCB + cover
 
-**118.95 × 63.15 mm**, 4-layer, HASL. [JLCPCB](https://jlcpcb.com/) — **~$10**/board at qty 5. Cover **~$2** filament.
+**118.95 × 63.15 mm**, 4-layer, **HASL** (KiCad job file may still say ENIG — pick HASL on the order form). [JLCPCB](https://jlcpcb.com/) — **~$10**/board at qty 5. Cover **~$2** filament.
+
+Gerbers: [`fab/jlcpcb/`](fab/jlcpcb/) / zip `fab/OpenChordM1-gerbers.zip`. Stencil: **bottom only**, frameless, **160 × 120 mm**.
 
 ---
 
@@ -103,4 +105,4 @@ Re-import these CSVs (vendor export format, quantities for 5 boards):
 1. **LCSC `$40.78`** — 22 lines: C2040, C179173 (qty 10), C165948, C51118, C7519, C20625731, C107626, C2128, C79174 (qty 15), C318884 (qty 20), plus the 12 passives above.
 2. **DigiKey `$29.50`** — [IQS572BLQNR](https://www.digikey.com/en/products/detail/azoteq-pty-ltd/IQS572BLQNR/7165004) ×5, [AT42QT2120-XUR](https://www.digikey.com/en/products/detail/microchip-technology/AT42QT2120-XUR/3678735) ×5, [SJ1-3523N](https://www.digikey.com/en/products/detail/same-sky-formerly-cui-devices/SJ1-3523N/738689) ×10.
 3. 5× OLED; **40** Gateron LP sockets + **40** KS-33 (two 35-packs).
-4. JLCPCB 4-layer, ~119 × 63 mm, qty 5.
+4. JLCPCB 4-layer HASL, ~119 × 63 mm, qty 5, tented vias. Upload `fab/OpenChordM1-gerbers.zip`. Bottom stencil 160 × 120 mm frameless.

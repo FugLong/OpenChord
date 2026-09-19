@@ -1,10 +1,10 @@
 # OpenChord M1 — Hardware verification handoff
 
-**Purpose:** Give a fresh agent (or human) enough context to carefully re-verify schematic + PCB before fab.  
-**Date context:** 2026-09-18, KiCad 10, first-layout “rev A” board.  
-**Owner intent:** Finger-on-PCB capacitive UI (soldermask over electrodes, tented sense vias), 4-layer preferred, UI-dense top / everything else bottom, no non-3D-printable cover materials over sense areas.
+**Purpose:** Give a fresh agent (or human) enough context to re-verify schematic + PCB.  
+**Date context:** 2026-09-19, KiCad 10.0.6, rev A **ordered** (4-layer HASL, qty 5).  
+**Owner intent:** Finger-on-PCB capacitive UI (soldermask over electrodes, tented sense vias), 4-layer, UI-dense top / everything else bottom.
 
-**Re-verify before fab; known “critical” switch-pole scare was a false alarm (see C1).**
+**2026-09-19 pre-order:** DRC **0 shorts, 0 unconnected, 0 schematic_parity**. USB-C J1 and TRS J2/J3 moved; bushings off-board. Gerbers in `fab/jlcpcb/`. Remaining DRC is USB-C/IQS pad pitch, silk-on-edge, OLED courtyard vs jack PTH, starved thermals (1 spoke). Not blockers.
 
 ---
 
@@ -55,7 +55,7 @@
 
 ---
 
-## 3. Snapshot findings (2026-09-18 audit)
+## 3. Snapshot findings (2026-09-19 pre-order)
 
 ### Schematic ↔ PCB
 - DRC **schematic_parity: 0 issues** at last audit.
@@ -198,9 +198,11 @@ Use this as the slow pass. For each: open MPN datasheet, confirm every pin.
 - Keepouts under **sense** copper (trackpad diamonds + slider KEY0–2) on **internal** GND/PWR planes. Slider **GND end chevrons** (U2 pads 4–5) may sit **outside** keepout so parts can share that area — intentional.
 - Backside parts under trackpad: series Rs OK; avoid noisy MCU under trackpad matrix if possible; under slider is riskier but may be necessary.
 - Captouch thru-hole vias: tent by removing `*.Mask` from via pads in footprint (user may have done this).
-- Bare-finger soldermask-over-copper is intentional; no overlay plate required for rev A.
-- Optional fab: resin-plug vias in touch areas (cost); tenting usually enough.
-- 4-layer `Sig–GND–PWR–Sig` recommended for density.
+- Bare-finger soldermask-over-copper is intentional; rev A finish is **HASL** (not ENIG).
+- Optional later: ENIG + open mask on electrodes if gold feel is needed.
+- 4-layer `Sig–GND–PWR–Sig` (In1 GND, In2 3.3 V). SMT on B.Cu.
+- TRS: hang **SJ1-3523N** bushings off Edge.Cuts; do not sit the barrel on FR4.
+- Gerbers: `m1/hardware/fab/jlcpcb/`. Stencil: bottom, frameless, 160 × 120 mm.
 
 ---
 

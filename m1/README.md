@@ -17,7 +17,7 @@ This is the first product in the OpenChord family. It does not make sound. The p
 
 ## Status
 
-Engine is in `m1/engine` (including shared `session`). Feel-testing is **`m1/proto-rp2040`** (Pro). Plugin v0 lives in **`m1/plugin`** as **OpenChord M Core** (Pro + Smart). Product firmware is not started. The Seed proto is parked. Do not edit the archive.
+Engine is in `m1/engine` (including shared `session`). Feel-testing is **`m1/proto-rp2040`** (Pro). Plugin v0 lives in **`m1/plugin`** as **OpenChord M Core** (Pro + Smart). Product firmware is not started. **Rev A PCB** (4-layer HASL, USB-C J1, TRS J2/J3) is the board being fabbed — [`hardware/bom.md`](hardware/bom.md). The Seed proto is parked. Do not edit the archive.
 
 ## Tree
 

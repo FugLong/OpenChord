@@ -24,7 +24,18 @@ Product locks: [`../docs/goals.md`](../docs/goals.md).
 - **3× EVQPUC02K** system buttons → GPIO (**roles TBD**). Not capacitive.
 - **BOOTSEL** = top tact **TS-1187A** → QSPI_SS through **1 kΩ**, plus **10 kΩ** SS→3V3. No RUN button on rev A.
 - Shared **I2C1** on GPIO10/11 (OLED `0x3C`, QT2120 `0x1C`, IQS572 `0x74`; RDY GPIO8, NRST GPIO9). Alps stick = **fallback only**. Pin map: [`support.md`](support.md).
-- No SoftPot, no pots, no paid PCBA. Coupon before full fab — see [`touch.md`](touch.md).
+- No SoftPot, no pots, no paid PCBA. Coupon before a later product fab — see [`touch.md`](touch.md).
+
+## Rev A fab (ordering)
+
+| | |
+|--|--|
+| Size | **118.95 × 63.15 mm** |
+| Stack | 4-layer, 1.6 mm, 1 oz. In1 **GND**, In2 **+3.3V**. SMT on **B.Cu**. |
+| Finish | **HASL** (not ENIG). Touch = soldermask over copper. |
+| Gerbers | [`fab/jlcpcb/`](fab/jlcpcb/) — zip `fab/OpenChordM1-gerbers.zip` (gitignored). Upload that zip. |
+| Stencil | **Bottom only**, frameless, custom **160 × 120 mm**, 0.12 mm. No top stencil (`F_Paste` is empty). |
+| TRS | SJ1-3523N bushings hang **off** Edge.Cuts so the barrel does not clip FR4. |
 
 ## KiCad `lib/`
 

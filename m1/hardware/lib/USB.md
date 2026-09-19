@@ -4,7 +4,7 @@
 |--|--|
 | LCSC (buy) | [C165948](https://www.lcsc.com/product-detail/C165948.html) |
 | KiCad | `oc-usb:TYPE-C-31-M-12` (symbol + footprint) |
-| Rev A | **J1** on schematic and PCB |
+| Rev A | **J1** on schematic and PCB (**B.Cu**, board edge) |
 | Files | `lib/easyeda/oc_usb.{kicad_sym,pretty,3dshapes}/` |
 | In lib only | GCT `USB4105-GF-A` (do not place on rev A) |
 

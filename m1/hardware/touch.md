@@ -28,7 +28,7 @@ Mutual-cap **Tx columns + Rx rows**. Copper = diamond matrix from the captouch p
 Self-cap. **Slider** on SNS0–2 = three interleaved electrodes → continuous **0–255** (strum / sparkle). Unused SNS left open. System buttons are **not** on this chip.
 
 ```
-Finger → cover opening + mask/ENIG
+Finger → cover opening + soldermask (rev A HASL; not ENIG)
   trackpad diamonds → Tx/Rx (+ 1 kΩ R16–R29) → IQS572 → I2C1 → RP2040
   strip triangles    → SNS0–2 (+ 10 kΩ R13–R15) → QT2120 → I2C1 → RP2040
   3× system EVQ      → GPIO (roles TBD)
@@ -38,8 +38,8 @@ Finger → cover opening + mask/ENIG
 
 | Finish | Look | Fab |
 |--------|------|-----|
-| **Mask over pads** (default) | Pad-shaped bumps in board color | Standard |
-| **ENIG + mask open** | Gold frets / pad outlines | Open mask only on electrodes |
+| **HASL + mask over pads** (rev A proto) | Pad-shaped bumps in board color | What we ordered |
+| **ENIG + mask open** | Gold frets / pad outlines | Later SKU only if feel needs gold |
 
 ## Cover
 
