@@ -15,32 +15,34 @@ const char* NoteName(uint8_t note) {
     return kNames[note % 12];
 }
 
+Binding ReadBinding(const uint8_t* in) {
+    Binding b;
+    b.kind = static_cast<Binding::Kind>(in[0]);
+    if (b.kind > Binding::Kind::Cc) b.kind = Binding::Kind::None;
+    b.channel = in[1];
+    b.number = in[2];
+    return b;
+}
+
 } // namespace
 
-void MidiMap::resetToLaunchkey() {
+void MidiMap::resetPreset() {
     for (auto& b : bindings_) b = {};
 
-    auto cc = [](uint8_t ch, uint8_t n) {
+    // Eight controls as CC 36..43, trackpad axes as CC 47 and 48.
+    // Channel 0 matches any channel.
+    auto cc = [](uint8_t n) {
         Binding b;
         b.kind = Binding::Kind::Cc;
-        b.channel = ch;
+        b.channel = 0;
         b.number = n;
         return b;
     };
 
-    // Launchkey Mini MK4: pads on ch 10, stick knobs typically ch 1.
-    // channel 0 = any — matches proto (no channel filter on CCs).
-    bindings_[static_cast<int>(ControlId::Dim)] = cc(0, 36);
-    bindings_[static_cast<int>(ControlId::Min)] = cc(0, 37);
-    bindings_[static_cast<int>(ControlId::Maj)] = cc(0, 38);
-    bindings_[static_cast<int>(ControlId::Sus)] = cc(0, 39);
-    bindings_[static_cast<int>(ControlId::Ext6)] = cc(0, 40);
-    bindings_[static_cast<int>(ControlId::Extm7)] = cc(0, 41);
-    bindings_[static_cast<int>(ControlId::ExtM7)] = cc(0, 42);
-    bindings_[static_cast<int>(ControlId::Ext9)] = cc(0, 43);
-    bindings_[static_cast<int>(ControlId::StickX)] = cc(0, 47);
-    bindings_[static_cast<int>(ControlId::StickY)] = cc(0, 48);
-    // Key / Panic / Shift unbound by default
+    for (int i = 0; i < 8; ++i)
+        bindings_[static_cast<size_t>(i)] = cc(static_cast<uint8_t>(36 + i));
+    bindings_[static_cast<int>(ControlId::TrackpadX)] = cc(47);
+    bindings_[static_cast<int>(ControlId::TrackpadY)] = cc(48);
 }
 
 void MidiMap::clear(ControlId id) {
@@ -116,14 +118,17 @@ void MidiMap::toBlob(uint8_t* out) const {
 
 void MidiMap::fromBlob(const uint8_t* in, int nbytes) {
     if (!in || nbytes < kBlobBytes) return;
-    for (int i = 0; i < kControlCount; ++i) {
-        Binding b;
-        b.kind = static_cast<Binding::Kind>(in[i * 3 + 0]);
-        if (b.kind > Binding::Kind::Cc) b.kind = Binding::Kind::None;
-        b.channel = in[i * 3 + 1];
-        b.number = in[i * 3 + 2];
-        bindings_[static_cast<size_t>(i)] = b;
-    }
+    for (int i = 0; i < kControlCount; ++i)
+        bindings_[static_cast<size_t>(i)] = ReadBinding(in + i * 3);
+}
+
+void MidiMap::fromLegacyBlob(const uint8_t* in, int nbytes) {
+    if (!in || nbytes < kLegacyBlobBytes) return;
+    for (auto& b : bindings_) b = {};
+    for (int i = 0; i < 8; ++i)
+        bindings_[static_cast<size_t>(i)] = ReadBinding(in + i * 3);
+    bindings_[static_cast<int>(ControlId::TrackpadX)] = ReadBinding(in + 8 * 3);
+    bindings_[static_cast<int>(ControlId::TrackpadY)] = ReadBinding(in + 9 * 3);
 }
 
 } // namespace ocplug

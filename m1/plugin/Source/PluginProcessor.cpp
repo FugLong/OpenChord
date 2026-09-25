@@ -3,15 +3,11 @@
 
 #include <cstdio>
 
-namespace {
-constexpr uint32_t kLearnTimeoutMs = 8000;
-}
-
 OpenChordMCoreProcessor::OpenChordMCoreProcessor()
     : AudioProcessor(BusesProperties()
                          .withOutput("Output", juce::AudioChannelSet::stereo(), true))
 {
-    map_.resetToLaunchkey();
+    map_.resetPreset();
     map_rt_ = map_;
     session_.reset();
 }
@@ -36,19 +32,24 @@ const char* OpenChordMCoreProcessor::pcName(uint8_t pc) {
     return kNames[pc % 12];
 }
 
-void OpenChordMCoreProcessor::armLearn(ocplug::ControlId id) {
-    learn_armed_.store(static_cast<int>(id));
-    learn_deadline_ms_.store(juce::Time::getMillisecondCounter() + kLearnTimeoutMs);
+float OpenChordMCoreProcessor::ccToAxis(uint8_t value) {
+    return (static_cast<float>(value) - 64.0f) / 64.0f;
 }
 
-void OpenChordMCoreProcessor::cancelLearn() {
-    learn_armed_.store(-1);
+void OpenChordMCoreProcessor::toggleBind() {
+    if (bind_on_.load()) {
+        bind_on_.store(false);
+        bind_target_.store(-1);
+        return;
+    }
+    bind_on_.store(true);
+    bind_target_.store(-1);
 }
 
-void OpenChordMCoreProcessor::resetMapToLaunchkey() {
-    const juce::SpinLock::ScopedLockType sl(map_lock_);
-    map_.resetToLaunchkey();
-    map_rt_ = map_;
+void OpenChordMCoreProcessor::chooseBind(ocplug::ControlId id) {
+    if (!bind_on_.load()) return;
+    if (static_cast<int>(id) < 0 || id >= ocplug::ControlId::Count) return;
+    bind_target_.store(static_cast<int>(id));
 }
 
 void OpenChordMCoreProcessor::clearBinding(ocplug::ControlId id) {
@@ -57,92 +58,69 @@ void OpenChordMCoreProcessor::clearBinding(ocplug::ControlId id) {
     map_rt_ = map_;
 }
 
-void OpenChordMCoreProcessor::setPlayMode(oc::PlayMode mode) {
+void OpenChordMCoreProcessor::resetMap() {
     const juce::SpinLock::ScopedLockType sl(map_lock_);
-    session_.setPlayMode(mode);
-    controls_held_.store(0);
+    map_.resetPreset();
+    map_rt_ = map_;
 }
 
-oc::PlayMode OpenChordMCoreProcessor::playMode() const {
+ocplug::Binding OpenChordMCoreProcessor::binding(ocplug::ControlId id) const {
     const juce::SpinLock::ScopedLockType sl(map_lock_);
-    return session_.playMode();
+    return map_.get(id);
 }
 
-void OpenChordMCoreProcessor::setControlHeld(ocplug::ControlId id, bool on) {
+void OpenChordMCoreProcessor::uiSetKeyswitch(int index, bool down) {
+    if (index < 0 || index >= oc::Session::kKeyswitchCount) return;
+    const juce::SpinLock::ScopedLockType sl(map_lock_);
+    session_.setKeyswitch(static_cast<uint8_t>(index), down);
+}
+
+void OpenChordMCoreProcessor::uiSetButton(oc::Button button, bool down) {
+    const juce::SpinLock::ScopedLockType sl(map_lock_);
+    session_.setButton(button, down);
+}
+
+void OpenChordMCoreProcessor::uiSetTrackpad(float x, float y, bool finger) {
+    const juce::SpinLock::ScopedLockType sl(map_lock_);
+    session_.setTrackpad(x, y, finger);
+}
+
+void OpenChordMCoreProcessor::uiSetStrip(uint8_t position, bool finger) {
+    const juce::SpinLock::ScopedLockType sl(map_lock_);
+    session_.setStrip(position, finger);
+}
+
+void OpenChordMCoreProcessor::applyMessage(ocplug::ControlId id, bool on, uint8_t ccValue) {
     using Id = ocplug::ControlId;
-    if (id == Id::StickX || id == Id::StickY || id == Id::Count) return;
-    const auto bit = static_cast<uint16_t>(1u << static_cast<int>(id));
-    if (on) controls_held_.fetch_or(bit);
-    else controls_held_.fetch_and(static_cast<uint16_t>(~bit));
-}
-
-void OpenChordMCoreProcessor::applyControl(ocplug::ControlId id, bool on, uint8_t ccValue) {
-    using Id = ocplug::ControlId;
-    setControlHeld(id, on);
-
-    if (id == Id::StickX) {
-        session_.stickCcX(ccValue);
+    if (ocplug::IsKeyswitch(id)) {
+        session_.setKeyswitch(static_cast<uint8_t>(ocplug::KeyswitchIndex(id)), on);
         return;
     }
-    if (id == Id::StickY) {
-        session_.stickCcY(ccValue);
+    if (id == Id::Prev) {
+        session_.setButton(oc::Button::Prev, on);
         return;
     }
-    if (id == Id::Key) {
-        session_.setKeyHeld(on);
+    if (id == Id::Menu) {
+        session_.setButton(oc::Button::Menu, on);
         return;
     }
-    if (id == Id::Panic) {
-        if (on) session_.panic();
+    if (id == Id::Next) {
+        session_.setButton(oc::Button::Next, on);
         return;
     }
-    if (id == Id::Shift) return;
-
-    // Eight pads: Pro = triad/extras, Smart = I..vii + high I
-    if (session_.playMode() == oc::PlayMode::Smart) {
-        int deg = -1;
-        switch (id) {
-            case Id::Dim: deg = 0; break;
-            case Id::Min: deg = 1; break;
-            case Id::Maj: deg = 2; break;
-            case Id::Sus: deg = 3; break;
-            case Id::Ext6: deg = 4; break;
-            case Id::Extm7: deg = 5; break;
-            case Id::ExtM7: deg = 6; break;
-            case Id::Ext9: deg = 7; break;
-            default: break;
-        }
-        if (deg >= 0) session_.degreePad(static_cast<uint8_t>(deg), on);
+    if (id == Id::TrackpadX || id == Id::TrackpadY) {
+        float x = session_.trackpadX();
+        float y = session_.trackpadY();
+        const float axis = ccToAxis(ccValue);
+        if (id == Id::TrackpadX) x = axis;
+        else y = axis;
+        session_.setTrackpad(x, y, true);
         return;
     }
-
-    switch (id) {
-        case Id::Dim: session_.typePad(0, on); break;
-        case Id::Min: session_.typePad(1, on); break;
-        case Id::Maj: session_.typePad(2, on); break;
-        case Id::Sus: session_.typePad(3, on); break;
-        case Id::Ext6: session_.setExtBit(oc::Ext6, on); break;
-        case Id::Extm7: session_.setExtBit(oc::Extm7, on); break;
-        case Id::ExtM7: session_.setExtBit(oc::ExtM7, on); break;
-        case Id::Ext9: session_.setExtBit(oc::Ext9, on); break;
-        default: break;
+    if (id == Id::Strip) {
+        const int pos = (static_cast<int>(ccValue) * 255) / 127;
+        session_.setStrip(static_cast<uint8_t>(pos), true);
     }
-}
-
-void OpenChordMCoreProcessor::uiHoldControl(ocplug::ControlId id, bool held) {
-    // Called from message thread; session is also used on audio thread.
-    // Brief says realtime: no locks on audio. For mouse UI we take the map lock
-    // and apply to session — same as many JUCE MIDI FX demos. Keep it short.
-    const juce::SpinLock::ScopedLockType sl(map_lock_);
-    applyControl(id, held, held ? 127 : 0);
-    session_.updateSeat();
-}
-
-void OpenChordMCoreProcessor::uiSetStick(float x, float y) {
-    const juce::SpinLock::ScopedLockType sl(map_lock_);
-    session_.setStickX(x);
-    session_.setStickY(y);
-    session_.updateSeat();
 }
 
 void OpenChordMCoreProcessor::emitSessionMidi(juce::MidiBuffer& midi, int samplePos) {
@@ -172,58 +150,32 @@ void OpenChordMCoreProcessor::processBlock(juce::AudioBuffer<float>& buffer, juc
     juce::MidiBuffer incoming;
     incoming.swapWith(midi);
 
-    const int armed = learn_armed_.load();
-    if (armed >= 0) {
-        const uint32_t now = juce::Time::getMillisecondCounter();
-        if (now > learn_deadline_ms_.load())
-            learn_armed_.store(-1);
-    }
-
-    ocplug::MidiMap local_map;
-    {
-        const juce::SpinLock::ScopedLockType sl(map_lock_);
-        local_map = map_rt_;
-    }
+    const juce::SpinLock::ScopedLockType sl(map_lock_);
+    ocplug::MidiMap local_map = map_rt_;
 
     for (const auto metadata : incoming) {
         const auto msg = metadata.getMessage();
         const int sample = metadata.samplePosition;
         const int ch = msg.getChannel();
 
-        // Learn arm
-        int arm = learn_armed_.load();
-        if (arm >= 0) {
-            const auto id = static_cast<ocplug::ControlId>(arm);
-            const bool isStick = (id == ocplug::ControlId::StickX || id == ocplug::ControlId::StickY);
-
+        const int target = bind_target_.load();
+        if (bind_on_.load() && target >= 0
+            && (msg.isController() || (msg.isNoteOn() && msg.getVelocity() > 0))) {
+            ocplug::Binding b;
+            b.channel = static_cast<uint8_t>(ch);
             if (msg.isController()) {
-                ocplug::Binding b;
                 b.kind = ocplug::Binding::Kind::Cc;
-                b.channel = static_cast<uint8_t>(ch);
                 b.number = static_cast<uint8_t>(msg.getControllerNumber());
-                {
-                    const juce::SpinLock::ScopedLockType sl(map_lock_);
-                    map_.bindUnique(id, b);
-                    map_rt_ = map_;
-                    local_map = map_rt_;
-                }
-                learn_armed_.store(-1);
-                continue;
-            }
-            if (!isStick && msg.isNoteOn() && msg.getVelocity() > 0) {
-                ocplug::Binding b;
+            } else {
                 b.kind = ocplug::Binding::Kind::Note;
-                b.channel = static_cast<uint8_t>(ch);
                 b.number = static_cast<uint8_t>(msg.getNoteNumber());
-                {
-                    const juce::SpinLock::ScopedLockType sl(map_lock_);
-                    map_.bindUnique(id, b);
-                    map_rt_ = map_;
-                    local_map = map_rt_;
-                }
-                learn_armed_.store(-1);
-                continue;
             }
+            map_.bindUnique(static_cast<ocplug::ControlId>(target), b);
+            map_rt_ = map_;
+            local_map = map_rt_;
+            bind_on_.store(false);
+            bind_target_.store(-1);
+            continue;
         }
 
         if (msg.isController()) {
@@ -231,11 +183,10 @@ void OpenChordMCoreProcessor::processBlock(juce::AudioBuffer<float>& buffer, juc
                                               static_cast<uint8_t>(msg.getControllerNumber()));
             if (id != ocplug::ControlId::Count) {
                 const uint8_t v = static_cast<uint8_t>(msg.getControllerValue());
-                if (id == ocplug::ControlId::StickX || id == ocplug::ControlId::StickY)
-                    applyControl(id, true, v);
+                if (ocplug::IsAxis(id))
+                    applyMessage(id, true, v);
                 else
-                    applyControl(id, v >= 64, v);
-                session_.updateSeat();
+                    applyMessage(id, v >= 64, v);
                 emitSessionMidi(midi, sample);
                 continue;
             }
@@ -244,85 +195,70 @@ void OpenChordMCoreProcessor::processBlock(juce::AudioBuffer<float>& buffer, juc
         if (msg.isNoteOn() || msg.isNoteOff()) {
             const uint8_t pitch = static_cast<uint8_t>(msg.getNoteNumber());
             const auto id = local_map.matchNote(static_cast<uint8_t>(ch), pitch);
+            const bool on = msg.isNoteOn() && msg.getVelocity() > 0;
             if (id != ocplug::ControlId::Count) {
-                if (id == ocplug::ControlId::StickX || id == ocplug::ControlId::StickY) {
-                    // Stick axes only bind to CC (spec). Ignore note match.
+                if (ocplug::IsAxis(id)) {
+                    if (id == ocplug::ControlId::Strip)
+                        session_.setStrip(session_.stripPosition(), on);
+                    else
+                        session_.setTrackpad(session_.trackpadX(), session_.trackpadY(), on);
                 } else {
-                    const bool on = msg.isNoteOn() && msg.getVelocity() > 0;
-                    applyControl(id, on, on ? 127 : 0);
-                    session_.updateSeat();
-                    emitSessionMidi(midi, sample);
-                    continue;
+                    applyMessage(id, on, on ? 127 : 0);
                 }
-            }
-
-            // Default Launchkey: ignore ch 10 notes (pads) when unbound as controls.
-            if (ch == 10 && msg.isNoteOn()) {
-                // Prefer: if unbound, still skip drum-channel notes on default map.
+                emitSessionMidi(midi, sample);
                 continue;
             }
 
-            if (msg.isNoteOn() && msg.getVelocity() > 0)
+            if (on)
                 session_.noteOn(static_cast<uint8_t>(ch), pitch, static_cast<uint8_t>(msg.getVelocity()));
             else
                 session_.noteOff(static_cast<uint8_t>(ch), pitch);
             emitSessionMidi(midi, sample);
-            continue;
         }
     }
 
     session_.updateSeat();
     emitSessionMidi(midi, 0);
 
-    // UI snapshot
     UiSnapshot s;
     session_.chordName(s.chord, sizeof(s.chord));
+    session_.fillScreen(s.screen_top, sizeof(s.screen_top), s.screen_left, sizeof(s.screen_left),
+                        s.screen_mid, sizeof(s.screen_mid), s.screen_right, sizeof(s.screen_right),
+                        &s.screen_zones, &s.screen_zone);
     s.key_pc = session_.keyPc();
-    std::snprintf(s.key_name, sizeof(s.key_name), "%s maj", pcName(s.key_pc));
-    s.stick_x = session_.stickX();
-    s.stick_y = session_.stickY();
-    s.ext = session_.padExt();
-    s.type_mask = session_.typeHeldMask();
-    s.degree_mask = session_.degreeHeldMask();
+    std::snprintf(s.key_name, sizeof(s.key_name), "%s", pcName(s.key_pc));
+    s.track_x = session_.trackpadX();
+    s.track_y = session_.trackpadY();
+    s.track_finger = session_.trackpadFinger();
+    s.strip = session_.stripPosition();
+    s.strip_finger = session_.stripFinger();
+    s.menu = session_.menuOpen();
+    s.menu_index = session_.menuIndex();
+    s.vary = session_.vary();
+    s.octave = session_.octave();
+    s.harmony = session_.harmony();
+    s.trigger = session_.trigger();
     s.mode = session_.playMode();
-    s.learn_armed = learn_armed_.load();
-    {
-        const uint16_t held = controls_held_.load();
-        using Id = ocplug::ControlId;
-        s.key_held = (held & (1u << static_cast<int>(Id::Key))) != 0 || session_.keyHeld();
-        s.shift_held = (held & (1u << static_cast<int>(Id::Shift))) != 0;
-        s.panic_held = (held & (1u << static_cast<int>(Id::Panic))) != 0;
-        if (s.mode == oc::PlayMode::Pro) {
-            const uint8_t midi_types = static_cast<uint8_t>(
-                ((held >> static_cast<int>(Id::Dim)) & 1u)
-                | (((held >> static_cast<int>(Id::Min)) & 1u) << 1)
-                | (((held >> static_cast<int>(Id::Maj)) & 1u) << 2)
-                | (((held >> static_cast<int>(Id::Sus)) & 1u) << 3));
-            if (midi_types) s.type_mask = static_cast<uint8_t>(s.type_mask | midi_types);
-            uint8_t midi_ext = 0;
-            if (held & (1u << static_cast<int>(Id::Ext6))) midi_ext |= oc::Ext6;
-            if (held & (1u << static_cast<int>(Id::Extm7))) midi_ext |= oc::Extm7;
-            if (held & (1u << static_cast<int>(Id::ExtM7))) midi_ext |= oc::ExtM7;
-            if (held & (1u << static_cast<int>(Id::Ext9))) midi_ext |= oc::Ext9;
-            if (midi_ext) s.ext = static_cast<uint8_t>(s.ext | midi_ext);
-        } else {
-            uint8_t deg = 0;
-            if (held & (1u << static_cast<int>(Id::Dim))) deg |= 1u << 0;
-            if (held & (1u << static_cast<int>(Id::Min))) deg |= 1u << 1;
-            if (held & (1u << static_cast<int>(Id::Maj))) deg |= 1u << 2;
-            if (held & (1u << static_cast<int>(Id::Sus))) deg |= 1u << 3;
-            if (held & (1u << static_cast<int>(Id::Ext6))) deg |= 1u << 4;
-            if (held & (1u << static_cast<int>(Id::Extm7))) deg |= 1u << 5;
-            if (held & (1u << static_cast<int>(Id::ExtM7))) deg |= 1u << 6;
-            if (held & (1u << static_cast<int>(Id::Ext9))) deg |= 1u << 7;
-            if (deg) s.degree_mask = static_cast<uint8_t>(s.degree_mask | deg);
-        }
+    s.bind_on = bind_on_.load();
+    s.bind_target = bind_target_.load();
+    uint8_t keys = 0;
+    for (int i = 0; i < oc::Session::kKeyswitchCount; ++i) {
+        if (session_.keyswitchDown(static_cast<uint8_t>(i)))
+            keys = static_cast<uint8_t>(keys | (1u << i));
     }
+    s.keyswitches = keys;
+    uint8_t buttons = 0;
+    if (session_.buttonDown(oc::Button::Prev)) buttons |= 1u;
+    if (session_.buttonDown(oc::Button::Menu)) buttons |= 2u;
+    if (session_.buttonDown(oc::Button::Next)) buttons |= 4u;
+    s.buttons = buttons;
     {
-        const juce::SpinLock::ScopedLockType sl(snap_lock_);
+        const juce::SpinLock::ScopedLockType snap(snap_lock_);
         snap_ = s;
     }
 }
+
+bool OpenChordMCoreProcessor::strumWaiting() const { return session_.strumWaiting(); }
 
 OpenChordMCoreProcessor::UiSnapshot OpenChordMCoreProcessor::snapshot() const {
     const juce::SpinLock::ScopedLockType sl(snap_lock_);
@@ -331,14 +267,18 @@ OpenChordMCoreProcessor::UiSnapshot OpenChordMCoreProcessor::snapshot() const {
 
 void OpenChordMCoreProcessor::getStateInformation(juce::MemoryBlock& destData) {
     juce::MemoryOutputStream mos(destData, true);
-    mos.writeInt(2); // version
+    mos.writeInt(5);
     uint8_t blob[ocplug::MidiMap::kBlobBytes];
     {
         const juce::SpinLock::ScopedLockType sl(map_lock_);
         map_.toBlob(blob);
         mos.write(blob, sizeof(blob));
-        mos.writeByte(session_.keyPc());
+        mos.writeByte(static_cast<char>(session_.keyPc()));
         mos.writeByte(static_cast<char>(session_.playMode()));
+        mos.writeByte(static_cast<char>(session_.vary()));
+        mos.writeByte(static_cast<char>(session_.harmony()));
+        mos.writeByte(static_cast<char>(session_.trigger()));
+        mos.writeByte(static_cast<char>(session_.octave()));
     }
 }
 
@@ -346,18 +286,35 @@ void OpenChordMCoreProcessor::setStateInformation(const void* data, int sizeInBy
     juce::MemoryInputStream mis(data, static_cast<size_t>(sizeInBytes), false);
     const int ver = mis.readInt();
     if (ver < 1) return;
-    uint8_t blob[ocplug::MidiMap::kBlobBytes];
-    if (mis.read(blob, sizeof(blob)) != static_cast<int>(sizeof(blob))) return;
     {
         const juce::SpinLock::ScopedLockType sl(map_lock_);
-        map_.fromBlob(blob, sizeof(blob));
+        if (ver >= 3) {
+            uint8_t blob[ocplug::MidiMap::kBlobBytes];
+            if (mis.read(blob, sizeof(blob)) != static_cast<int>(sizeof(blob))) return;
+            map_.fromBlob(blob, sizeof(blob));
+        } else {
+            uint8_t blob[ocplug::MidiMap::kLegacyBlobBytes];
+            if (mis.read(blob, sizeof(blob)) != static_cast<int>(sizeof(blob))) return;
+            map_.fromLegacyBlob(blob, sizeof(blob));
+        }
         map_rt_ = map_;
         if (!mis.isExhausted())
             session_.setKeyPc(static_cast<uint8_t>(mis.readByte()));
         if (ver >= 2 && !mis.isExhausted()) {
             const auto m = static_cast<uint8_t>(mis.readByte());
-            session_.setPlayMode(m == 1 ? oc::PlayMode::Smart : oc::PlayMode::Pro);
+            oc::PlayMode mode = oc::PlayMode::Keys;
+            if (m == 1) mode = oc::PlayMode::Scale;
+            else if (m == 2 && ver >= 3) mode = oc::PlayMode::Drums;
+            session_.setPlayMode(mode);
         }
+        if (ver >= 4 && !mis.isExhausted())
+            session_.setVary(static_cast<uint8_t>(mis.readByte()));
+        if (ver >= 4 && !mis.isExhausted())
+            session_.setHarmony(static_cast<oc::Harmony>(mis.readByte()));
+        if (ver >= 4 && !mis.isExhausted())
+            session_.setTrigger(static_cast<oc::Trigger>(mis.readByte()));
+        if (ver >= 5 && !mis.isExhausted())
+            session_.setOctave(static_cast<int>(static_cast<int8_t>(mis.readByte())));
     }
 }
 

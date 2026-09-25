@@ -1,9 +1,118 @@
 #include "PluginEditor.h"
 
+#include <cstring>
+
+void TrackpadControl::setReading(float x, float y, bool finger) {
+    if (dragging_) return;
+    x_ = x;
+    y_ = y;
+    finger_ = finger;
+    repaint();
+}
+
+void TrackpadControl::setFrom(juce::Point<float> p) {
+    const float w = juce::jmax(1.0f, static_cast<float>(getWidth()));
+    const float h = juce::jmax(1.0f, static_cast<float>(getHeight()));
+    x_ = juce::jlimit(-1.0f, 1.0f, (p.x / w) * 2.0f - 1.0f);
+    y_ = juce::jlimit(-1.0f, 1.0f, 1.0f - (p.y / h) * 2.0f);
+}
+
+void TrackpadControl::paint(juce::Graphics& g) {
+    auto r = getLocalBounds().toFloat().reduced(1.0f);
+    g.setColour(juce::Colour(0xff1c1c1c));
+    g.fillRoundedRectangle(r, 6.0f);
+    g.setColour(juce::Colours::white.withAlpha(0.25f));
+    g.drawLine(r.getCentreX(), r.getY(), r.getCentreX(), r.getBottom());
+    g.drawLine(r.getX(), r.getCentreY(), r.getRight(), r.getCentreY());
+    const float px = r.getX() + (x_ * 0.5f + 0.5f) * r.getWidth();
+    const float py = r.getY() + (1.0f - (y_ * 0.5f + 0.5f)) * r.getHeight();
+    g.setColour(finger_ ? juce::Colour(0xff3ecf8e) : juce::Colours::white.withAlpha(0.35f));
+    g.fillEllipse(px - 7.0f, py - 7.0f, 14.0f, 14.0f);
+}
+
+void TrackpadControl::mouseDown(const juce::MouseEvent& e) {
+    if (bindOn && bindOn()) return;
+    dragging_ = true;
+    finger_ = true;
+    setFrom(e.position);
+    if (onChange) onChange(x_, y_, true);
+    repaint();
+}
+
+void TrackpadControl::mouseDrag(const juce::MouseEvent& e) {
+    if (!dragging_) return;
+    finger_ = true;
+    setFrom(e.position);
+    if (onChange) onChange(x_, y_, true);
+    repaint();
+}
+
+void TrackpadControl::mouseUp(const juce::MouseEvent&) {
+    if (!dragging_) return;
+    dragging_ = false;
+    finger_ = true;
+    repaint();
+}
+
+uint8_t StripControl::positionFrom(float x) const {
+    const float w = juce::jmax(1.0f, static_cast<float>(getWidth()));
+    const int pos = static_cast<int>(juce::jlimit(0.0f, 1.0f, x / w) * 255.0f);
+    return static_cast<uint8_t>(pos);
+}
+
+void StripControl::setReading(uint8_t position, bool finger) {
+    if (dragging_) return;
+    pos_ = position;
+    finger_ = finger;
+    repaint();
+}
+
+void StripControl::paint(juce::Graphics& g) {
+    auto r = getLocalBounds().toFloat().reduced(1.0f);
+    g.setColour(juce::Colour(0xff1c1c1c));
+    g.fillRoundedRectangle(r, 4.0f);
+    const float t = static_cast<float>(pos_) / 255.0f;
+    auto fill = r.withWidth(juce::jmax(4.0f, r.getWidth() * t));
+    g.setColour(finger_ ? juce::Colour(0xff3ecf8e) : juce::Colours::white.withAlpha(0.28f));
+    g.fillRoundedRectangle(fill, 4.0f);
+}
+
+void StripControl::mouseDown(const juce::MouseEvent& e) {
+    if (e.mods.isPopupMenu()) {
+        if (bindOn && bindOn() && onClear) onClear();
+        return;
+    }
+    if (bindOn && bindOn()) {
+        if (onBind) onBind();
+        return;
+    }
+    dragging_ = true;
+    finger_ = true;
+    pos_ = positionFrom(e.position.x);
+    if (onChange) onChange(pos_, true);
+    repaint();
+}
+
+void StripControl::mouseDrag(const juce::MouseEvent& e) {
+    if (!dragging_) return;
+    finger_ = true;
+    pos_ = positionFrom(e.position.x);
+    if (onChange) onChange(pos_, true);
+    repaint();
+}
+
+void StripControl::mouseUp(const juce::MouseEvent&) {
+    if (!dragging_) return;
+    dragging_ = false;
+    finger_ = false;
+    if (onChange) onChange(pos_, false);
+    repaint();
+}
+
 OpenChordMCoreEditor::OpenChordMCoreEditor(OpenChordMCoreProcessor& p)
     : AudioProcessorEditor(&p), proc_(p)
 {
-    setSize(520, 440);
+    setSize(640, 620);
     setWantsKeyboardFocus(true);
 
     auto style = [](juce::Label& l, float size, bool bold = false) {
@@ -16,113 +125,124 @@ OpenChordMCoreEditor::OpenChordMCoreEditor(OpenChordMCoreProcessor& p)
     style(title_, 18.0f, true);
     addAndMakeVisible(title_);
 
-    preset_.setText("[Launchkey Mini MK4]", juce::dontSendNotification);
-    style(preset_, 13.0f);
-    addAndMakeVisible(preset_);
+    bind_btn_.onClick = [this] { proc_.toggleBind(); refresh(); };
+    addAndMakeVisible(bind_btn_);
 
-    reset_map_.onClick = [this] {
-        proc_.resetMapToLaunchkey();
-        updateButtons();
+    latch_btn_.onClick = [this] {
+        latchOn_ = !latchOn_;
+        if (!latchHeld()) releaseLatches();
+        refresh();
     };
-    addAndMakeVisible(reset_map_);
+    addAndMakeVisible(latch_btn_);
 
-    mode_btn_.onClick = [this] {
-        const auto next = (proc_.playMode() == oc::PlayMode::Pro)
-                              ? oc::PlayMode::Smart
-                              : oc::PlayMode::Pro;
-        proc_.setPlayMode(next);
-        updateButtons();
-    };
-    addAndMakeVisible(mode_btn_);
+    reset_btn_.onClick = [this] { proc_.resetMap(); refresh(); };
+    addAndMakeVisible(reset_btn_);
 
-    style(key_label_, 14.0f);
-    style(chord_label_, 14.0f);
-    addAndMakeVisible(key_label_);
-    addAndMakeVisible(chord_label_);
-
-    learn_hint_.setText(
-        "Pro: keyboard = root, pads = chord type. Smart: hold pads = I–vii (no keyboard needed). "
-        "Learn: click, then move control. Hold to play. Right-click clears.",
+    hint_.setText(
+        "Hold a keyswitch or button, or turn on Latch (Option or Control does the same) and click several. "
+        "They stay down until Latch is off and those keys are up. "
+        "Trackpad stays where you let go. Strip plays while you drag, and lifts when you release.",
         juce::dontSendNotification);
-    style(learn_hint_, 11.0f);
-    addAndMakeVisible(learn_hint_);
+    style(hint_, 12.0f);
+    addAndMakeVisible(hint_);
 
-    wireButton(dim_, ocplug::ControlId::Dim);
-    wireButton(min_, ocplug::ControlId::Min);
-    wireButton(maj_, ocplug::ControlId::Maj);
-    wireButton(sus_, ocplug::ControlId::Sus);
-    wireButton(e6_, ocplug::ControlId::Ext6);
-    wireButton(em7_, ocplug::ControlId::Extm7);
-    wireButton(eM7_, ocplug::ControlId::ExtM7);
-    wireButton(e9_, ocplug::ControlId::Ext9);
-    wireButton(key_btn_, ocplug::ControlId::Key);
-    wireButton(panic_btn_, ocplug::ControlId::Panic);
-    wireButton(shift_btn_, ocplug::ControlId::Shift);
+    for (int i = 0; i < 8; ++i) wireKeyswitch(key_[i], i);
+    wireButton(prev_, oc::Button::Prev, ocplug::ControlId::Prev);
+    wireButton(menu_, oc::Button::Menu, ocplug::ControlId::Menu);
+    wireButton(next_, oc::Button::Next, ocplug::ControlId::Next);
 
-    auto setupStick = [this](juce::Slider& s, juce::TextButton& learnBtn, ocplug::ControlId id) {
-        s.setSliderStyle(juce::Slider::LinearHorizontal);
-        s.setTextBoxStyle(juce::Slider::TextBoxRight, false, 48, 18);
-        s.setRange(-1.0, 1.0, 0.01);
-        s.setValue(0.0);
-        addAndMakeVisible(s);
-        addAndMakeVisible(learnBtn);
-        learnBtn.onClick = [this, id] {
-            if (proc_.learnArmed() == static_cast<int>(id))
-                proc_.cancelLearn();
-            else
-                proc_.armLearn(id);
-            updateButtons();
+    auto wireAxis = [this](ClickButton& b, ocplug::ControlId id) {
+        addAndMakeVisible(b);
+        b.onClick = [this, id] {
+            if (proc_.bindOn()) proc_.chooseBind(id);
         };
-        s.onValueChange = [this] {
-            proc_.uiSetStick(static_cast<float>(stick_x_.getValue()),
-                             static_cast<float>(stick_y_.getValue()));
+        b.onRightClick = [this, id] {
+            if (proc_.bindOn()) proc_.clearBinding(id);
+            refresh();
         };
     };
-    setupStick(stick_x_, stick_x_learn_, ocplug::ControlId::StickX);
-    setupStick(stick_y_, stick_y_learn_, ocplug::ControlId::StickY);
+    wireAxis(track_x_, ocplug::ControlId::TrackpadX);
+    wireAxis(track_y_, ocplug::ControlId::TrackpadY);
 
-    updateButtons();
+    trackpad_.onChange = [this](float x, float y, bool finger) {
+        proc_.uiSetTrackpad(x, y, finger);
+    };
+    trackpad_.bindOn = [this] { return proc_.bindOn(); };
+    addAndMakeVisible(trackpad_);
+
+    strip_.onChange = [this](uint8_t pos, bool finger) { proc_.uiSetStrip(pos, finger); };
+    strip_.bindOn = [this] { return proc_.bindOn(); };
+    strip_.onBind = [this] { proc_.chooseBind(ocplug::ControlId::Strip); };
+    strip_.onClear = [this] { proc_.clearBinding(ocplug::ControlId::Strip); };
+    addAndMakeVisible(strip_);
+
+    refresh();
     startTimerHz(30);
 }
 
 OpenChordMCoreEditor::~OpenChordMCoreEditor() { stopTimer(); }
 
-const char* OpenChordMCoreEditor::padLabel(oc::PlayMode mode, ocplug::ControlId id) {
-    using Id = ocplug::ControlId;
-    if (mode == oc::PlayMode::Smart) {
-        switch (id) {
-            case Id::Dim: return "I";
-            case Id::Min: return "ii";
-            case Id::Maj: return "iii";
-            case Id::Sus: return "IV";
-            case Id::Ext6: return "V";
-            case Id::Extm7: return "vi";
-            case Id::ExtM7: return "vii";
-            case Id::Ext9: return "I^";
-            default: break;
-        }
-    }
-    return ocplug::ControlName(id);
+const char* OpenChordMCoreEditor::keyswitchLabel(oc::PlayMode mode, int index, bool drumRight) {
+    static const char* kKeys[8] = {"Dim", "Min", "Maj", "Sus", "6", "m7", "M7", "9"};
+    static const char* kScale[8] = {"I", "ii", "iii", "IV", "V", "vi", "vii", "I+"};
+    if (index < 0 || index > 7) return "?";
+    if (mode == oc::PlayMode::Scale) return kScale[index];
+    if (mode == oc::PlayMode::Drums) return oc::drumName(index, drumRight);
+    return kKeys[index];
 }
 
-void OpenChordMCoreEditor::wireButton(HoldButton& b, ocplug::ControlId id) {
+void OpenChordMCoreEditor::wireKeyswitch(ClickButton& b, int index) {
     addAndMakeVisible(b);
-    b.setClickingTogglesState(false);
-    b.onRightClick = [this, id] {
-        proc_.clearBinding(id);
-        updateButtons();
+    b.onDown = [this, index] {
+        if (proc_.bindOn()) {
+            proc_.chooseBind(static_cast<ocplug::ControlId>(index));
+        } else if (latchHeld()) {
+            const auto bit = static_cast<uint8_t>(1u << index);
+            if (latchedKeys_ & bit) {
+                latchedKeys_ = static_cast<uint8_t>(latchedKeys_ & ~bit);
+                proc_.uiSetKeyswitch(index, false);
+            } else {
+                latchedKeys_ = static_cast<uint8_t>(latchedKeys_ | bit);
+                proc_.uiSetKeyswitch(index, true);
+            }
+        } else {
+            proc_.uiSetKeyswitch(index, true);
+        }
+        refresh();
     };
-    b.onArmLearn = [this, id] {
-        if (proc_.learnArmed() == static_cast<int>(id))
-            proc_.cancelLearn();
-        else
-            proc_.armLearn(id);
-        updateButtons();
+    b.onUp = [this, index] {
+        if (proc_.bindOn()) return;
+        if (latchedKeys_ & (1u << index)) return;
+        proc_.uiSetKeyswitch(index, false);
+        refresh();
     };
-    b.onHold = [this, id](bool held) { proc_.uiHoldControl(id, held); };
+    b.onRightClick = [this, index] {
+        if (!proc_.bindOn()) return;
+        proc_.clearBinding(static_cast<ocplug::ControlId>(index));
+        refresh();
+    };
 }
 
-void OpenChordMCoreEditor::setPadLit(HoldButton& b, bool lit, bool armed) {
+void OpenChordMCoreEditor::wireButton(ClickButton& b, oc::Button button, ocplug::ControlId id) {
+    addAndMakeVisible(b);
+    b.onDown = [this, button, id] {
+        if (proc_.bindOn()) proc_.chooseBind(id);
+        else proc_.uiSetButton(button, true);
+        refresh();
+    };
+    b.onUp = [this, button] {
+        if (proc_.bindOn()) return;
+        proc_.uiSetButton(button, false);
+        refresh();
+    };
+    b.onRightClick = [this, id] {
+        if (!proc_.bindOn()) return;
+        proc_.clearBinding(id);
+        refresh();
+    };
+}
+
+void OpenChordMCoreEditor::paintLatch(juce::Button& b, bool lit, bool armed) {
     b.setToggleState(lit || armed, juce::dontSendNotification);
     if (armed) {
         b.setColour(juce::TextButton::buttonOnColourId, juce::Colours::gold);
@@ -143,128 +263,178 @@ void OpenChordMCoreEditor::setPadLit(HoldButton& b, bool lit, bool armed) {
 
 void OpenChordMCoreEditor::paint(juce::Graphics& g) {
     g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
+    auto screen = getLocalBounds().reduced(12).withTrimmedTop(34).removeFromTop(96);
+    screen = screen.withSizeKeepingCentre(384, 96);
+    g.setColour(juce::Colours::black);
+    g.fillRoundedRectangle(screen.toFloat(), 4.0f);
+    auto inner = screen.reduced(10, 6);
+    g.setColour(juce::Colours::white);
+    g.setFont(juce::FontOptions(26.0f, juce::Font::bold));
+    g.drawText(screen_top_, inner.removeFromTop(40), juce::Justification::centred, true);
+    g.setFont(juce::FontOptions(16.0f));
+    auto bottom = inner.removeFromTop(28);
+    const int col = bottom.getWidth() / 3;
+    auto left = bottom.removeFromLeft(col);
+    auto right = bottom.removeFromRight(col);
+    g.setColour(juce::Colours::white.withAlpha(0.35f));
+    g.fillRect(left.getRight(), bottom.getY() + 6, 1, bottom.getHeight() - 12);
+    g.fillRect(right.getX(), bottom.getY() + 6, 1, bottom.getHeight() - 12);
+    g.setColour(juce::Colours::white);
+    g.drawText(screen_left_, left.reduced(4, 0), juce::Justification::centred, true);
+    g.drawText(screen_mid_, bottom, juce::Justification::centred, true);
+    g.drawText(screen_right_, right.reduced(4, 0), juce::Justification::centred, true);
+    if (screen_zones_ > 0) {
+        auto marks = inner.removeFromBottom(8);
+        const int w = marks.getWidth() / screen_zones_;
+        for (int i = 0; i < screen_zones_; ++i) {
+            auto cell = marks.removeFromLeft(w).reduced(2, 2);
+            g.setColour(i == screen_zone_ ? juce::Colours::white : juce::Colours::white.withAlpha(0.35f));
+            g.fillRect(cell);
+        }
+    }
 }
 
 void OpenChordMCoreEditor::resized() {
-    auto r = getLocalBounds().reduced(10);
+    auto r = getLocalBounds().reduced(12);
 
     auto top = r.removeFromTop(28);
-    title_.setBounds(top.removeFromLeft(150));
-    preset_.setBounds(top.removeFromLeft(140));
-    mode_btn_.setBounds(top.removeFromLeft(80).reduced(0, 2));
-    reset_map_.setBounds(top.removeFromLeft(90).reduced(0, 2));
+    title_.setBounds(top.removeFromLeft(220));
+    reset_btn_.setBounds(top.removeFromRight(72).reduced(0, 2));
+    latch_btn_.setBounds(top.removeFromRight(72).reduced(0, 2));
+    bind_btn_.setBounds(top.removeFromRight(72).reduced(0, 2));
 
     r.removeFromTop(6);
-    auto status = r.removeFromTop(24);
-    key_label_.setBounds(status.removeFromLeft(160));
-    chord_label_.setBounds(status);
-
+    r.removeFromTop(96);
     r.removeFromTop(10);
-    auto row1 = r.removeFromTop(48);
+    auto row1 = r.removeFromTop(52);
     const int bw = row1.getWidth() / 4;
-    dim_.setBounds(row1.removeFromLeft(bw).reduced(2));
-    min_.setBounds(row1.removeFromLeft(bw).reduced(2));
-    maj_.setBounds(row1.removeFromLeft(bw).reduced(2));
-    sus_.setBounds(row1.reduced(2));
-
-    auto row2 = r.removeFromTop(48);
-    e6_.setBounds(row2.removeFromLeft(bw).reduced(2));
-    em7_.setBounds(row2.removeFromLeft(bw).reduced(2));
-    eM7_.setBounds(row2.removeFromLeft(bw).reduced(2));
-    e9_.setBounds(row2.reduced(2));
+    for (int i = 0; i < 4; ++i)
+        key_[i].setBounds(row1.removeFromLeft(bw).reduced(3));
+    auto row2 = r.removeFromTop(52);
+    for (int i = 4; i < 8; ++i)
+        key_[i].setBounds(row2.removeFromLeft(bw).reduced(3));
 
     r.removeFromTop(8);
-    auto row3 = r.removeFromTop(36);
-    key_btn_.setBounds(row3.removeFromLeft(90).reduced(2));
-    panic_btn_.setBounds(row3.removeFromLeft(90).reduced(2));
-    shift_btn_.setBounds(row3.removeFromLeft(90).reduced(2));
+    auto buttons = r.removeFromTop(36);
+    const int tw = buttons.getWidth() / 3;
+    prev_.setBounds(buttons.removeFromLeft(tw).reduced(3));
+    menu_.setBounds(buttons.removeFromLeft(tw).reduced(3));
+    next_.setBounds(buttons.reduced(3));
 
-    r.removeFromTop(12);
-    auto sx = r.removeFromTop(28);
-    stick_x_learn_.setBounds(sx.removeFromLeft(70).reduced(0, 2));
-    stick_x_.setBounds(sx);
-    auto sy = r.removeFromTop(28);
-    stick_y_learn_.setBounds(sy.removeFromLeft(70).reduced(0, 2));
-    stick_y_.setBounds(sy);
+    r.removeFromTop(10);
+    auto trackRow = r.removeFromTop(180);
+    trackpad_.setBounds(trackRow.removeFromLeft(180).reduced(3));
+    auto axes = trackRow.reduced(8, 3);
+    track_x_.setBounds(axes.removeFromTop(36));
+    axes.removeFromTop(6);
+    track_y_.setBounds(axes.removeFromTop(36));
 
-    r.removeFromTop(12);
-    learn_hint_.setBounds(r.removeFromTop(48));
+    r.removeFromTop(8);
+    strip_.setBounds(r.removeFromTop(36).reduced(3, 4));
+
+    r.removeFromTop(8);
+    hint_.setBounds(r.removeFromTop(64));
 }
 
-void OpenChordMCoreEditor::timerCallback() { refreshLabels(); }
-
-void OpenChordMCoreEditor::refreshLabels() {
-    const auto s = proc_.snapshot();
-    key_label_.setText("Key: " + juce::String(s.key_name), juce::dontSendNotification);
-    chord_label_.setText("Chord: " + juce::String(s.chord), juce::dontSendNotification);
-
-    if (!stick_x_.isMouseButtonDown())
-        stick_x_.setValue(s.stick_x, juce::dontSendNotification);
-    if (!stick_y_.isMouseButtonDown())
-        stick_y_.setValue(s.stick_y, juce::dontSendNotification);
-
-    updateButtons();
+bool OpenChordMCoreEditor::latchHeld() const {
+    if (latchOn_) return true;
+    const auto mods = juce::ModifierKeys::getCurrentModifiersRealtime();
+    return mods.isAltDown() || mods.isCtrlDown();
 }
 
-void OpenChordMCoreEditor::updateButtons() {
-    const auto s = proc_.snapshot();
-    const int armed = proc_.learnArmed();
-    const bool smart = (s.mode == oc::PlayMode::Smart);
-
-    mode_btn_.setButtonText(smart ? "Smart" : "Pro");
-
-    auto setCap = [this, &s, armed](HoldButton& b, ocplug::ControlId id, bool lit) {
-        const char* name = padLabel(s.mode, id);
-        const auto binding = proc_.map().get(id);
-        juce::String t(name);
-        if (binding.kind == ocplug::Binding::Kind::Cc)
-            t = t + "\nCC " + juce::String(static_cast<int>(binding.number));
-        else if (binding.kind == ocplug::Binding::Kind::Note)
-            t = t + "\nN" + juce::String(static_cast<int>(binding.number));
-        if (armed == static_cast<int>(id)) t = "* " + t;
-        b.setButtonText(t);
-        setPadLit(b, lit, armed == static_cast<int>(id));
-    };
-
-    if (smart) {
-        setCap(dim_, ocplug::ControlId::Dim, (s.degree_mask & (1u << 0)) != 0);
-        setCap(min_, ocplug::ControlId::Min, (s.degree_mask & (1u << 1)) != 0);
-        setCap(maj_, ocplug::ControlId::Maj, (s.degree_mask & (1u << 2)) != 0);
-        setCap(sus_, ocplug::ControlId::Sus, (s.degree_mask & (1u << 3)) != 0);
-        setCap(e6_, ocplug::ControlId::Ext6, (s.degree_mask & (1u << 4)) != 0);
-        setCap(em7_, ocplug::ControlId::Extm7, (s.degree_mask & (1u << 5)) != 0);
-        setCap(eM7_, ocplug::ControlId::ExtM7, (s.degree_mask & (1u << 6)) != 0);
-        setCap(e9_, ocplug::ControlId::Ext9, (s.degree_mask & (1u << 7)) != 0);
-    } else {
-        setCap(dim_, ocplug::ControlId::Dim, (s.type_mask & 1) != 0);
-        setCap(min_, ocplug::ControlId::Min, (s.type_mask & 2) != 0);
-        setCap(maj_, ocplug::ControlId::Maj, (s.type_mask & 4) != 0);
-        setCap(sus_, ocplug::ControlId::Sus, (s.type_mask & 8) != 0);
-        setCap(e6_, ocplug::ControlId::Ext6, (s.ext & oc::Ext6) != 0);
-        setCap(em7_, ocplug::ControlId::Extm7, (s.ext & oc::Extm7) != 0);
-        setCap(eM7_, ocplug::ControlId::ExtM7, (s.ext & oc::ExtM7) != 0);
-        setCap(e9_, ocplug::ControlId::Ext9, (s.ext & oc::Ext9) != 0);
+void OpenChordMCoreEditor::releaseLatches() {
+    const uint8_t keys = latchedKeys_;
+    const uint8_t buttons = latchedButtons_;
+    latchedKeys_ = 0;
+    latchedButtons_ = 0;
+    for (int i = 0; i < 8; ++i) {
+        if (keys & (1u << i)) proc_.uiSetKeyswitch(i, false);
     }
-    setCap(key_btn_, ocplug::ControlId::Key, s.key_held);
-    setCap(panic_btn_, ocplug::ControlId::Panic, s.panic_held);
-    setCap(shift_btn_, ocplug::ControlId::Shift, s.shift_held);
+    if (buttons & 1u) proc_.uiSetButton(oc::Button::Prev, false);
+    if (buttons & 2u) proc_.uiSetButton(oc::Button::Menu, false);
+    if (buttons & 4u) proc_.uiSetButton(oc::Button::Next, false);
+}
 
-    auto stickCap = [this, armed](juce::TextButton& b, ocplug::ControlId id) {
-        char buf[48];
-        proc_.map().formatBinding(id, buf, sizeof(buf));
-        juce::String t(buf);
-        if (armed == static_cast<int>(id)) t = "* " + t;
-        b.setButtonText(t);
-        b.setToggleState(armed == static_cast<int>(id), juce::dontSendNotification);
+void OpenChordMCoreEditor::timerCallback() {
+    if (!latchHeld() && (latchedKeys_ != 0 || latchedButtons_ != 0))
+        releaseLatches();
+    refresh();
+}
+
+void OpenChordMCoreEditor::refresh() {
+    const auto s = proc_.snapshot();
+    std::strncpy(screen_top_, s.screen_top, sizeof(screen_top_) - 1);
+    screen_top_[sizeof(screen_top_) - 1] = 0;
+    std::strncpy(screen_left_, s.screen_left, sizeof(screen_left_) - 1);
+    screen_left_[sizeof(screen_left_) - 1] = 0;
+    std::strncpy(screen_mid_, s.screen_mid, sizeof(screen_mid_) - 1);
+    screen_mid_[sizeof(screen_mid_) - 1] = 0;
+    std::strncpy(screen_right_, s.screen_right, sizeof(screen_right_) - 1);
+    screen_right_[sizeof(screen_right_) - 1] = 0;
+    screen_zones_ = s.screen_zones;
+    screen_zone_ = s.screen_zone;
+    repaint();
+
+    trackpad_.setReading(s.track_x, s.track_y, s.track_finger);
+    strip_.setReading(s.strip, s.strip_finger);
+
+    const bool bind = proc_.bindOn();
+    const int target = proc_.bindTarget();
+    paintLatch(bind_btn_, bind, false);
+    paintLatch(latch_btn_, latchOn_ || latchHeld(), false);
+    bind_btn_.setButtonText(bind ? "Bind…" : "Bind");
+
+    auto caption = [this](ocplug::ControlId id, const char* name) {
+        const auto b = proc_.binding(id);
+        juce::String t(name);
+        if (b.kind == ocplug::Binding::Kind::Cc)
+            t += "\nCC " + juce::String(static_cast<int>(b.number));
+        else if (b.kind == ocplug::Binding::Kind::Note)
+            t += "\nN" + juce::String(static_cast<int>(b.number));
+        return t;
     };
-    stickCap(stick_x_learn_, ocplug::ControlId::StickX);
-    stickCap(stick_y_learn_, ocplug::ControlId::StickY);
+
+    for (int i = 0; i < 8; ++i) {
+        const auto id = static_cast<ocplug::ControlId>(i);
+        const bool drumRight = s.mode == oc::PlayMode::Drums && s.track_x > 0.f;
+        juce::String t = caption(id, keyswitchLabel(s.mode, i, drumRight));
+        const bool armed = bind && target == i;
+        if (armed) t = "* " + t;
+        key_[i].setButtonText(t);
+        paintLatch(key_[i], (s.keyswitches & (1u << i)) != 0, armed);
+    }
+
+    auto showButton = [&](ClickButton& b, ocplug::ControlId id, const char* name, bool lit) {
+        juce::String t = caption(id, name);
+        const bool armed = bind && target == static_cast<int>(id);
+        if (armed) t = "* " + t;
+        b.setButtonText(t);
+        paintLatch(b, lit, armed);
+    };
+    showButton(prev_, ocplug::ControlId::Prev, "Prev", (s.buttons & 1u) != 0);
+    showButton(menu_, ocplug::ControlId::Menu, "Menu", (s.buttons & 2u) != 0);
+    showButton(next_, ocplug::ControlId::Next, "Next", (s.buttons & 4u) != 0);
+
+    auto showAxis = [&](ClickButton& b, ocplug::ControlId id) {
+        const auto binding = proc_.binding(id);
+        juce::String t = ocplug::ControlName(id);
+        if (binding.kind == ocplug::Binding::Kind::Cc)
+            t += "  CC " + juce::String(static_cast<int>(binding.number));
+        else if (binding.kind == ocplug::Binding::Kind::Note)
+            t += "  N" + juce::String(static_cast<int>(binding.number));
+        const bool armed = bind && target == static_cast<int>(id);
+        if (armed) t = "* " + t;
+        b.setButtonText(t);
+        paintLatch(b, false, armed);
+    };
+    showAxis(track_x_, ocplug::ControlId::TrackpadX);
+    showAxis(track_y_, ocplug::ControlId::TrackpadY);
 }
 
 bool OpenChordMCoreEditor::keyPressed(const juce::KeyPress& key) {
-    if (key == juce::KeyPress::escapeKey) {
-        proc_.cancelLearn();
-        updateButtons();
+    if (key == juce::KeyPress::escapeKey && proc_.bindOn()) {
+        proc_.toggleBind();
+        refresh();
         return true;
     }
     return false;

@@ -3,11 +3,10 @@
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
 
-// Momentary pad: short click = MIDI Learn arm; press-and-hold = Type/extra held.
-class HoldButton : public juce::TextButton, private juce::Timer {
+class ClickButton : public juce::TextButton {
 public:
-    std::function<void(bool)> onHold;
-    std::function<void()> onArmLearn;
+    std::function<void()> onDown;
+    std::function<void()> onUp;
     std::function<void()> onRightClick;
 
     void mouseDown(const juce::MouseEvent& e) override {
@@ -15,39 +14,59 @@ public:
             if (onRightClick) onRightClick();
             return;
         }
-        pressed_ = true;
-        held_sent_ = false;
-        startTimer(220);
         juce::TextButton::mouseDown(e);
+        held_ = true;
+        if (onDown) onDown();
     }
 
     void mouseUp(const juce::MouseEvent& e) override {
-        stopTimer();
         juce::TextButton::mouseUp(e);
-        if (!pressed_) return;
-        pressed_ = false;
-        if (held_sent_) {
-            if (onHold) onHold(false);
-        } else {
-            if (onArmLearn) onArmLearn();
-        }
-    }
-
-    void mouseExit(const juce::MouseEvent& e) override {
-        // Keep hold if dragged off while pressed — mouseUp still ends it.
-        juce::TextButton::mouseExit(e);
+        if (!held_) return;
+        held_ = false;
+        if (onUp) onUp();
     }
 
 private:
-    void timerCallback() override {
-        stopTimer();
-        if (!pressed_ || held_sent_) return;
-        held_sent_ = true;
-        if (onHold) onHold(true);
-    }
+    bool held_ = false;
+};
 
-    bool pressed_ = false;
-    bool held_sent_ = false;
+class TrackpadControl : public juce::Component {
+public:
+    std::function<void(float, float, bool)> onChange;
+    std::function<bool()> bindOn;
+
+    void setReading(float x, float y, bool finger);
+    void paint(juce::Graphics& g) override;
+    void mouseDown(const juce::MouseEvent& e) override;
+    void mouseDrag(const juce::MouseEvent& e) override;
+    void mouseUp(const juce::MouseEvent& e) override;
+
+private:
+    void setFrom(juce::Point<float> p);
+    float x_ = 0.f;
+    float y_ = 0.f;
+    bool finger_ = false;
+    bool dragging_ = false;
+};
+
+class StripControl : public juce::Component {
+public:
+    std::function<void(uint8_t, bool)> onChange;
+    std::function<bool()> bindOn;
+    std::function<void()> onBind;
+    std::function<void()> onClear;
+
+    void setReading(uint8_t position, bool finger);
+    void paint(juce::Graphics& g) override;
+    void mouseDown(const juce::MouseEvent& e) override;
+    void mouseDrag(const juce::MouseEvent& e) override;
+    void mouseUp(const juce::MouseEvent& e) override;
+
+private:
+    uint8_t positionFrom(float x) const;
+    uint8_t pos_ = 0;
+    bool finger_ = false;
+    bool dragging_ = false;
 };
 
 class OpenChordMCoreEditor : public juce::AudioProcessorEditor,
@@ -62,31 +81,36 @@ public:
 
 private:
     void timerCallback() override;
-    void refreshLabels();
-    void updateButtons();
-    void wireButton(HoldButton& b, ocplug::ControlId id);
-    static void setPadLit(HoldButton& b, bool lit, bool armed);
+    void refresh();
+    bool latchHeld() const;
+    void releaseLatches();
+    void wireKeyswitch(ClickButton& b, int index);
+    void wireButton(ClickButton& b, oc::Button button, ocplug::ControlId id);
+    static void paintLatch(juce::Button& b, bool lit, bool armed);
+    static const char* keyswitchLabel(oc::PlayMode mode, int index, bool drumRight);
 
     OpenChordMCoreProcessor& proc_;
 
     juce::Label title_;
-    juce::Label preset_;
-    juce::TextButton reset_map_{"Reset map"};
-    juce::TextButton mode_btn_{"Pro"};
-    juce::Label key_label_;
-    juce::Label chord_label_;
-    juce::Label learn_hint_;
+    juce::Label hint_;
+    char screen_top_[24]{};
+    char screen_left_[16]{};
+    char screen_mid_[16]{};
+    char screen_right_[16]{};
+    int screen_zones_ = 0;
+    int screen_zone_ = -1;
+    juce::TextButton bind_btn_{"Bind"};
+    juce::TextButton latch_btn_{"Latch"};
+    juce::TextButton reset_btn_{"Reset"};
+    bool latchOn_ = false;
+    uint8_t latchedKeys_ = 0;
+    uint8_t latchedButtons_ = 0;
 
-    HoldButton dim_, min_, maj_, sus_;
-    HoldButton e6_, em7_, eM7_, e9_;
-    HoldButton key_btn_, panic_btn_, shift_btn_;
-
-    juce::TextButton stick_x_learn_{"Stick X"};
-    juce::TextButton stick_y_learn_{"Stick Y"};
-    juce::Slider stick_x_;
-    juce::Slider stick_y_;
-
-    static const char* padLabel(oc::PlayMode mode, ocplug::ControlId id);
+    ClickButton key_[8];
+    ClickButton prev_, menu_, next_;
+    ClickButton track_x_, track_y_;
+    TrackpadControl trackpad_;
+    StripControl strip_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(OpenChordMCoreEditor)
 };

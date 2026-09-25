@@ -35,52 +35,62 @@ public:
     void getStateInformation(juce::MemoryBlock& destData) override;
     void setStateInformation(const void* data, int sizeInBytes) override;
 
-    // --- UI / learn (message thread or atomics) ---
-    ocplug::MidiMap& map() { return map_; }
-    const ocplug::MidiMap& map() const { return map_; }
-
-    void armLearn(ocplug::ControlId id);
-    void cancelLearn();
-    int  learnArmed() const { return learn_armed_.load(); } // -1 = none
-
-    void uiHoldControl(ocplug::ControlId id, bool held);
-    void uiSetStick(float x, float y);
-    void resetMapToLaunchkey();
+    void toggleBind();
+    bool bindOn() const { return bind_on_.load(); }
+    int bindTarget() const { return bind_target_.load(); }
+    void chooseBind(ocplug::ControlId id);
     void clearBinding(ocplug::ControlId id);
-    void setPlayMode(oc::PlayMode mode);
-    oc::PlayMode playMode() const;
+    void resetMap();
+
+    void uiSetKeyswitch(int index, bool down);
+    void uiSetButton(oc::Button button, bool down);
+    void uiSetTrackpad(float x, float y, bool finger);
+    void uiSetStrip(uint8_t position, bool finger);
+
+    ocplug::Binding binding(ocplug::ControlId id) const;
 
     struct UiSnapshot {
         char    chord[20]{};
         char    key_name[8]{};
+        char    screen_top[24]{};
+        char    screen_left[16]{};
+        char    screen_mid[16]{};
+        char    screen_right[16]{};
+        int     screen_zones = 0;
+        int     screen_zone = -1;
         uint8_t key_pc = 0;
-        float   stick_x = 0.f;
-        float   stick_y = 0.f;
-        uint8_t type_mask = 0;    // Pro: bits 0-3 Dim..Sus
-        uint8_t degree_mask = 0;  // Smart: bits 0-7 I..high I
-        uint8_t ext = 0;
-        bool    key_held = false;
-        bool    shift_held = false;
-        bool    panic_held = false;
-        int     learn_armed = -1;
-        oc::PlayMode mode = oc::PlayMode::Pro;
+        float   track_x = 0.f;
+        float   track_y = 0.f;
+        bool    track_finger = false;
+        uint8_t strip = 0;
+        bool    strip_finger = false;
+        uint8_t keyswitches = 0;
+        uint8_t buttons = 0;
+        bool    menu = false;
+        int     menu_index = 0;
+        uint8_t vary = 0;
+        int     octave = 0;
+        oc::Harmony harmony = oc::Harmony::InKey;
+        oc::Trigger trigger = oc::Trigger::Optional;
+        int     bind_target = -1;
+        bool    bind_on = false;
+        oc::PlayMode mode = oc::PlayMode::Keys;
     };
     UiSnapshot snapshot() const;
+    bool strumWaiting() const;
 
 private:
-    void applyControl(ocplug::ControlId id, bool on, uint8_t ccValue);
-    void setControlHeld(ocplug::ControlId id, bool on);
+    void applyMessage(ocplug::ControlId id, bool on, uint8_t ccValue);
     void emitSessionMidi(juce::MidiBuffer& midi, int samplePos);
     static const char* pcName(uint8_t pc);
+    static float ccToAxis(uint8_t value);
 
     oc::Session session_;
     ocplug::MidiMap map_;
 
-    std::atomic<int> learn_armed_{-1};
-    std::atomic<uint32_t> learn_deadline_ms_{0};
-    std::atomic<uint16_t> controls_held_{0}; // bit per ControlId
+    std::atomic<bool> bind_on_{false};
+    std::atomic<int> bind_target_{-1};
 
-    // Copy of map for audio thread; swapped under lock only on state/UI map edits.
     mutable juce::SpinLock map_lock_;
     ocplug::MidiMap map_rt_;
 

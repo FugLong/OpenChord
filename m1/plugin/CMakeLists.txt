@@ -24,7 +24,7 @@ juce_add_plugin(OpenChordMCore
     PLUGIN_CODE OcMC
     FORMATS AU VST3 Standalone
     PRODUCT_NAME "OpenChord M Core"
-    DESCRIPTION "MIDI chord brain — Control and Smart modes (same engine as OpenChord M1 hardware)"
+    DESCRIPTION "MIDI chord brain — Keys and Scale modes (same engine as OpenChord M1 hardware)"
     IS_SYNTH TRUE
     NEEDS_MIDI_INPUT TRUE
     NEEDS_MIDI_OUTPUT TRUE
@@ -45,6 +45,7 @@ target_sources(OpenChordMCore
         Source/MidiMap.cpp
         ../engine/chord_engine.cpp
         ../engine/session.cpp
+        ../firmware/input.cpp
 )
 
 target_include_directories(OpenChordMCore

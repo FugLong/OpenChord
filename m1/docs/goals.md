@@ -1,6 +1,6 @@
 # OpenChord M1 — goals and plan
 
-Written September 2026 so we do not lose the decisions that led here. This is the product spec for v1. Firmware lives under `m1/`. Do not edit `archive/s1-daisy/`.
+Written September 2026 so we do not lose the decisions that led here. This file is the product intent and the hardware lock. Behavior lives in [interaction.md](interaction.md). What is built and what is next lives in [build.md](build.md). Firmware lives under `m1/`. Do not edit `archive/s1-daisy/`.
 
 **Working name:** OpenChord M1 (`OPENCHORD / m1`)
 
@@ -54,7 +54,7 @@ Ambition: the most helpful chord/MIDI tool we have used. Not a quality roulette.
 - Not USB MIDI host (no “plug a controller into M1 with no computer” as a v1 requirement).
 - Not the old OpenChord hierarchical menu on the box. Extra settings live in the **plugin**, not extra knobs on the enclosure.
 - Not a battery synth with speakers. We are a studio **MIDI** tool: great at the MIDI path, no sound of our own.
-- Not a clone of other chord pads or slab synths. **Smart** mode is I–vii with our coloring stick and voice leading — designed here, named here. Do not put other companies’ product names in the UI, marketing, or source comments.
+- Not a clone of other chord pads or slab synths. **Scale** is I–vii with our own color map and voice leading — designed here, named here. Do not put other companies’ product names in the UI, marketing, or source comments.
 
 If a feature needs audio or a big on-device screen, it belongs on **S1**, not a “quick add” to M1. If it is a MIDI preference (channel split, voicing tightness, maps), it belongs in the plugin.
 
@@ -64,77 +64,35 @@ If a feature needs audio or a big on-device screen, it belongs on **S1**, not a 
 
 First user is us: MIDI or live instruments into a DAW. Second user is anyone who wants left-hand chord control without buying a synth they will not use. The plugin is how people try it with a Launchkey (or anything). The box is for people who want that control in their hands.
 
-The keyboard (or the DAW piano roll) is the keyboard in **Pro** mode. In **Smart** mode the eight keys *are* the degrees and a keyboard is optional. Either way M1 is the left hand and the brain.
+In **Keys** the keyboard (or the DAW piano roll) chooses the root, or passes straight through when no keyswitch is held. In **Scale** the eight keyswitches are the degrees and a keyboard is optional. In **Drums** they are hits. Either way M1 is the left hand and the brain.
 
 ---
 
-## Interaction (v1 lock)
+## Interaction
 
-Two **modes**. Same eight Gaterons, different job. Toggle with the edge **EVQPUC02K** (or in the plugin). OLED and plugin both show which mode you are in.
+Three modes, one surface. The rules are locked in [interaction.md](interaction.md). Do not revive Pro, Smart, Follow, Play, or Jazz.
 
-**UI names: Pro and Smart.** Clear for users. Do not use internal jargon or other brands’ names in the UI.
+| Mode | Who it is for | What the eight keyswitches are |
+|------|----------------|--------------------------------|
+| **Keys** | A keyboard into the box or the plugin | Chord type: Dim, Min, Maj, Sus, plus 6, m7, M7, 9. No keyswitch = the notes pass through, and the screen names the chord they form |
+| **Scale** | Both hands on the box. No keyboard required | Degrees I–vii and I one octave up. The newest one held is the chord. Older ones stay down and come back when you let go |
+| **Drums** | Hits, not chords | Two kits. Trackpad X picks the bank |
 
-### Pro mode — incoming MIDI is the root
+The trackpad is not a quality roulette. In Keys it picks bass and spread. In Scale it picks one of eight in-key chords around a safe center triad. Harmony (Tensions, Borrowed, Free) is specified and not built yet. In Drums, X is the bank and Y is velocity.
 
-For musicians with a keyboard who want control. USB (and later TRS) notes choose the **root**. Eight buttons are triad + extras. Combinable. **Maj means maj.**
+Strum is a menu setting, not a mode. **Optional** (default) lets the chord sound and the strip add plucks. **Only** waits for the strip.
 
-| Chord type | Extension |
-|---------|-----------|
-| Dim, Min, Maj, Sus | 6, m7, M7, 9 |
+The screen is two lines, the same on the plugin and the OLED: what will sound, then key, mode, and status. Menu rows are Key, Octave, Vary, Harmony, Strum.
 
-Launchkey proto + M Core default. Dynamic-from-note (“auto chord-type”) is a later experiment.
-
-### Smart mode — pads are I–vii (+ high I)
-
-For bedroom producers, travel, phone + box — **no big keyboard required**. Pads are degrees of the current key. Hold = chord while held (two hands on the device: stick + degrees).
-
-In C major: I C, ii D min, iii E min, IV F, V G, vi A min, vii B dim, 8th pad = **high I**. HOME quality is diatonic **triad**. Optional later settings can add nice 7ths for richer beginner defaults.
-
-Stick still **colors** that chord (voicing / bass / in-key extras). Stick is not eight frozen qualities. Out of key is a Pro override or spice, not a missed stick slice.
-
-Spec + feel: [chord-engine.md](chord-engine.md).
-
-### Stick is color, not type
-
-**Gesture lock** (firmware / engine): 8 seats around HOME. Center / no lean = HOME. Lean is temporary. Seats: voicing / bass / **in-key** color. Not maj vs min. Not the archive preset table. Both modes. Out of key only if the player tries (Pro-mode Maj on a minor degree, spice later).
-
-**Hardware plan (rev A schematic):** capacitive **trackpad** on **IQS572BLQNR** (I²C `0x74`) — mutual diamond pad, firmware maps XY → same 8 seats + HOME (center / lift = deadzone). **AT42QT2120-XUR** does the touch **strip only** (KEY0–2 slider). **No Key / Shift copper** on the QT. **3× EVQPUC02K** edge buttons → GPIO (**roles TBD** — Key / Shift / Mode are firmware labels, not extra electrodes). Shared bus is **I2C1** on GPIO10/11 (OLED `0x3C` + QT `0x1C` + IQS `0x74`; IQS RDY GPIO8, NRST GPIO9). Alps **RKJXV1220001** / LCSC **C219778** stays in the KiCad lib as the fallback if the trackpad feel fails. Pin map: [`../hardware/support.md`](../hardware/support.md).
-
-```
-        more tension
-   7         8         9
-inv  4     HOME      6   inv
-   1         2         3
-        tighter / lower
-```
-
-That diagram is a **candidate**, not a lock. Seats are voicings (or extra color), never chord types. No quality-roulette stick, including in Smart mode.
+**Hardware plan (rev A schematic):** capacitive **trackpad** on **IQS572BLQNR** (I²C `0x74`). **AT42QT2120-XUR** does the touch **strip only** (KEY0–2 slider). **No Key / Shift copper** on the QT. **3× EVQPUC02K** are Prev, Menu, and Next. Shared bus is **I2C1** on GPIO10/11 (OLED `0x3C` + QT `0x1C` + IQS `0x74`; IQS RDY GPIO8, NRST GPIO9). Alps **RKJXV1220001** / LCSC **C219778** stays in the KiCad lib as the fallback if the trackpad feel fails. Pin map: [`../hardware/support.md`](../hardware/support.md).
 
 No encoder on v1. **No pots / dials on the box.** They add size and cost, and this product assumes a DAW.
 
-Split: **Gateron pads pick the chord, stick colors it (in key).** **Key / Shift / Mode** are **mechanical EVQ** functions (3× **EVQPUC02K** on GPIO; which button is which is still open). Panic can stay a chord-row extra or Shift. Deep settings stay in the **plugin** — more control does not mean more buttons on the box.
+The three edge buttons are **Prev**, **Menu**, and **Next** (SW11 GPIO3, SW9 GPIO4, SW10 GPIO5). Outside the menu they change mode. Inside it they move between settings. There is no panic button. Holding Menu inside the menu flushes stuck notes.
 
-The algorithm:
+Key is a menu row. The next incoming note while that row is open sets the key and is not performed.
 
-- Remembers the last chord and voice-leads.
-- Stick extras stay in key. Pro-mode quality can leave the key on purpose (maj means maj). Smart-mode HOME stays diatonic.
-- Stick never changes type.
-- Key override: Key hold + incoming MIDI note.
-
-Optional later: a dedicated “spice” gesture (hard rim edge / Shift) for one borrowed chord from a mood table. Spice is a door the player opens, not the miss penalty.
-
-### Display and settings
-
-We want as little screen as we can get away with. We still need to know **key**, **current chord**, and **mode**.
-
-- Prefer a tiny OLED that only shows something like `Cmaj7`, `C major`, and Pro/Smart.
-- Or four LEDs plus that. A $2 OLED is not a jambox.
-- Key override: hold **Key** + incoming note.
-- Shift / mode: mode, thru / replace / panic — only what you need without opening a laptop. Menu/settings overhaul can add power without a button farm.
-- **No companion required.** The box plays with no plugin. The plugin is how you bind controllers, see extra settings, and (when a box is plugged in) edit the device.
-- No OpenChord-style hierarchical menu on the hardware.
-
-Zero screen is allowed only if we accept “what key am I in?” as the first support question. Default plan is the tiny OLED.
+The box plays with no plugin. The plugin is how you bind controllers and, later, how you watch the box. When `OpenChord M1` is on USB the plugin stops voicing and mirrors one surface.
 
 ---
 
@@ -145,7 +103,7 @@ Zero screen is allowed only if we accept “what key am I in?” as the first su
 | MCU | **RP2040** on our PCB (TinyUSB MIDI device, UART TRS). Not ESP32. Not a Pico glued to a carrier. |
 | USB | USB-C on the **edge of our board**, device only, also power |
 | MIDI | TRS in, TRS out; USB MIDI in/out |
-| Front | **8× Gateron LP** (hotswap) — **direct GPIO** each (internal pull-ups; no matrix / no diodes). Cap: **IQS572BLQNR** trackpad + **AT42QT2120-XUR** strip only (KEY0–2). Share **I2C1** (GPIO10/11) with OLED (`0x3C` / `0x1C` / `0x74`; IQS RDY GPIO8). **3× EVQPUC02K** system (roles TBD). PCB copper electrodes; printed cover with openings. Alps stick = KiCad fallback only (not on rev A). **No pots / SoftPot.** |
+| Front | **8× Gateron LP** (hotswap) — **direct GPIO** each (internal pull-ups; no matrix / no diodes). Cap: **IQS572BLQNR** trackpad + **AT42QT2120-XUR** strip only (KEY0–2). Share **I2C1** (GPIO10/11) with OLED (`0x3C` / `0x1C` / `0x74`; IQS RDY GPIO8). **3× EVQPUC02K**: Prev, Menu, Next. PCB copper electrodes; printed cover with openings. Alps stick = KiCad fallback only (not on rev A). **No pots / SoftPot.** |
 | Display | Cheap 0.91" I2C SSD1306 (Ali module on PCB). |
 | Audio | None |
 | Battery | None |
@@ -189,15 +147,15 @@ When the box is connected, extra settings can push to the device over MIDI (SysE
 
 ### Mapping and UI
 
-MIDI Learn on Pro pads and Smart pads (same eight physical keys, two maps), Key, Shift, stick X/Y. Ship a Launchkey Mini MK4 preset that matches the current proto (pads CC 36–43, knobs CC 47/48).
+MIDI Learn on the eight keyswitches, Prev, Menu, Next, trackpad X/Y, and the strip. One message, one control. A Launchkey preset (pads CC 36–43, knobs CC 47/48) is a convenience, not the product model.
 
-v0 UI: chord name, key, mode, stick diagram, bindable pads. Ugly is fine.
+The plugin draws the same two screen lines as the OLED, plus the eight keyswitches, the three buttons, the trackpad, and the strip. Ugly is fine.
 
 Pretty overlay of the real enclosure is **later**, when the PCB exists. Do not skin the plugin as someone else’s device.
 
 ### Settings that are plugin knobs, not hardware dials
 
-Examples, not a lock: channel split (chords / bass / thru), thru vs replace vs merge, voice-lead tightness, octave / range, smart vs honest Pro, retrigger vs add-notes, stick map tweaks, Smart enhancement presets (auto-7ths).
+The menu on the box and in the plugin is the same: Key, Octave, Vary, Harmony, Strum. Extra ideas (channel split, other scales, shortcuts) wait. They are not a second set of knobs.
 
 The box keeps defaults that already sound good. The plugin is the mixer.
 
@@ -212,7 +170,7 @@ The archived Seed mapper (`archive/s1-daisy` chord engine + joystick presets) ha
 - No memory of the previous chord, no voice leading. Closed root-position stacks every time.
 - Presets were the same eight qualities shuffled.
 
-M1’s engine should make it **almost impossible to sound bad** and **still surprising**, then get good at **progressions**. That is the product. Do not port the old preset tables as the v1 model. **Smart** mode is how we put I–vii on the pads without bringing back the static quality stick. Design it in [chord-engine.md](chord-engine.md).
+M1’s engine should make it **almost impossible to sound bad** and **still surprising**, then get good at **progressions**. That is the product. Do not port the old preset tables as the v1 model. **Scale** is how we put I–vii on the keyswitches: eight chords around a center triad, loosened only by Harmony. The live rules are in [interaction.md](interaction.md).
 
 Useful scraps in the archive: scale/mode tables, interval lists, enclosure photos, “chord as an input plugin” as a concept. Not the 8-way quality map.
 
@@ -223,7 +181,7 @@ Useful scraps in the archive: scale/mode tables, interval lists, enclosure photo
 | Kind of product | Why we are not that |
 |-----------------|---------------------|
 | Battery synth with speakers | We are a studio **MIDI** tool. No audio of our own. |
-| Chord-slab synth | We output MIDI; Smart mode is I–vii with a coloring stick, designed here. |
+| Chord-slab synth | We output MIDI. Scale is I–vii with a color map designed here. |
 | Huge multi-button chord cockpit | We stay small and under $100. |
 | Paid software-only chord assistants | We ship a **free** plugin and a **hardware** left hand. |
 | Old OpenChord jambox proto | That is S1. |
@@ -244,7 +202,7 @@ Name and domain: `openchord.com` is someone else’s music-apps site. Product na
 
 ```
 m1/engine/          portable chord logic (no Daisy, no TinyUSB, no JUCE). This is the product.
-m1/proto-rp2040/    RP2040-Zero lab harness. USB-C MIDI device. Launchkey pads/knobs. Pro mode.
+m1/proto-rp2040/    RP2040-Zero lab harness. USB-C MIDI device. Not the product firmware.
 m1/proto-daisy/     parked Seed harness. Restore OG from archive; do not edit archive.
 m1/plugin/          OpenChord M Core — AU MIDI FX + VST3. Links m1/engine. Free.
 m1/firmware/        RP2040 product firmware (later)
@@ -252,18 +210,7 @@ m1/hardware/        PCB / enclosure / KiCad libs
 m1/docs/            this file, testbed, chord-engine
 ```
 
-Build order:
-
-1. Spec (this doc) — in progress.
-2. Portable engine (`m1/engine`).
-3. Play it on the RP2040-Zero proto (`m1/proto-rp2040`).
-4. Iterate engine + proto until C–Am–F–G never sounds stupid.
-5. Plugin that links the same engine — Learn, extra settings, ugly UI. Faster to iterate than flashing, and the free SKU.
-6. Cap coupons + TPS43/QT2120 bring-up → PCB: RP2040, USB-C on our edge, TRS, Gaterons, IQS572 trackpad + QT2120 strip, **3× EVQPUC02K** system, OLED on the same I2C1 bus (no harness). No pots. No QT Key/Shift copper.
-7. Enclosure last.
-8. Pretty device GUI + SysEx editor once the hardware is real.
-
-The plugin can start as soon as HOME on the proto is worth repeating. Do not wait for the custom board. Do not build the photoreal UI before the box exists.
+Build order, and what is already done, is [build.md](build.md). Short version: the plugin plays Keys, Scale, and Drums. Next is firmware on the rev A board, then the plugin mirroring that box. Do not build the photoreal UI before the box exists.
 
 ---
 
@@ -271,18 +218,13 @@ The plugin can start as soon as HOME on the proto is worth repeating. Do not wai
 
 These are not forgotten. They are not locked.
 
-- Cap geometry (ICs locked — **IQS572BLQNR** + **AT42QT2120-XUR**): trackpad size / diamond pitch / deadzone; strip electrode geometry (slider = 3 interleaved → 0–255); **rev A = HASL + mask over copper**; ENIG gold electrodes = later SKU if feel needs it; Smart-only vs both modes for strip; plugin CC/axis = same strum engine.
-- Which of the **3× EVQPUC02K** is Key vs Shift vs Mode, and where panic lives (firmware labels, not extra copper).
+- Cap geometry (ICs locked — **IQS572BLQNR** + **AT42QT2120-XUR**): trackpad size / diamond pitch / deadzone; strip electrode geometry (slider = 3 interleaved → 0–255); **rev A = HASL + mask over copper**; ENIG gold electrodes = later SKU if feel needs it.
 - Trackpad vs Alps stick: trackpad is on the board; C219778 remains the mechanical fallback in the lib (not populated on rev A).
-- MIDI channel split (chords / bass / thru) — plugin setting; hardware default TBD.
-- Thru vs replace vs merge when a keyboard already sends chords.
-- Spice gesture: trackpad edge vs Shift-only.
-- Smart enhancement presets (auto diatonic 7ths, etc.).
-- One-hand layout: 2×4 + thumb trackpad vs pads-only experiments.
-- Menu / settings overhaul (more control, still few front-panel controls).
-- How much “next chord” suggestion is v1 vs v1.1.
+- Harmony past **In key** (Tensions, Borrowed, Free). The tables are written. The engine still plays the In key map for every step.
+- Other scales than major. Menu shortcuts. Drum rebinding. Arp. A photo skin of the enclosure.
+- How much “next chord” suggestion is v1 vs later. The north star is still progressions, not a random borrowed chord.
 - Trademark / `openchord.com` is someone else’s music-apps site.
 
-Locked (do not reopen without updating this file): MCU RP2040; custom PCB with USB-C on the edge; no radio; no battery; no USB host on the SKU; **8 Gateron LP** for the chord pads (**direct GPIO**, not a matrix); stick **gesture** = 8 seats + HOME (color, never a quality table); cap ICs = **IQS572BLQNR** (trackpad) + **AT42QT2120-XUR** (**strip only**); shared **I2C1** GPIO10/11; **3× EVQPUC02K** system (roles TBD); USB-C = **TYPE-C-31-M-12** (C165948) **J1**; TRS = **SJ1-3523N** ×2 (**J2 OUT / J3 IN**, bushings off-board); flash **W25Q32JVSSIQ** (C179173); rev A proto **4-layer HASL** ~119 × 63 mm, SMT on **B.Cu**, hand-build (no paid PCBA); **no pots / no encoder / no SoftPot**; no QT Key/Shift copper; cheap OLED (GND/VCC/SCL/SDA); ~$99 hardware; plugin free (AU MIDI FX + VST3, same engine); hardware works with no plugin; if the box is connected the plugin does not voice; **Pro + Smart** modes (UI names); Smart 8th pad = high I; Smart HOME = triad (fancy 7ths = later setting); Smart pads = hold; no competitor product names in UI/docs/code comments; engine portable; RP2040-Zero as current testbed; Seed proto parked; archive frozen. Pin map and passives: [`../hardware/support.md`](../hardware/support.md). Fab: [`../hardware/fab/jlcpcb/`](../hardware/fab/jlcpcb/).
+Locked (do not reopen without updating this file and [interaction.md](interaction.md)): MCU RP2040; custom PCB with USB-C on the edge; no radio; no battery; no USB host on the SKU; **8 Gateron LP** keyswitches (**direct GPIO**, not a matrix); modes **Keys**, **Scale**, **Drums**; Scale 8th keyswitch = I one octave up; Scale center = the correct triad; newest held Scale keyswitch wins; Keys with no keyswitch names the incoming chord; Strum is **Optional** or **Only**; menu is Key, Octave, Vary, Harmony, Strum; edge buttons are Prev, Menu, Next; cap ICs = **IQS572BLQNR** (trackpad) + **AT42QT2120-XUR** (**strip only**); shared **I2C1** GPIO10/11; **3× EVQPUC02K**; USB-C = **TYPE-C-31-M-12** (C165948) **J1**; TRS = **SJ1-3523N** ×2 (**J2 OUT / J3 IN**, bushings off-board); flash **W25Q32JVSSIQ** (C179173); rev A proto **4-layer HASL** ~119 × 63 mm, SMT on **B.Cu**, hand-build (no paid PCBA); **no pots / no encoder / no SoftPot**; no QT Key/Shift copper; cheap OLED (GND/VCC/SCL/SDA); ~$99 hardware; plugin free (AU MIDI FX + VST3, same engine); hardware works with no plugin; if the box is connected the plugin does not voice; no competitor product names in UI/docs/code comments; engine portable; archive frozen. Pin map and passives: [`../hardware/support.md`](../hardware/support.md). Fab: [`../hardware/fab/jlcpcb/`](../hardware/fab/jlcpcb/).
 
 When one of these is decided, update this file. Do not start a second source of truth.

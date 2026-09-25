@@ -7,23 +7,62 @@
 namespace ocplug {
 
 enum class ControlId : int {
-    Dim = 0,
-    Min,
-    Maj,
-    Sus,
-    Ext6,
-    Extm7,
-    ExtM7,
-    Ext9,
-    StickX,
-    StickY,
-    Key,
-    Panic,
-    Shift,
+    Keyswitch1 = 0,
+    Keyswitch2,
+    Keyswitch3,
+    Keyswitch4,
+    Keyswitch5,
+    Keyswitch6,
+    Keyswitch7,
+    Keyswitch8,
+    Prev,
+    Menu,
+    Next,
+    TrackpadX,
+    TrackpadY,
+    Strip,
     Count
 };
 
 inline constexpr int kControlCount = static_cast<int>(ControlId::Count);
+inline constexpr int kLegacyControlCount = 13;
+
+inline bool IsKeyswitch(ControlId id) {
+    return id >= ControlId::Keyswitch1 && id <= ControlId::Keyswitch8;
+}
+
+inline bool IsButton(ControlId id) {
+    return id == ControlId::Prev || id == ControlId::Menu || id == ControlId::Next;
+}
+
+inline bool IsAxis(ControlId id) {
+    return id == ControlId::TrackpadX || id == ControlId::TrackpadY || id == ControlId::Strip;
+}
+
+inline int KeyswitchIndex(ControlId id) {
+    return static_cast<int>(id) - static_cast<int>(ControlId::Keyswitch1);
+}
+
+inline const char* ControlName(ControlId id) {
+    switch (id) {
+        case ControlId::Keyswitch1: return "1";
+        case ControlId::Keyswitch2: return "2";
+        case ControlId::Keyswitch3: return "3";
+        case ControlId::Keyswitch4: return "4";
+        case ControlId::Keyswitch5: return "5";
+        case ControlId::Keyswitch6: return "6";
+        case ControlId::Keyswitch7: return "7";
+        case ControlId::Keyswitch8: return "8";
+        case ControlId::Prev: return "Prev";
+        case ControlId::Menu: return "Menu";
+        case ControlId::Next: return "Next";
+        case ControlId::TrackpadX: return "Track X";
+        case ControlId::TrackpadY: return "Track Y";
+        case ControlId::Strip: return "Strip";
+        case ControlId::Count: break;
+    }
+    return "?";
+}
 
 struct Binding {
     enum class Kind : uint8_t { None = 0, Note, Cc };
@@ -32,48 +71,29 @@ struct Binding {
     uint8_t number = 0;
 };
 
-inline const char* ControlName(ControlId id) {
-    switch (id) {
-        case ControlId::Dim: return "Dim";
-        case ControlId::Min: return "Min";
-        case ControlId::Maj: return "Maj";
-        case ControlId::Sus: return "Sus";
-        case ControlId::Ext6: return "6";
-        case ControlId::Extm7: return "m7";
-        case ControlId::ExtM7: return "M7";
-        case ControlId::Ext9: return "9";
-        case ControlId::StickX: return "Stick X";
-        case ControlId::StickY: return "Stick Y";
-        case ControlId::Key: return "Key";
-        case ControlId::Panic: return "Panic";
-        case ControlId::Shift: return "Shift";
-        default: return "?";
-    }
-}
-
 class MidiMap {
 public:
-    MidiMap() { resetToLaunchkey(); }
+    MidiMap() { resetPreset(); }
 
-    void resetToLaunchkey();
+    void resetPreset();
     void clear(ControlId id);
     void set(ControlId id, Binding b);
 
     Binding get(ControlId id) const;
 
-    // Returns control if this message matches a binding, else Count.
     ControlId matchNote(uint8_t channel, uint8_t note) const;
     ControlId matchCc(uint8_t channel, uint8_t number) const;
 
-    // Learn: move any existing binding of this MIDI message to `id`.
+    // One message, one control. A repeat assign moves it.
     void bindUnique(ControlId id, Binding b);
 
     void formatBinding(ControlId id, char* buf, size_t cap) const;
 
-    // Serialize / deserialize (fixed blob for plugin state).
-    static constexpr int kBlobBytes = kControlCount * 3; // kind, ch, number each
+    static constexpr int kBlobBytes = kControlCount * 3;
+    static constexpr int kLegacyBlobBytes = kLegacyControlCount * 3;
     void toBlob(uint8_t* out) const;
     void fromBlob(const uint8_t* in, int nbytes);
+    void fromLegacyBlob(const uint8_t* in, int nbytes);
 
 private:
     std::array<Binding, kControlCount> bindings_{};
