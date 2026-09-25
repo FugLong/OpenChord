@@ -40,7 +40,10 @@ constexpr int kI2cScl = 11;
 constexpr int kIqsRdy = 8;
 constexpr int kIqsNrst = 9;
 
-constexpr int kMidiTx = 0; // UART0
+// Hardware UART0, not a PIO or bit-banged port. support.md MIDI Type A.
+// OUT J2: GPIO0 TX → 10 Ω → ring. Tip is 3V3 through 33 Ω. TX high is idle (no current).
+// IN J3: TLP2361 VO → GPIO1 RX. LED on pulls VO low, which is a UART 0. Do not invert.
+constexpr int kMidiTx = 0;
 constexpr int kMidiRx = 1;
 
 constexpr uint8_t kOledAddr = 0x3C;

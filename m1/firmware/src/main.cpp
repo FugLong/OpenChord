@@ -9,6 +9,7 @@
 #include "screen.h"
 #include "session.h"
 #include "switches.h"
+#include "trs.h"
 
 // Rev A image. Do not flash this onto an RP2040-Zero: the pins are the product board.
 
@@ -33,6 +34,7 @@ static void FlushMidi() {
                 MIDI.sendControlChange(ev[i].data1, ev[i].data2, ev[i].channel);
                 break;
         }
+        ocfw::SendTrs(ev[i]);
     }
 }
 
@@ -73,9 +75,11 @@ void setup() {
     TinyUSBDevice.setManufacturerDescriptor("OpenChord");
     TinyUSBDevice.setProductDescriptor("OpenChord M1");
     usb_midi.setStringDescriptor("OpenChord M1");
-    MIDI.begin(MIDI_CHANNEL_OMNI);
     MIDI.setHandleNoteOn(OnNoteOn);
     MIDI.setHandleNoteOff(OnNoteOff);
+    MIDI.begin(MIDI_CHANNEL_OMNI);
+    MIDI.turnThruOff();
+    ocfw::InitTrs(OnNoteOn, OnNoteOff);
 }
 
 void loop() {
@@ -85,11 +89,12 @@ void loop() {
 
     ocfw::Input in;
     ocfw::ReadSwitches(in);
-    // Trackpad, strip, and TRS are not read yet. They stay at rest in `in`.
+    // Trackpad and strip stay at rest. They share I2C with the OLED.
     feed.apply(session, in);
     FlushMidi();
 
     if (TinyUSBDevice.mounted()) MIDI.read();
+    ocfw::ReadTrs();
 
     Paint();
 }
