@@ -47,6 +47,7 @@ m1/.pio/
 m1/build/
 m1/proto-daisy/build/
 m1/proto-rp2040/.pio/
+m1/firmware/.pio/
 m1/plugin/build/
 m1/plugin/JUCE/
 

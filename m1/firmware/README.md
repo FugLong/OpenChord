@@ -1,6 +1,10 @@
 # M1 product firmware
 
-Product RP2040 + TinyUSB MIDI. Not started.
+Product RP2040 + TinyUSB MIDI. The rev A image compiles. It has not been flashed and it has not been run: there is no board yet. Do not put this image on an RP2040-Zero. The pins are the product schematic.
+
+`pio run` from this folder builds it. Upload is refused.
+
+In this image: USB MIDI named `OpenChord M1`, the eight keyswitches and Prev / Menu / Next (debounced, pressed = low), and the 128×32 OLED drawing the same two lines as the plugin. Not in yet: IQS572 trackpad, QT2120 strip, UART TRS. Those stay at rest so they cannot fight the engine before they are brought up on the desk.
 
 Lab bring-up is [`../proto-rp2040`](../proto-rp2040) on a Zero. The chord logic belongs in `m1/engine`, not here. This folder is the sellable board: USB-C device, UART TRS, Gateron pads, **IQS572** trackpad + **QT2120** strip only, **3× EVQPUC02K** system (roles TBD), OLED. No USB host. No pots. No QT Key/Shift copper. Works with no plugin; the plugin may later push settings over SysEx.
 

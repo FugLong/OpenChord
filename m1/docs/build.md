@@ -6,7 +6,7 @@ Behavior names and rules live in interaction.md. This file is the order of work,
 
 ## Where we are
 
-The plugin plays steps 1–7. Firmware does not talk to the board yet. **Next is step 8, the board.**
+The plugin plays steps 1–7. Firmware for rev A compiles and is not flashed. There is no board to run it on yet. **Next is still step 8, on the real board when it exists.**
 
 | Step | Status |
 |------|--------|
@@ -17,7 +17,7 @@ The plugin plays steps 1–7. Firmware does not talk to the board yet. **Next is
 | 5 Drums | Done. Two banks. Labels follow trackpad X. Velocity follows Y, then Vary |
 | 6 Color and the strip | Done for Harmony **In key**, and for Strum **Optional** / **Only** in both Keys and Scale |
 | 7 Screen | Done in the plugin. Two lines, three bottom slots. Keys with no keyswitch names the chord you played. Scale shows and sounds the newest keyswitch. Firmware prints the same strings in step 8 |
-| 8 Firmware | After the screen. USB device, keys, buttons, OLED, then trackpad, strip, and TRS |
+| 8 Firmware | Started, not proven. USB MIDI, debounced keyswitches and Prev/Menu/Next, and the OLED bitmap compile for the rev A pins. Trackpad, strip, and TRS are not in yet. Do not flash a Zero |
 | 9 Box connected | After a chord works on the desk. Plugin mirrors the box and stops voicing |
 
 Also in the plugin, beside those steps:
