@@ -14,19 +14,24 @@ constexpr uint8_t kPages = 4;
 bool begun_ = false;
 
 bool Command(uint8_t cmd) {
-    Wire.beginTransmission(ocboard::kOledAddr);
-    Wire.write(0x00);
-    Wire.write(cmd);
-    return Wire.endTransmission() == 0;
+    Wire1.beginTransmission(ocboard::kOledAddr);
+    Wire1.write(0x00);
+    Wire1.write(cmd);
+    return Wire1.endTransmission() == 0;
 }
 
 } // namespace
 
 bool InitOled() {
-    Wire.setSDA(ocboard::kI2cSda);
-    Wire.setSCL(ocboard::kI2cScl);
-    Wire.begin();
-    Wire.setClock(400000);
+    // GPIO10/11 are I2C1. Wire is I2C0 and panics if asked for these pins.
+    // Wire's default pins are GPIO4/5, which are Menu and Next on this board.
+    Wire1.setSDA(ocboard::kI2cSda);
+    Wire1.setSCL(ocboard::kI2cScl);
+    // A stretched clock has to reset this controller. Leaving it wedged
+    // freezes the whole board a minute into a touch poll.
+    Wire1.setTimeout(25, true);
+    Wire1.begin();
+    Wire1.setClock(400000);
 
     // 128×32 SSD1306. COM pins 0x02 is the 32-row panel, not the 64-row one.
     const uint8_t seq[] = {
@@ -49,10 +54,10 @@ bool PresentOled(const uint8_t bitmap[kScreenBytes]) {
         if (!Command(0x10)) return false;
         const uint8_t* row = bitmap + page * kWidth;
         for (uint8_t col = 0; col < kWidth; col += 16) {
-            Wire.beginTransmission(ocboard::kOledAddr);
-            Wire.write(0x40);
-            for (uint8_t i = 0; i < 16; ++i) Wire.write(row[col + i]);
-            if (Wire.endTransmission() != 0) return false;
+            Wire1.beginTransmission(ocboard::kOledAddr);
+            Wire1.write(0x40);
+            for (uint8_t i = 0; i < 16; ++i) Wire1.write(row[col + i]);
+            if (Wire1.endTransmission() != 0) return false;
         }
     }
     return true;

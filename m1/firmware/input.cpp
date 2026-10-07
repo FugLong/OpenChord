@@ -11,6 +11,11 @@ bool AxisChanged(float a, float b) {
 
 } // namespace
 
+void SurfaceFeed::seed(const Input& now) {
+    last_ = now;
+    have_ = true;
+}
+
 void SurfaceFeed::apply(oc::Session& session, const Input& now) {
     if (!have_) {
         last_ = {};

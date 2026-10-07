@@ -17,6 +17,7 @@ constexpr Glyph kFont[] = {
     {'+', {0x08, 0x08, 0x3E, 0x08, 0x08}},
     {'-', {0x08, 0x08, 0x08, 0x08, 0x08}},
     {'.', {0x00, 0x60, 0x60, 0x00, 0x00}},
+    {':', {0x00, 0x36, 0x36, 0x00, 0x00}},
     {'/', {0x20, 0x10, 0x08, 0x04, 0x02}},
     {'<', {0x08, 0x14, 0x22, 0x41, 0x00}},
     {'>', {0x00, 0x41, 0x22, 0x14, 0x08}},
@@ -156,6 +157,14 @@ void drawScreen(const ScreenText& text, uint8_t bitmap[kScreenBytes]) {
             SetPixel(bitmap, x, 31);
             if (i == text.zone) SetPixel(bitmap, x, 30);
         }
+    }
+}
+
+void drawLines(const char* const lines[4], uint8_t bitmap[kScreenBytes]) {
+    std::memset(bitmap, 0, kScreenBytes);
+    for (int i = 0; i < 4; ++i) {
+        if (!lines[i] || !lines[i][0]) continue;
+        DrawText(bitmap, lines[i], 0, i * 8, 1, 0, kScreenW);
     }
 }
 

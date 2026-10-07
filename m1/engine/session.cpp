@@ -333,21 +333,28 @@ void Session::soundStripZone(const Voicing& recipe, int zone) {
     const uint8_t note = recipe.notes[zone];
     uint8_t vel = 100;
     varyVelocities(100, 1, &vel);
-    for (uint8_t i = 0; i < strip_n_; ++i) {
-        if (strip_notes_[i] != note) continue;
-        // Entering the zone again is a new pluck. Do not wait for a finger-up.
-        if (strip_owned_[i]) {
+    // Optional mode already holds these pitches, so a second NoteOn never
+    // restrikes them. Lift the note on the wire and play it again. The
+    // chord's hold count stays put; only a strip-owned note is released
+    // when the finger leaves.
+    auto restrike = [this, note, vel](bool owned) {
+        if (owned) {
             midiSendOff(note);
             midiSendOn(note, vel);
-        } else {
-            pushOut(MidiEvent::Kind::NoteOn, note, vel, 0);
+            return;
         }
+        pushOut(MidiEvent::Kind::NoteOff, note, 0, 0);
+        pushOut(MidiEvent::Kind::NoteOn, note, vel, 0);
+    };
+    for (uint8_t i = 0; i < strip_n_; ++i) {
+        if (strip_notes_[i] != note) continue;
+        restrike(strip_owned_[i]);
         return;
     }
     if (strip_n_ >= 8) return;
     const bool owned = note_refs_[note] == 0;
     if (owned) midiSendOn(note, vel);
-    else pushOut(MidiEvent::Kind::NoteOn, note, vel, 0);
+    else restrike(false);
     strip_notes_[strip_n_] = note;
     strip_owned_[strip_n_] = owned;
     ++strip_n_;

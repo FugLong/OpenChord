@@ -22,4 +22,7 @@ struct ScreenText {
 // Same two lines the plugin paints. `zones` is 0 when the strip is idle.
 void drawScreen(const ScreenText& text, uint8_t bitmap[kScreenBytes]);
 
+// Four left-aligned rows, scale 1. Unused rows are null.
+void drawLines(const char* const lines[4], uint8_t bitmap[kScreenBytes]);
+
 } // namespace ocfw

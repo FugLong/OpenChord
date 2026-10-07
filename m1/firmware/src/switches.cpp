@@ -47,12 +47,23 @@ void ReadSwitches(Input& in) {
     in.next = Settled(next_, digitalRead(ocboard::kNextGpio) == LOW, now);
 }
 
+void Prime(Edge& edge, bool pressed) {
+    edge.raw = pressed;
+    edge.stable = pressed;
+    edge.changed_ms = millis();
+}
+
 void InitSwitches() {
-    for (int i = 0; i < ocboard::kKeyswitchCount; ++i)
+    for (int i = 0; i < ocboard::kKeyswitchCount; ++i) {
         pinMode(SpatialGpio(i), INPUT_PULLUP);
+        Prime(keys_[i], digitalRead(SpatialGpio(i)) == LOW);
+    }
     pinMode(ocboard::kPrevGpio, INPUT_PULLUP);
     pinMode(ocboard::kMenuGpio, INPUT_PULLUP);
     pinMode(ocboard::kNextGpio, INPUT_PULLUP);
+    Prime(prev_, digitalRead(ocboard::kPrevGpio) == LOW);
+    Prime(menu_, digitalRead(ocboard::kMenuGpio) == LOW);
+    Prime(next_, digitalRead(ocboard::kNextGpio) == LOW);
 }
 
 } // namespace ocfw

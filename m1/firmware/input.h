@@ -23,6 +23,9 @@ struct Input {
 class SurfaceFeed {
 public:
     void apply(oc::Session& session, const Input& now);
+    // Remember the current levels without telling the session. A line that is
+    // already low at boot is not a press.
+    void seed(const Input& now);
 
 private:
     Input last_{};
