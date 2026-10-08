@@ -25,4 +25,8 @@ void drawScreen(const ScreenText& text, uint8_t bitmap[kScreenBytes]);
 // Four left-aligned rows, scale 1. Unused rows are null.
 void drawLines(const char* const lines[4], uint8_t bitmap[kScreenBytes]);
 
+// 7×7 electrode map, oriented like the pad. Left is Tx0, top is Rx0.
+// A filled cell is well above the median. An X is a low cell, where a finger is.
+void drawCounts(const uint16_t ch[49], bool ok, uint8_t fingers, uint8_t bitmap[kScreenBytes]);
+
 } // namespace ocfw

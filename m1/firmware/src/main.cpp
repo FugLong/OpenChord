@@ -95,8 +95,9 @@ static void PaintDebug() {
                 0,
             };
             std::snprintf(row[1], sizeof(row[1]), "%s pos %u", flags, d.pos);
-            std::snprintf(row[2], sizeof(row[2]), "keys %02X st %02X", d.keys, d.status);
-            std::snprintf(row[3], sizeof(row[3]), d.qt_ok ? "slider on" : "setup failed");
+            std::snprintf(row[2], sizeof(row[2]), "keys %02X c %u", d.keys, d.chip_pos);
+            std::snprintf(row[3], sizeof(row[3]), "%s %02X %02X %u", d.qt_ok ? "on" : "fail",
+                          d.slider_rb, d.pulse_rb, d.thr_rb);
         }
     } else if (debug_page == 1) {
         std::snprintf(row[0], sizeof(row[0]), "Strip ch");
@@ -105,22 +106,14 @@ static void PaintDebug() {
             std::snprintf(row[i + 1], sizeof(row[i + 1]), "%d %u/%u %+d", i, d.sig[i], d.refv[i],
                           delta);
         }
-    } else {
-        const char* why = "ok";
-        if (!d.iqs_ok) {
-            if (d.iqs_fail == ocfw::IqsFail::NoRdy) why = "no rdy";
-            else if (d.iqs_fail == ocfw::IqsFail::Nack) why = "nack";
-            else if (d.iqs_fail == ocfw::IqsFail::BadId) why = "bad id";
-            else why = "down";
-        } else if ((d.info & 0x08) != 0) {
-            why = "ATI err";
-        } else if ((d.info & 0x20) != 0) {
-            why = "ALP err";
-        }
+    } else if (!d.iqs_ok) {
         std::snprintf(row[0], sizeof(row[0]), "Pad");
-        std::snprintf(row[1], sizeof(row[1]), "rdy %d %s", d.rdy ? 1 : 0, why);
-        std::snprintf(row[2], sizeof(row[2]), "id %04X f %u", d.product, d.fingers);
-        std::snprintf(row[3], sizeof(row[3]), "x %d y %d %02X", d.x, d.y, d.info);
+        std::snprintf(row[1], sizeof(row[1]), "no trackpad");
+    } else {
+        uint8_t bitmap[ocfw::kScreenBytes];
+        ocfw::drawCounts(d.ch, d.ch_ok, d.fingers, bitmap);
+        Show(bitmap);
+        return;
     }
     const char* lines[4] = {row[0], row[1], row[2], row[3]};
     uint8_t bitmap[ocfw::kScreenBytes];

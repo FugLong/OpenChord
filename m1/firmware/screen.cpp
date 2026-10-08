@@ -1,5 +1,6 @@
 #include "screen.h"
 
+#include <cstdio>
 #include <cstring>
 
 namespace ocfw {
@@ -166,6 +167,68 @@ void drawLines(const char* const lines[4], uint8_t bitmap[kScreenBytes]) {
         if (!lines[i] || !lines[i][0]) continue;
         DrawText(bitmap, lines[i], 0, i * 8, 1, 0, kScreenW);
     }
+}
+
+void drawCounts(const uint16_t ch[49], bool ok, uint8_t fingers, uint8_t bitmap[kScreenBytes]) {
+    std::memset(bitmap, 0, kScreenBytes);
+    char line[12];
+    if (fingers > 0) std::snprintf(line, sizeof(line), "f %u", fingers);
+    else std::snprintf(line, sizeof(line), "up");
+    DrawText(bitmap, line, 40, 0, 1, 0, kScreenW);
+    if (!ok || !ch) {
+        DrawText(bitmap, "wait", 40, 12, 1, 0, kScreenW);
+        return;
+    }
+    uint16_t ordered[49];
+    std::memcpy(ordered, ch, sizeof(ordered));
+    for (int i = 1; i < 49; ++i) {
+        const uint16_t v = ordered[i];
+        int j = i;
+        while (j > 0 && ordered[j - 1] > v) {
+            ordered[j] = ordered[j - 1];
+            --j;
+        }
+        ordered[j] = v;
+    }
+    const uint16_t med = ordered[24];
+    // The four corners sit outside the circle and read high with no finger.
+    int hot = 3 * 7 + 3;
+    for (int tx = 0; tx < 7; ++tx) {
+        for (int rx = 0; rx < 7; ++rx) {
+            if ((tx == 0 || tx == 6) && (rx == 0 || rx == 6)) continue;
+            const int i = tx * 7 + rx;
+            if (ch[i] < ch[hot]) hot = i;
+        }
+    }
+    const int rise = med / 3;
+    for (int tx = 0; tx < 7; ++tx) {
+        for (int rx = 0; rx < 7; ++rx) {
+            const uint16_t v = ch[tx * 7 + rx];
+            const int x0 = tx * 4;
+            const int y0 = rx * 4;
+            const bool dead = v == 0 || (med > 20 && v + v < med);
+            const bool high = v > med && static_cast<int>(v - med) > rise;
+            if (dead) {
+                SetPixel(bitmap, x0, y0);
+                SetPixel(bitmap, x0 + 2, y0);
+                SetPixel(bitmap, x0 + 1, y0 + 1);
+                SetPixel(bitmap, x0, y0 + 2);
+                SetPixel(bitmap, x0 + 2, y0 + 2);
+            } else if (high) {
+                for (int dy = 0; dy < 3; ++dy) {
+                    for (int dx = 0; dx < 3; ++dx) SetPixel(bitmap, x0 + dx, y0 + dy);
+                }
+            } else {
+                SetPixel(bitmap, x0 + 1, y0 + 1);
+            }
+        }
+    }
+    std::snprintf(line, sizeof(line), "R%d T%d", hot % 7, hot / 7);
+    DrawText(bitmap, line, 40, 8, 1, 0, kScreenW);
+    std::snprintf(line, sizeof(line), "%u", ch[hot]);
+    DrawText(bitmap, line, 40, 16, 1, 0, kScreenW);
+    std::snprintf(line, sizeof(line), "m %u", med);
+    DrawText(bitmap, line, 40, 24, 1, 0, kScreenW);
 }
 
 } // namespace ocfw

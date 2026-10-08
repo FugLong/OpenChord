@@ -11,9 +11,6 @@ void ReadTouch(Input& in);
 // Signal and reference for the three slider channels. Not part of the play loop.
 void SampleStripChannels();
 
-// Why the trackpad init stopped. 0 means it came up.
-enum class IqsFail : uint8_t { Ok = 0, NoRdy, Nack, BadId };
-
 // Live numbers for the debug pages. Updated by ReadTouch.
 struct TouchDebug {
     bool qt_ok = false;
@@ -21,16 +18,20 @@ struct TouchDebug {
     uint8_t status = 0;
     uint8_t keys = 0;
     uint8_t pos = 0;
+    uint8_t chip_pos = 0;
+    // Read back after setup. Page 0 shows these so a missed write is visible.
+    uint8_t slider_rb = 0;
+    uint8_t pulse_rb = 0;
+    uint8_t thr_rb = 0;
     uint16_t sig[3]{};
     uint16_t refv[3]{};
     bool iqs_ok = false;
-    IqsFail iqs_fail = IqsFail::NoRdy;
-    bool rdy = false;
-    uint16_t product = 0;
     uint8_t fingers = 0;
     int x = 0;
     int y = 0;
-    uint8_t info = 0;
+    // Count command. Index tx * 7 + rx. On the pad, Tx runs left to right and Rx runs top to bottom.
+    bool ch_ok = false;
+    uint16_t ch[49]{};
 };
 
 void CopyTouchDebug(TouchDebug& out);
